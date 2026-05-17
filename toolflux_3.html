@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOOLFLUX — Precision Metal Cutting Tools for CNC & VMC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#0a0a08;
+  --dark:#111110;
+  --mid:#1c1c1a;
+  --steel:#2a2a27;
+  --iron:#3d3d39;
+  --silver:#8a8a82;
+  --light:#c8c8be;
+  --off-white:#eeeee8;
+  --white:#f8f8f4;
+  --flux:#e8520a;
+  --flux-dim:#b33d07;
+  --flux-glow:rgba(232,82,10,0.15);
+  --flux-pale:rgba(232,82,10,0.06);
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{
+  background:var(--black);
+  color:var(--off-white);
+  font-family:'Barlow',sans-serif;
+  font-weight:300;
+  line-height:1.6;
+  overflow-x:hidden;
+  cursor:none;
+}
+/* CUSTOM CURSOR */
+#cursor{position:fixed;top:0;left:0;width:10px;height:10px;background:var(--flux);border-radius:50%;pointer-events:none;z-index:99999;transition:transform 0.15s ease;mix-blend-mode:normal}
+#cursor-ring{position:fixed;top:0;left:0;width:36px;height:36px;border:1px solid rgba(232,82,10,0.5);border-radius:50%;pointer-events:none;z-index:99998;transition:transform 0.08s linear}
+body:has(a:hover) #cursor{transform:scale(2.5);background:var(--flux)}
+body:has(button:hover) #cursor{transform:scale(2.5)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--black)}
+::-webkit-scrollbar-thumb{background:var(--flux)}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:1000;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.4rem 3rem;
+  background:transparent;
+  transition:background 0.4s ease, padding 0.4s ease;
+  border-bottom:0px solid transparent;
+}
+nav.scrolled{background:rgba(10,10,8,0.95);padding:1rem 3rem;border-bottom:1px solid var(--steel)}
+.nav-logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:2rem;letter-spacing:0.15em;color:var(--white);
+  text-decoration:none;
+}
+.nav-logo span{color:var(--flux)}
+.nav-links{display:flex;gap:2.5rem;list-style:none}
+.nav-links a{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--silver);text-decoration:none;
+  transition:color 0.25s;
+}
+.nav-links a:hover{color:var(--flux)}
+.nav-cta{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;
+  border:1px solid var(--flux);color:var(--flux);
+  padding:0.55rem 1.4rem;text-decoration:none;
+  transition:background 0.25s,color 0.25s;
+}
+.nav-cta:hover{background:var(--flux);color:var(--black)}
+
+/* SIDE DOT NAV */
+.side-nav{
+  position:fixed;right:2rem;top:50%;transform:translateY(-50%);
+  z-index:500;display:flex;flex-direction:column;gap:1rem;
+}
+.side-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--iron);cursor:pointer;
+  transition:background 0.3s,transform 0.3s;
+  position:relative;
+}
+.side-dot.active{background:var(--flux);transform:scale(1.5)}
+.side-dot:hover{background:var(--flux)}
+.side-dot::after{
+  content:attr(data-label);
+  position:absolute;right:16px;top:50%;transform:translateY(-50%);
+  font-family:'Barlow Condensed',sans-serif;font-size:0.65rem;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--silver);white-space:nowrap;opacity:0;transition:opacity 0.2s;
+}
+.side-dot:hover::after{opacity:1}
+
+/* SECTION NUMBERING */
+.section-tag{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.75rem;letter-spacing:0.3em;text-transform:uppercase;
+  color:var(--flux);margin-bottom:1rem;display:block;
+}
+
+/* HERO */
+#hero{
+  height:100vh;min-height:700px;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;justify-content:flex-end;
+  padding:0 3rem 4rem;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 70% 40%, rgba(232,82,10,0.08) 0%, transparent 70%),
+    linear-gradient(180deg, rgba(10,10,8,0) 0%, rgba(10,10,8,0.8) 70%, var(--black) 100%),
+    var(--black);
+}
+.hero-grid{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size:80px 80px;
+  animation:gridShift 20s linear infinite;
+}
+@keyframes gridShift{
+  from{background-position:0 0}
+  to{background-position:80px 80px}
+}
+.hero-tag{
+  position:absolute;top:50%;left:3rem;transform:translateY(-50%);
+}
+.hero-eyebrow{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.75rem;letter-spacing:0.4em;text-transform:uppercase;
+  color:var(--flux);margin-bottom:1.5rem;display:block;
+  opacity:0;animation:fadeUp 1s ease 0.5s forwards;
+}
+.hero-h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(4.5rem,12vw,11rem);
+  line-height:0.9;letter-spacing:0.02em;
+  color:var(--white);
+  opacity:0;animation:fadeUp 1s ease 0.7s forwards;
+}
+.hero-h1 em{color:var(--flux);font-style:normal}
+.hero-sub{
+  font-size:1rem;font-weight:300;color:var(--silver);
+  max-width:420px;margin-top:1.5rem;
+  opacity:0;animation:fadeUp 1s ease 0.9s forwards;
+}
+.hero-bottom{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  position:relative;z-index:2;
+}
+.hero-scroll{
+  display:flex;align-items:center;gap:1rem;
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.7rem;letter-spacing:0.3em;text-transform:uppercase;
+  color:var(--silver);
+  opacity:0;animation:fadeUp 1s ease 1.4s forwards;
+}
+.scroll-line{
+  width:60px;height:1px;background:var(--flux);
+  position:relative;overflow:hidden;
+}
+.scroll-line::after{
+  content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;
+  background:var(--white);animation:scanLine 2s ease 2s infinite;
+}
+@keyframes scanLine{0%{left:-100%}100%{left:100%}}
+.hero-cta-group{
+  display:flex;gap:1rem;
+  opacity:0;animation:fadeUp 1s ease 1.2s forwards;
+}
+.btn-primary{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;
+  background:var(--flux);color:var(--black);
+  padding:0.9rem 2.2rem;text-decoration:none;
+  transition:background 0.25s,transform 0.2s;display:inline-block;
+}
+.btn-primary:hover{background:var(--flux-dim);transform:translateY(-2px)}
+.btn-outline{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;
+  border:1px solid var(--steel);color:var(--light);
+  padding:0.9rem 2.2rem;text-decoration:none;
+  transition:border-color 0.25s,color 0.25s;display:inline-block;
+}
+.btn-outline:hover{border-color:var(--flux);color:var(--flux)}
+
+/* ANIMATED TICKER */
+.ticker-wrap{
+  overflow:hidden;
+  border-top:1px solid var(--steel);border-bottom:1px solid var(--steel);
+  padding:0.8rem 0;background:var(--dark);
+}
+.ticker{
+  display:flex;white-space:nowrap;
+  animation:tickerScroll 30s linear infinite;
+}
+.ticker-item{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:1.2rem;letter-spacing:0.15em;color:var(--iron);
+  padding:0 2rem;
+  transition:color 0.3s;
+}
+.ticker-item .sep{color:var(--flux);margin:0 0.5rem}
+@keyframes tickerScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* STATS SECTION */
+#data{background:var(--dark);padding:7rem 3rem}
+.section-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:5rem}
+.section-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(2.5rem,5vw,4.5rem);
+  line-height:1;letter-spacing:0.03em;color:var(--white);
+  max-width:600px;
+}
+.section-body{max-width:400px;color:var(--silver);font-size:0.95rem;align-self:flex-end}
+.stats-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:0;border:1px solid var(--steel);
+}
+.stat-card{
+  padding:3rem 2.5rem;border-right:1px solid var(--steel);
+  position:relative;overflow:hidden;
+  transition:background 0.3s;
+}
+.stat-card:nth-child(3n){border-right:none}
+.stat-card:nth-child(n+4){border-top:1px solid var(--steel)}
+.stat-card:hover{background:var(--flux-pale)}
+.stat-card::before{
+  content:'';position:absolute;bottom:0;left:0;width:0;height:2px;
+  background:var(--flux);transition:width 0.5s ease;
+}
+.stat-card:hover::before{width:100%}
+.stat-num{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(2.5rem,4vw,4rem);letter-spacing:0.05em;
+  color:var(--flux);line-height:1;
+}
+.stat-label{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--silver);margin-top:0.5rem;
+}
+
+/* PRODUCTS SECTION */
+#products{background:var(--black);padding:7rem 3rem}
+.product-tabs{display:flex;gap:0;margin-bottom:4rem;border-bottom:1px solid var(--steel)}
+.tab-btn{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--silver);padding:1rem 2rem;border:none;background:none;cursor:none;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:color 0.25s,border-color 0.25s;
+}
+.tab-btn.active{color:var(--flux);border-bottom-color:var(--flux)}
+.tab-btn:hover{color:var(--light)}
+.products-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--steel);
+}
+.product-card{
+  background:var(--dark);padding:2.5rem 2rem;
+  position:relative;overflow:hidden;cursor:none;
+  transition:background 0.3s;
+}
+.product-card:hover{background:var(--mid)}
+.product-icon{
+  width:52px;height:52px;margin-bottom:1.5rem;
+  position:relative;
+}
+.product-icon svg{width:100%;height:100%;stroke:var(--flux);fill:none;stroke-width:1.2}
+.product-num{
+  font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:0.3em;
+  color:var(--iron);position:absolute;top:2rem;right:2rem;
+}
+.product-name{
+  font-family:'Barlow Condensed',sans-serif;font-size:1.3rem;font-weight:600;
+  letter-spacing:0.05em;text-transform:uppercase;color:var(--white);
+  margin-bottom:0.75rem;
+}
+.product-desc{font-size:0.85rem;color:var(--silver);line-height:1.7}
+.product-arrow{
+  display:inline-flex;align-items:center;gap:0.5rem;margin-top:1.5rem;
+  font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--flux);text-decoration:none;
+  transition:gap 0.25s;
+}
+.product-card:hover .product-arrow{gap:1rem}
+.product-card .reveal-bar{
+  position:absolute;bottom:0;left:0;height:2px;width:0;background:var(--flux);
+  transition:width 0.5s ease;
+}
+.product-card:hover .reveal-bar{width:100%}
+
+/* PRECISION SECTION - full bleed dark */
+#precision{
+  background:var(--dark);
+  padding:7rem 3rem;
+  position:relative;overflow:hidden;
+}
+.precision-inner{
+  display:grid;grid-template-columns:1fr 1fr;gap:6rem;align-items:center;
+}
+.precision-visual{
+  position:relative;aspect-ratio:1;
+  display:flex;align-items:center;justify-content:center;
+}
+.precision-rings{position:relative;width:320px;height:320px}
+.ring{
+  position:absolute;border-radius:50%;border:1px solid;
+  top:50%;left:50%;transform:translate(-50%,-50%);
+}
+.ring-1{width:100%;height:100%;border-color:var(--steel);animation:rotateSlow 20s linear infinite}
+.ring-2{width:78%;height:78%;border-color:var(--iron);border-style:dashed;animation:rotateSlow 15s linear infinite reverse}
+.ring-3{width:54%;height:54%;border-color:var(--flux);opacity:0.5;animation:rotateSlow 10s linear infinite}
+.ring-center{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:80px;height:80px;
+  background:var(--flux);
+  clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+  animation:pulseStar 3s ease-in-out infinite;
+}
+@keyframes rotateSlow{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes pulseStar{0%,100%{opacity:1;transform:translate(-50%,-50%) scale(1)}50%{opacity:0.7;transform:translate(-50%,-50%) scale(0.95)}}
+.ring-label{
+  position:absolute;font-family:'Barlow Condensed',sans-serif;
+  font-size:0.65rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--silver);
+}
+.ring-label.top{top:0;left:50%;transform:translateX(-50%)}
+.ring-label.right{right:-20px;top:50%;transform:translateY(-50%)}
+.ring-label.bottom{bottom:0;left:50%;transform:translateX(-50%)}
+.ring-label.left{left:-60px;top:50%;transform:translateY(-50%)}
+.precision-content .section-title{margin-bottom:2rem}
+.precision-content p{color:var(--silver);margin-bottom:1.5rem;font-size:0.95rem}
+.spec-list{display:flex;flex-direction:column;gap:1rem;margin:2rem 0}
+.spec-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0.8rem 0;border-bottom:1px solid var(--steel);
+}
+.spec-key{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.8rem;
+  letter-spacing:0.15em;text-transform:uppercase;color:var(--silver);
+}
+.spec-val{
+  font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:0.1em;color:var(--flux);
+}
+
+/* SERVICES SECTION */
+#services{background:var(--black);padding:7rem 3rem}
+.services-list{display:flex;flex-direction:column;border-top:1px solid var(--steel)}
+.service-item{
+  border-bottom:1px solid var(--steel);
+  overflow:hidden;
+}
+.service-header{
+  display:flex;align-items:center;padding:2rem 0;cursor:none;
+  gap:2rem;transition:color 0.3s;
+}
+.service-header:hover .service-name{color:var(--flux)}
+.service-num{
+  font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:0.3em;
+  color:var(--iron);min-width:50px;
+}
+.service-name{
+  font-family:'Barlow Condensed',sans-serif;font-size:1.4rem;font-weight:600;
+  letter-spacing:0.08em;text-transform:uppercase;color:var(--light);
+  flex:1;transition:color 0.3s;
+}
+.service-tag{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:var(--silver);margin-left:auto;margin-right:2rem;
+}
+.service-toggle{
+  width:28px;height:28px;border:1px solid var(--steel);
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.25s,border-color 0.25s,transform 0.4s;
+  font-size:1rem;color:var(--silver);
+}
+.service-item.open .service-toggle{background:var(--flux);border-color:var(--flux);color:var(--black);transform:rotate(45deg)}
+.service-body{
+  max-height:0;overflow:hidden;
+  transition:max-height 0.5s cubic-bezier(0.4,0,0.2,1), padding 0.3s;
+  padding:0 0 0 50px;
+}
+.service-body.open{max-height:300px;padding-bottom:2rem}
+.service-body p{color:var(--silver);font-size:0.9rem;max-width:600px}
+
+/* INNOVATION SECTION */
+#innovation{
+  background:var(--off-white);color:var(--black);
+  padding:7rem 3rem;position:relative;overflow:hidden;
+}
+#innovation .section-tag{color:var(--flux)}
+#innovation .section-title{color:var(--black)}
+#innovation .section-body{color:#555}
+.crosshair-bg{
+  position:absolute;right:-5%;top:50%;transform:translateY(-50%);
+  width:45%;opacity:0.06;
+}
+.crosshair-bg svg{width:100%;height:auto}
+.innovation-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-top:4rem}
+.inno-card{
+  background:rgba(0,0,0,0.04);padding:2.5rem 2rem;
+  position:relative;border-bottom:3px solid transparent;
+  transition:border-color 0.3s,background 0.3s;
+}
+.inno-card:hover{border-bottom-color:var(--flux);background:rgba(0,0,0,0.07)}
+.inno-num{
+  font-family:'Bebas Neue',sans-serif;font-size:0.85rem;letter-spacing:0.3em;
+  color:var(--flux);margin-bottom:1rem;
+}
+.inno-title{
+  font-family:'Barlow Condensed',sans-serif;font-size:1.2rem;font-weight:700;
+  letter-spacing:0.05em;text-transform:uppercase;color:#111;margin-bottom:0.75rem;
+}
+.inno-desc{font-size:0.85rem;color:#555;line-height:1.7}
+
+/* NEWS SECTION */
+#news{background:var(--dark);padding:7rem 3rem}
+.news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;margin-top:3rem}
+.news-card{position:relative;cursor:none;overflow:hidden;border:1px solid var(--steel);transition:border-color 0.3s}
+.news-card:hover{border-color:var(--flux)}
+.news-img{
+  width:100%;aspect-ratio:16/9;overflow:hidden;
+  background:var(--mid);display:flex;align-items:center;justify-content:center;
+}
+.news-img-placeholder{
+  width:100%;height:100%;
+  background:linear-gradient(135deg,var(--steel),var(--mid));
+  display:flex;align-items:center;justify-content:center;
+  transition:transform 0.5s ease;
+}
+.news-card:hover .news-img-placeholder{transform:scale(1.05)}
+.news-img-placeholder svg{width:40px;height:40px;stroke:var(--iron);stroke-width:1;fill:none}
+.news-body{padding:1.5rem}
+.news-date{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--flux);margin-bottom:0.75rem;
+}
+.news-title{
+  font-family:'Barlow Condensed',sans-serif;font-size:1.1rem;font-weight:600;
+  letter-spacing:0.03em;color:var(--white);line-height:1.3;margin-bottom:0.75rem;
+}
+.news-excerpt{font-size:0.8rem;color:var(--silver);line-height:1.6}
+
+/* CONTACT SECTION */
+#contact{background:var(--black);padding:7rem 3rem}
+.contact-inner{display:grid;grid-template-columns:1fr 1fr;gap:6rem}
+.contact-form{display:flex;flex-direction:column;gap:1.5rem}
+.form-group{display:flex;flex-direction:column;gap:0.5rem}
+.form-label{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:var(--silver);
+}
+.form-input, .form-textarea, .form-select{
+  background:var(--dark);border:1px solid var(--steel);color:var(--light);
+  padding:0.9rem 1rem;font-family:'Barlow',sans-serif;font-size:0.9rem;font-weight:300;
+  outline:none;transition:border-color 0.25s;width:100%;
+}
+.form-input:focus, .form-textarea:focus, .form-select:focus{border-color:var(--flux)}
+.form-textarea{resize:vertical;min-height:120px}
+.form-select{appearance:none;cursor:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.contact-info{display:flex;flex-direction:column;gap:2.5rem;padding-top:1rem}
+.contact-block .ci-label{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:var(--flux);margin-bottom:0.5rem;
+}
+.contact-block .ci-val{color:var(--light);font-size:0.95rem}
+
+/* FOOTER */
+footer{background:var(--dark);border-top:1px solid var(--steel);padding:3rem 3rem 2rem}
+.footer-top{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
+.footer-brand .brand-name{
+  font-family:'Bebas Neue',sans-serif;font-size:2.5rem;letter-spacing:0.1em;color:var(--white);
+}
+.footer-brand .brand-name span{color:var(--flux)}
+.footer-brand p{color:var(--silver);font-size:0.85rem;margin-top:0.75rem;max-width:260px}
+.footer-col h4{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.75rem;letter-spacing:0.25em;text-transform:uppercase;
+  color:var(--flux);margin-bottom:1.2rem;
+}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.7rem}
+.footer-col a{
+  color:var(--silver);text-decoration:none;font-size:0.85rem;
+  transition:color 0.25s;
+}
+.footer-col a:hover{color:var(--flux)}
+.footer-bottom{
+  border-top:1px solid var(--steel);padding-top:1.5rem;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.footer-copy{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.15em;text-transform:uppercase;
+  color:var(--iron);
+}
+.footer-socials{display:flex;gap:1.5rem}
+.social-link{
+  font-family:'Barlow Condensed',sans-serif;font-size:0.7rem;letter-spacing:0.2em;text-transform:uppercase;
+  color:var(--silver);text-decoration:none;transition:color 0.25s;
+}
+.social-link:hover{color:var(--flux)}
+
+/* MARQUEE FOOTER */
+.marquee-footer{
+  overflow:hidden;padding:1.2rem 0;
+  background:var(--flux);
+}
+.marquee-footer .ticker{animation:tickerScroll 20s linear infinite}
+.marquee-footer .ticker-item{color:var(--black);font-size:1rem}
+.marquee-footer .ticker-item .sep{color:rgba(0,0,0,0.4)}
+
+/* ANIMATIONS */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(30px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.reveal{opacity:0;transform:translateY(40px);transition:opacity 0.8s ease,transform 0.8s ease}
+.reveal.visible{opacity:1;transform:none}
+.reveal-delay-1{transition-delay:0.1s}
+.reveal-delay-2{transition-delay:0.2s}
+.reveal-delay-3{transition-delay:0.3s}
+.reveal-delay-4{transition-delay:0.4s}
+.reveal-delay-5{transition-delay:0.5s}
+.reveal-delay-6{transition-delay:0.6s}
+
+/* LOADING SCREEN */
+#loader{
+  position:fixed;inset:0;z-index:99999;
+  background:var(--black);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  transition:opacity 0.6s ease,visibility 0.6s ease;
+}
+#loader.hidden{opacity:0;visibility:hidden}
+.loader-logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:4rem;letter-spacing:0.2em;color:var(--white);
+  overflow:hidden;
+}
+.loader-logo span{color:var(--flux)}
+.loader-bar-wrap{width:200px;height:1px;background:var(--steel);margin-top:2rem;overflow:hidden}
+.loader-bar{width:0;height:100%;background:var(--flux);animation:loadBar 1.8s ease forwards}
+@keyframes loadBar{0%{width:0}100%{width:100%}}
+.loader-pct{
+  font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:0.3em;
+  color:var(--flux);margin-top:0.75rem;
+}
+
+/* HORIZONTAL SCROLL PRODUCTS */
+.scroll-products-wrap{overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+.scroll-products-wrap::-webkit-scrollbar{display:none}
+.scroll-products-inner{display:flex;gap:1px;background:var(--steel);width:max-content}
+.scroll-product{
+  width:280px;flex-shrink:0;background:var(--dark);padding:2.5rem;
+  cursor:none;transition:background 0.3s;
+}
+.scroll-product:hover{background:var(--mid)}
+
+@media(max-width:900px){
+  nav{padding:1rem 1.5rem}
+  .nav-links{display:none}
+  #hero{padding:0 1.5rem 3rem}
+  #data,#products,#precision,#services,#innovation,#news,#contact,footer{padding:4rem 1.5rem}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .products-grid,.innovation-grid,.news-grid{grid-template-columns:1fr}
+  .precision-inner,.contact-inner{grid-template-columns:1fr;gap:3rem}
+  .section-header{flex-direction:column;gap:2rem}
+  .footer-top{grid-template-columns:1fr 1fr}
+  .side-nav{display:none}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-logo">TOOL<span>FLUX</span></div>
+  <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  <div class="loader-pct" id="loader-pct">0%</div>
+</div>
+
+<!-- CUSTOM CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="#hero" class="nav-logo">TOOL<span>FLUX</span></a>
+  <ul class="nav-links">
+    <li><a href="#data">[01] About</a></li>
+    <li><a href="#products">[02] Products</a></li>
+    <li><a href="#precision">[03] Precision</a></li>
+    <li><a href="#services">[04] Services</a></li>
+    <li><a href="#innovation">[05] Innovation</a></li>
+    <li><a href="#news">[06] News</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta">Get a Quote</a>
+</nav>
+
+<!-- SIDE DOT NAV -->
+<div class="side-nav" id="side-nav">
+  <div class="side-dot active" data-label="Home" data-target="hero"></div>
+  <div class="side-dot" data-label="About" data-target="data"></div>
+  <div class="side-dot" data-label="Products" data-target="products"></div>
+  <div class="side-dot" data-label="Precision" data-target="precision"></div>
+  <div class="side-dot" data-label="Services" data-target="services"></div>
+  <div class="side-dot" data-label="Innovation" data-target="innovation"></div>
+  <div class="side-dot" data-label="News" data-target="news"></div>
+  <div class="side-dot" data-label="Contact" data-target="contact"></div>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-tag">
+    <span class="hero-eyebrow">Industrial Precision Since 1994</span>
+    <h1 class="hero-h1">CUT.<br>SHAPE.<br><em>DOMINATE.</em></h1>
+    <p class="hero-sub">High-performance metal cutting tools engineered for CNC and VMC machining excellence. Zero tolerance for failure.</p>
+  </div>
+  <div class="hero-bottom">
+    <div class="hero-scroll">
+      <div class="scroll-line"></div>
+      Scroll to Explore
+    </div>
+    <div class="hero-cta-group">
+      <a href="#products" class="btn-primary">Explore Tools</a>
+      <a href="#contact" class="btn-outline">Request Catalogue</a>
+    </div>
+  </div>
+</section>
+
+<!-- TICKER 1 -->
+<div class="ticker-wrap">
+  <div class="ticker">
+    <span class="ticker-item">CNC Turning<span class="sep">✦</span></span>
+    <span class="ticker-item">VMC Milling<span class="sep">✦</span></span>
+    <span class="ticker-item">Carbide Inserts<span class="sep">✦</span></span>
+    <span class="ticker-item">Thread Milling<span class="sep">✦</span></span>
+    <span class="ticker-item">Deep Hole Drilling<span class="sep">✦</span></span>
+    <span class="ticker-item">Boring Systems<span class="sep">✦</span></span>
+    <span class="ticker-item">Precision Grinding<span class="sep">✦</span></span>
+    <span class="ticker-item">Tool Holders<span class="sep">✦</span></span>
+    <span class="ticker-item">ISO 9001:2015<span class="sep">✦</span></span>
+    <span class="ticker-item">CNC Turning<span class="sep">✦</span></span>
+    <span class="ticker-item">VMC Milling<span class="sep">✦</span></span>
+    <span class="ticker-item">Carbide Inserts<span class="sep">✦</span></span>
+    <span class="ticker-item">Thread Milling<span class="sep">✦</span></span>
+    <span class="ticker-item">Deep Hole Drilling<span class="sep">✦</span></span>
+    <span class="ticker-item">Boring Systems<span class="sep">✦</span></span>
+    <span class="ticker-item">Precision Grinding<span class="sep">✦</span></span>
+    <span class="ticker-item">Tool Holders<span class="sep">✦</span></span>
+    <span class="ticker-item">ISO 9001:2015<span class="sep">✦</span></span>
+  </div>
+</div>
+
+<!-- DATA / ABOUT -->
+<section id="data">
+  <div class="section-header reveal">
+    <div>
+      <span class="section-tag">[01] — The Numbers</span>
+      <h2 class="section-title">Machined to perfection.<br>Built for scale.</h2>
+    </div>
+    <p class="section-body">We engineer cutting tools for the most demanding CNC and VMC environments. From aerospace-grade alloys to hardened steels, TOOLFLUX delivers where tolerances are measured in microns.</p>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card reveal reveal-delay-1">
+      <div class="stat-num" data-target="2400">0</div>
+      <div class="stat-label">SKUs in catalogue</div>
+    </div>
+    <div class="stat-card reveal reveal-delay-2">
+      <div class="stat-num" data-target="30">0</div>
+      <div class="stat-label">Years of engineering excellence</div>
+    </div>
+    <div class="stat-card reveal reveal-delay-3">
+      <div class="stat-num">±0.002</div>
+      <div class="stat-label">mm tolerance (micron-grade)</div>
+    </div>
+    <div class="stat-card reveal reveal-delay-4">
+      <div class="stat-num" data-target="85">0</div>
+      <div class="stat-label">Countries served globally</div>
+    </div>
+    <div class="stat-card reveal reveal-delay-5">
+      <div class="stat-num" data-target="98">0</div>
+      <div class="stat-label">% on-time delivery rate</div>
+    </div>
+    <div class="stat-card reveal reveal-delay-6">
+      <div class="stat-num" data-target="500">0</div>
+      <div class="stat-label">OEM partnerships</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section id="products">
+  <div class="section-header reveal">
+    <div>
+      <span class="section-tag">[02] — Product Range</span>
+      <h2 class="section-title">Every cut.<br>Every material.<br>Every machine.</h2>
+    </div>
+    <p class="section-body">From roughing to finishing, TOOLFLUX covers the complete spectrum of metal cutting operations across CNC lathes, VMC machining centers and multi-axis platforms.</p>
+  </div>
+
+  <div class="product-tabs">
+    <button class="tab-btn active" data-tab="all">All Tools</button>
+    <button class="tab-btn" data-tab="turning">Turning</button>
+    <button class="tab-btn" data-tab="milling">Milling</button>
+    <button class="tab-btn" data-tab="drilling">Drilling</button>
+    <button class="tab-btn" data-tab="boring">Boring</button>
+    <button class="tab-btn" data-tab="threading">Threading</button>
+  </div>
+
+  <div class="products-grid">
+    <div class="product-card reveal reveal-delay-1">
+      <span class="product-num">001</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="20"/><line x1="26" y1="6" x2="26" y2="46"/><line x1="6" y1="26" x2="46" y2="26"/><circle cx="26" cy="26" r="6"/></svg>
+      </div>
+      <div class="product-name">Carbide Turning Inserts</div>
+      <div class="product-desc">CNMG, DNMG, WNMG, TNMG geometries in PVD and CVD coated grades. Optimised for steel, stainless, cast iron and superalloys.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+    <div class="product-card reveal reveal-delay-2">
+      <span class="product-num">002</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><rect x="8" y="8" width="36" height="36" rx="2"/><line x1="8" y1="20" x2="44" y2="20"/><line x1="8" y1="32" x2="44" y2="32"/><line x1="20" y1="8" x2="20" y2="44"/><line x1="32" y1="8" x2="32" y2="44"/></svg>
+      </div>
+      <div class="product-name">End Mills & Cutters</div>
+      <div class="product-desc">Solid carbide end mills for VMC operations. 2, 3, 4 and 6-flute configurations. Square, ball nose, corner radius and roughing profiles.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+    <div class="product-card reveal reveal-delay-3">
+      <span class="product-num">003</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><line x1="26" y1="4" x2="26" y2="48"/><polygon points="26,4 32,14 20,14"/><circle cx="26" cy="30" r="8"/><line x1="18" y1="42" x2="34" y2="42"/></svg>
+      </div>
+      <div class="product-name">Indexable Drilling</div>
+      <div class="product-desc">High-penetration drill bodies with interchangeable carbide inserts. Diameter range 12mm to 80mm. Coolant-through capability standard.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+    <div class="product-card reveal reveal-delay-4">
+      <span class="product-num">004</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="16"/><circle cx="26" cy="26" r="6"/><line x1="26" y1="4" x2="26" y2="10"/><line x1="26" y1="42" x2="26" y2="48"/><line x1="4" y1="26" x2="10" y2="26"/><line x1="42" y1="26" x2="48" y2="26"/></svg>
+      </div>
+      <div class="product-name">Boring Bars & Heads</div>
+      <div class="product-desc">Anti-vibration boring bars with damping cartridges for deep bores. Fine-adjustment boring heads with 0.001mm graduation precision.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+    <div class="product-card reveal reveal-delay-5">
+      <span class="product-num">005</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><path d="M10 42 L26 10 L42 42 Z"/><line x1="10" y1="42" x2="42" y2="42"/><circle cx="26" cy="28" r="4"/></svg>
+      </div>
+      <div class="product-name">Thread Milling Cutters</div>
+      <div class="product-desc">Single-point and full-profile thread mills for internal and external threading. M4 to M100 range. Eliminates tap breakage risks completely.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+    <div class="product-card reveal reveal-delay-6">
+      <span class="product-num">006</span>
+      <div class="product-icon">
+        <svg viewBox="0 0 52 52"><rect x="6" y="18" width="40" height="16" rx="2"/><line x1="6" y1="26" x2="46" y2="26"/><circle cx="16" cy="26" r="4"/><circle cx="36" cy="26" r="4"/><line x1="14" y1="10" x2="14" y2="18"/><line x1="38" y1="10" x2="38" y2="18"/><line x1="14" y1="34" x2="14" y2="42"/><line x1="38" y1="34" x2="38" y2="42"/></svg>
+      </div>
+      <div class="product-name">Tool Holding Systems</div>
+      <div class="product-desc">Precision collet chucks, hydraulic tool holders, shrink-fit systems and HSK / BT / CAT / SK interfaces for all machine spindles.</div>
+      <a href="#contact" class="product-arrow">View Range →</a>
+      <div class="reveal-bar"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRECISION -->
+<section id="precision">
+  <div class="precision-inner">
+    <div class="precision-visual reveal">
+      <div class="precision-rings">
+        <div class="ring ring-1"></div>
+        <div class="ring ring-2"></div>
+        <div class="ring ring-3"></div>
+        <div class="ring-center"></div>
+        <span class="ring-label top">Surface Finish</span>
+        <span class="ring-label right">Feed Rate</span>
+        <span class="ring-label bottom">Tool Life</span>
+        <span class="ring-label left">Accuracy</span>
+      </div>
+    </div>
+    <div class="precision-content">
+      <span class="section-tag reveal">[03] — Engineering Precision</span>
+      <h2 class="section-title reveal">When microns matter, material matters more.</h2>
+      <p class="reveal">TOOLFLUX tools are manufactured from ultra-fine grain carbide substrates with proprietary coating stacks developed in our Pune R&D centre. Every insert, every end mill, every drill is geometry-optimised for chip evacuation and heat management.</p>
+      <div class="spec-list reveal">
+        <div class="spec-item">
+          <span class="spec-key">Substrate Grain Size</span>
+          <span class="spec-val">0.4 – 0.8 µm</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-key">Coating Hardness</span>
+          <span class="spec-val">3200 HV</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-key">Max Operating Temp</span>
+          <span class="spec-val">1100°C</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-key">Surface Roughness Ra</span>
+          <span class="spec-val">0.2 µm</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-key">Dimensional Tolerance</span>
+          <span class="spec-val">±0.002 mm</span>
+        </div>
+      </div>
+      <a href="#contact" class="btn-primary reveal">Request Technical Datasheet</a>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section id="services">
+  <div class="section-header reveal">
+    <div>
+      <span class="section-tag">[04] — Services</span>
+      <h2 class="section-title">Beyond the tool.<br>Total machining partnership.</h2>
+    </div>
+    <p class="section-body">TOOLFLUX doesn't just supply tools. We embed into your production process to optimise cycle times, reduce scrap rates and extend tool life through data-driven interventions.</p>
+  </div>
+
+  <div class="services-list reveal">
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">001</span>
+        <span class="service-name">Cutting Process Optimisation</span>
+        <span class="service-tag">Engineering</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Our applications engineers analyse your existing CNC/VMC programs, speeds, feeds and depth-of-cut parameters to identify cycle time savings and tool life improvements. Average cycle time reduction: 22%.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">002</span>
+        <span class="service-name">Toolpath & CAM Consultation</span>
+        <span class="service-tag">Digital</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Work directly with our CAM specialists to select optimal tooling strategies — from trochoidal milling to high-efficiency roughing (HER) — matched to your machine's dynamic capability.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">003</span>
+        <span class="service-name">Custom Tool Design & Manufacture</span>
+        <span class="service-tag">Manufacturing</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Special profiles, non-standard geometries, form tools and step drills manufactured to your drawing. Lead times from 10 working days. Full GD&T inspection reports supplied with every batch.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">004</span>
+        <span class="service-name">Tool Regrinding & Reconditioning</span>
+        <span class="service-tag">Sustainability</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Extend the life of premium solid carbide tools through our certified regrinding service. Re-coated, re-inspected, and returned to OEM-equivalent specification at up to 60% cost savings.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">005</span>
+        <span class="service-name">Inventory & VMI Management</span>
+        <span class="service-tag">Supply Chain</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Vendor-managed inventory (VMI) programmes to eliminate stock-outs at your tool crib. Auto-replenishment via barcode or RFID scanning. Dedicated account manager and monthly consumption analytics.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">006</span>
+        <span class="service-name">On-Site Training & Workshops</span>
+        <span class="service-tag">Knowledge</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>Full-day machining workshops for your operators and programmers. Hands-on CNC training covering tool selection, offset setting, insert indexing and wear recognition. Certificates issued on completion.</p>
+      </div>
+    </div>
+    <div class="service-item">
+      <div class="service-header" onclick="toggleService(this)">
+        <span class="service-num">007</span>
+        <span class="service-name">Full Turnkey Tooling Solution</span>
+        <span class="service-tag">Complete Service</span>
+        <div class="service-toggle">+</div>
+      </div>
+      <div class="service-body">
+        <p>A single TOOLFLUX partner handles everything: tool selection, setup sheets, offsets, first-off inspection, production release and ongoing tool management. Reduce your tooling complexity to zero.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INNOVATION -->
+<section id="innovation">
+  <div class="crosshair-bg">
+    <svg viewBox="0 0 400 400" fill="none" stroke="#000" stroke-width="0.5">
+      <circle cx="200" cy="200" r="190"/><circle cx="200" cy="200" r="140"/><circle cx="200" cy="200" r="90"/><circle cx="200" cy="200" r="40"/>
+      <line x1="200" y1="0" x2="200" y2="400"/><line x1="0" y1="200" x2="400" y2="200"/>
+      <line x1="60" y1="60" x2="340" y2="340"/><line x1="340" y1="60" x2="60" y2="340"/>
+    </svg>
+  </div>
+  <div style="position:relative;z-index:1">
+    <div class="section-header reveal">
+      <div>
+        <span class="section-tag">[05] — Innovation Lab</span>
+        <h2 class="section-title" style="color:var(--black)">The next cut<br>hasn't been<br>made yet.</h2>
+      </div>
+      <p class="section-body" style="color:#555">Our Pune Innovation Centre partners with IITs, material scientists and machine tool builders to develop the next generation of cutting solutions for Industry 4.0 environments.</p>
+    </div>
+    <div class="innovation-grid">
+      <div class="inno-card reveal reveal-delay-1">
+        <div class="inno-num">A01</div>
+        <div class="inno-title">Smart Tool Monitoring</div>
+        <div class="inno-desc">Embedded vibration and temperature sensors in boring bars transmit real-time wear data to your CNC controller. Auto-offset adjustment eliminates manual gauging.</div>
+      </div>
+      <div class="inno-card reveal reveal-delay-2">
+        <div class="inno-num">A02</div>
+        <div class="inno-title">Nano-Composite Coatings</div>
+        <div class="inno-desc">AlTiN/Si3N4 nano-multilayer coatings developed in-house deliver 40% longer tool life in titanium and Inconel machining versus standard PVD grades.</div>
+      </div>
+      <div class="inno-card reveal reveal-delay-3">
+        <div class="inno-num">A03</div>
+        <div class="inno-title">AI-Driven Tool Selection</div>
+        <div class="inno-desc">Feed your material, machine specs and component drawing into TOOLFLUX.AI and receive a ranked tooling recommendation with cycle time and cost prediction.</div>
+      </div>
+      <div class="inno-card reveal reveal-delay-4">
+        <div class="inno-num">A04</div>
+        <div class="inno-title">Additive Hybrid Tooling</div>
+        <div class="inno-desc">3D-printed titanium tool bodies with brazed carbide tips. Custom internal coolant channels impossible with conventional manufacturing. 60% weight reduction.</div>
+      </div>
+      <div class="inno-card reveal reveal-delay-5">
+        <div class="inno-num">A05</div>
+        <div class="inno-title">Minimum Quantity Lubrication</div>
+        <div class="inno-desc">Near-dry machining solutions co-developed with leading MQL system manufacturers. Reduce coolant costs by 90% while improving chip evacuation in aluminium and cast iron.</div>
+      </div>
+      <div class="inno-card reveal reveal-delay-6">
+        <div class="inno-num">A06</div>
+        <div class="inno-title">Digital Twin Validation</div>
+        <div class="inno-desc">Every new tool geometry is validated in a physics-based machining simulator before cutting a single test piece. Reduces development cycle from 16 weeks to 3.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- NEWS -->
+<section id="news">
+  <div class="section-header reveal">
+    <div>
+      <span class="section-tag">[06] — Latest News</span>
+      <h2 class="section-title">At the cutting edge of the industry.</h2>
+    </div>
+    <a href="#contact" class="btn-outline" style="align-self:flex-end">All News →</a>
+  </div>
+  <div class="news-grid">
+    <div class="news-card reveal reveal-delay-1">
+      <div class="news-img">
+        <div class="news-img-placeholder">
+          <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="20"/><line x1="30" y1="10" x2="30" y2="50"/><line x1="10" y1="30" x2="50" y2="30"/><circle cx="30" cy="30" r="6"/></svg>
+        </div>
+      </div>
+      <div class="news-body">
+        <div class="news-date">May 12, 2026</div>
+        <div class="news-title">TOOLFLUX launches ULTRA-V series for Titanium Grade 5 machining</div>
+        <div class="news-excerpt">The new ULTRA-V PVD-coated inserts achieve 45m/min cutting speed in Ti-6Al-4V with 3× tool life over previous generation grades.</div>
+      </div>
+    </div>
+    <div class="news-card reveal reveal-delay-2">
+      <div class="news-img">
+        <div class="news-img-placeholder">
+          <svg viewBox="0 0 60 60"><rect x="10" y="10" width="40" height="40" rx="2"/><line x1="10" y1="22" x2="50" y2="22"/><line x1="10" y1="34" x2="50" y2="34"/><line x1="22" y1="10" x2="22" y2="50"/><line x1="34" y1="10" x2="34" y2="50"/></svg>
+        </div>
+      </div>
+      <div class="news-body">
+        <div class="news-date">April 28, 2026</div>
+        <div class="news-title">TOOLFLUX at IMTEX 2026 — Booth 14C, Hall 6</div>
+        <div class="news-excerpt">Visit us at IMTEX Forming, Bangalore. Live demonstrations of 5-axis toolpaths, smart boring system and the new NANO-T drill series.</div>
+      </div>
+    </div>
+    <div class="news-card reveal reveal-delay-3">
+      <div class="news-img">
+        <div class="news-img-placeholder">
+          <svg viewBox="0 0 60 60"><polygon points="30,8 36,24 54,24 40,34 46,50 30,40 14,50 20,34 6,24 24,24"/></svg>
+        </div>
+      </div>
+      <div class="news-body">
+        <div class="news-date">March 15, 2026</div>
+        <div class="news-title">ISO 9001:2015 & ISO 14001:2015 dual certification renewed for Pune facility</div>
+        <div class="news-excerpt">Bureau Veritas has renewed TOOLFLUX's dual quality and environmental management certification following a zero-finding audit across all production lines.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact">
+  <div class="section-header reveal">
+    <div>
+      <span class="section-tag">[07] — Contact</span>
+      <h2 class="section-title">Let's talk cutting parameters.</h2>
+    </div>
+    <p class="section-body">Tell us your application, material and machine. We'll come back with a tooling solution, cycle time estimate and delivered price — within 24 hours.</p>
+  </div>
+  <div class="contact-inner">
+    <form class="contact-form reveal" onsubmit="return false">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" class="form-input" placeholder="Rajesh Kumar">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Company</label>
+          <input type="text" class="form-input" placeholder="Precision Parts Pvt Ltd">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" class="form-input" placeholder="r.kumar@company.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" class="form-input" placeholder="+91 98765 43210">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Application / Machine Type</label>
+        <select class="form-select form-input">
+          <option value="">Select your machining operation</option>
+          <option>CNC Turning — General Steel</option>
+          <option>CNC Turning — Stainless/Superalloy</option>
+          <option>VMC Milling — Roughing</option>
+          <option>VMC Milling — Finishing</option>
+          <option>Deep Hole Drilling</option>
+          <option>Thread Milling</option>
+          <option>Boring — Large Diameter</option>
+          <option>Custom / Special Application</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Describe your requirement</label>
+        <textarea class="form-textarea" placeholder="Material grade, current tooling, expected output, machine model..."></textarea>
+      </div>
+      <button type="submit" class="btn-primary" style="align-self:flex-start;border:none;cursor:none" onclick="handleSubmit(this)">Send Enquiry →</button>
+    </form>
+    <div class="contact-info reveal reveal-delay-2">
+      <div class="contact-block">
+        <div class="ci-label">Headquarters</div>
+        <div class="ci-val">TOOLFLUX Industries Pvt Ltd<br>Plot 42, MIDC Bhosari<br>Pune – 411026, Maharashtra, India</div>
+      </div>
+      <div class="contact-block">
+        <div class="ci-label">Sales & Technical Enquiries</div>
+        <div class="ci-val">sales@toolflux.in<br>+91 20 6789 0000</div>
+      </div>
+      <div class="contact-block">
+        <div class="ci-label">Export Enquiries</div>
+        <div class="ci-val">export@toolflux.in<br>+91 20 6789 0010</div>
+      </div>
+      <div class="contact-block">
+        <div class="ci-label">Working Hours</div>
+        <div class="ci-val">Mon – Sat: 8:00 AM – 6:30 PM IST<br>Technical helpline: 9:00 AM – 5:00 PM</div>
+      </div>
+      <div class="contact-block">
+        <div class="ci-label">Certifications</div>
+        <div class="ci-val">ISO 9001:2015 · ISO 14001:2015<br>BIS Licensed Manufacturer</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE FOOTER -->
+<div class="marquee-footer">
+  <div class="ticker">
+    <span class="ticker-item">TOOLFLUX<span class="sep">·</span></span>
+    <span class="ticker-item">Precision Metal Cutting Tools<span class="sep">·</span></span>
+    <span class="ticker-item">CNC & VMC Specialists<span class="sep">·</span></span>
+    <span class="ticker-item">Carbide Inserts<span class="sep">·</span></span>
+    <span class="ticker-item">End Mills<span class="sep">·</span></span>
+    <span class="ticker-item">Boring Systems<span class="sep">·</span></span>
+    <span class="ticker-item">Thread Milling<span class="sep">·</span></span>
+    <span class="ticker-item">Made in India<span class="sep">·</span></span>
+    <span class="ticker-item">TOOLFLUX<span class="sep">·</span></span>
+    <span class="ticker-item">Precision Metal Cutting Tools<span class="sep">·</span></span>
+    <span class="ticker-item">CNC & VMC Specialists<span class="sep">·</span></span>
+    <span class="ticker-item">Carbide Inserts<span class="sep">·</span></span>
+    <span class="ticker-item">End Mills<span class="sep">·</span></span>
+    <span class="ticker-item">Boring Systems<span class="sep">·</span></span>
+    <span class="ticker-item">Thread Milling<span class="sep">·</span></span>
+    <span class="ticker-item">Made in India<span class="sep">·</span></span>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <div class="brand-name">TOOL<span>FLUX</span></div>
+      <p>Engineering precision cutting tools for the world's most demanding CNC and VMC machining applications. Headquartered in Pune, India.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Products</h4>
+      <ul>
+        <li><a href="#products">Turning Inserts</a></li>
+        <li><a href="#products">End Mills</a></li>
+        <li><a href="#products">Drilling Tools</a></li>
+        <li><a href="#products">Boring Systems</a></li>
+        <li><a href="#products">Thread Mills</a></li>
+        <li><a href="#products">Tool Holders</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Services</h4>
+      <ul>
+        <li><a href="#services">Process Optimisation</a></li>
+        <li><a href="#services">Custom Tools</a></li>
+        <li><a href="#services">Regrinding</a></li>
+        <li><a href="#services">VMI Management</a></li>
+        <li><a href="#services">Training</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <ul>
+        <li><a href="#data">About TOOLFLUX</a></li>
+        <li><a href="#innovation">Innovation Lab</a></li>
+        <li><a href="#news">News</a></li>
+        <li><a href="#contact">Contact</a></li>
+        <li><a href="#contact">Careers</a></li>
+        <li><a href="#contact">Download Catalogue</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 TOOLFLUX Industries Pvt Ltd · All rights reserved · ISO 9001:2015 Certified</div>
+    <div class="footer-socials">
+      <a href="#" class="social-link">LinkedIn</a>
+      <a href="#" class="social-link">YouTube</a>
+      <a href="#" class="social-link">Instagram</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+// LOADER
+const loader = document.getElementById('loader');
+const pct = document.getElementById('loader-pct');
+let p = 0;
+const t = setInterval(() => {
+  p = Math.min(p + Math.random() * 15, 100);
+  pct.textContent = Math.floor(p) + '%';
+  if(p >= 100){
+    clearInterval(t);
+    setTimeout(() => loader.classList.add('hidden'), 300);
+  }
+}, 80);
+
+// CURSOR
+const cur = document.getElementById('cursor');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cur.style.transform = `translate(${mx-5}px,${my-5}px)`;
+});
+function animRing(){
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  ring.style.transform = `translate(${rx-18}px,${ry-18}px)`;
+  requestAnimationFrame(animRing);
+}
+animRing();
+
+// NAV SCROLL
+const nav = document.getElementById('main-nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 80);
+  updateDots();
+});
+
+// REVEAL ON SCROLL
+const reveals = document.querySelectorAll('.reveal');
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+reveals.forEach(r => obs.observe(r));
+
+// COUNTER ANIMATION
+const counters = document.querySelectorAll('[data-target]');
+const cObs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      const el = e.target;
+      const target = parseInt(el.dataset.target);
+      let cur = 0;
+      const step = target / 60;
+      const suffix = el.textContent.includes('%') ? '%' : (target > 999 ? '+' : '');
+      const timer = setInterval(() => {
+        cur = Math.min(cur + step, target);
+        el.textContent = Math.floor(cur) + (suffix || (target > 999 ? '+' : ''));
+        if(cur >= target) clearInterval(timer);
+      }, 25);
+      cObs.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+counters.forEach(c => cObs.observe(c));
+
+// SIDE DOTS
+const dots = document.querySelectorAll('.side-dot');
+const sections = ['hero','data','products','precision','services','innovation','news','contact'];
+function updateDots(){
+  let current = '';
+  sections.forEach(id => {
+    const el = document.getElementById(id);
+    if(el && el.getBoundingClientRect().top <= window.innerHeight/2) current = id;
+  });
+  dots.forEach(d => {
+    d.classList.toggle('active', d.dataset.target === current);
+  });
+}
+dots.forEach(d => {
+  d.addEventListener('click', () => {
+    document.getElementById(d.dataset.target)?.scrollIntoView({behavior:'smooth'});
+  });
+});
+
+// SERVICES ACCORDION
+function toggleService(header) {
+  const item = header.parentElement;
+  const body = item.querySelector('.service-body');
+  const isOpen = item.classList.contains('open');
+  document.querySelectorAll('.service-item').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.service-body').classList.remove('open');
+  });
+  if(!isOpen){
+    item.classList.add('open');
+    body.classList.add('open');
+  }
+}
+
+// PRODUCT TABS (visual only)
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+// FORM SUBMIT
+function handleSubmit(btn) {
+  btn.textContent = 'Sending...';
+  setTimeout(() => {
+    btn.textContent = '✓ Enquiry Sent — We\'ll call within 24hrs';
+    btn.style.background = '#1a6e2e';
+  }, 1200);
+}
+
+// Stat suffix fix
+counters.forEach(c => {
+  const t = parseInt(c.dataset.target);
+  if(t === 30) { const orig = c.dataset.target; c.dataset.suffix = ' yrs'; }
+  if(t === 98) { c.dataset.suffix = '%'; }
+  if(t === 85) { c.dataset.suffix = '+'; }
+  if(t === 500) { c.dataset.suffix = '+'; }
+  if(t === 2400) { c.dataset.suffix = '+'; }
+});
+</script>
+</body>
+</html>
