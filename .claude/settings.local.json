@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($env:PATH = $env:PATH + \";C:\\\\Program Files\\\\Git\\\\bin;C:\\\\Program Files\\\\Git\\\\cmd\"; git status; git diff --stat)",
+      "PowerShell(Get-Command git -ErrorAction SilentlyContinue)",
+      "PowerShell($env:PATH)",
+      "PowerShell($git = \"C:\\\\Users\\\\rohan\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-3.5.8\\\\resources\\\\app\\\\git\\\\mingw64\\\\bin\\\\git.exe\"; Set-Location \"c:\\\\Users\\\\rohan\\\\OneDrive\\\\Documents\\\\GitHub\\\\TOOLFLUX-WEBSITE\"; & $git status; & $git diff --stat)",
+      "PowerShell($git = \"C:\\\\Users\\\\rohan\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-3.5.8\\\\resources\\\\app\\\\git\\\\mingw64\\\\bin\\\\git.exe\"; & $git diff index.html)",
+      "PowerShell($git = \"C:\\\\Users\\\\rohan\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-3.5.8\\\\resources\\\\app\\\\git\\\\mingw64\\\\bin\\\\git.exe\"; & $git restore index.html)",
+      "PowerShell($git = \"C:\\\\Users\\\\rohan\\\\AppData\\\\Local\\\\GitHubDesktop\\\\app-3.5.8\\\\resources\\\\app\\\\git\\\\mingw64\\\\bin\\\\git.exe\"; & $git status)"
+    ]
+  }
+}
