@@ -2495,7 +2495,7 @@ function toggleProb(hd){
 
 // LOADER
 const ldrf=document.getElementById('lf'),ldrp=document.getElementById('lpct'),ldrEl=document.getElementById('ldr');
-let lv=0;const lt=setInterval(()=>{lv=Math.min(lv+Math.random()*12+2,100);const v=Math.floor(lv);ldrf.style.width=v+'%';ldrp.textContent=v+'%';if(lv>=100){clearInterval(lt);setTimeout(()=>ldrEl.classList.add('out'),500);}},60);
+let lv=0;const lt=setInterval(()=>{lv=Math.min(lv+Math.random()*12+2,100);const v=Math.floor(lv);ldrf.style.width=v+'%';ldrp.textContent=v+'%';if(lv>=100){clearInterval(lt);setTimeout(()=>document.querySelectorAll('#ldr').forEach(el=>el.classList.add('out')),500);}},60);
 
 // CURSOR
 const cxEl=document.getElementById('cx'),crEl=document.getElementById('cr');
