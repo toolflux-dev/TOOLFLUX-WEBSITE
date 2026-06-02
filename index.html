@@ -634,6 +634,17 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 .calc-frow code{font-size:.72rem;font-weight:600;color:var(--teal-dark);letter-spacing:.01em}
 .calc-frow span{font-size:.63rem;font-weight:300;color:var(--mut)}
 @media(max-width:900px){.calc-layout{grid-template-columns:1fr}.calc-right{position:static}.calc-tabs{flex-direction:column;border-bottom:1px solid var(--rule)}.calc-tab{border-bottom:1px solid var(--rule);border-right:3px solid transparent}.calc-tab.on{border-right-color:var(--teal);border-bottom-color:var(--rule)}}
+
+/* ── HERO FLOATING CHIPS ── */
+.fchip{position:absolute;font-size:.47rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--teal-dark);background:rgba(255,255,255,.92);border:1px solid rgba(0,151,178,.28);padding:.22rem .65rem;border-radius:999px;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.07);z-index:3}
+.fchip.fc-dark{background:var(--ink);color:rgba(0,151,178,.85);border-color:rgba(0,151,178,.2)}
+
+/* ── PDSUB ROW — clickable ── */
+.pdsub.pdov-trig{cursor:pointer;transition:background .18s,padding-left .18s}
+.pdsub.pdov-trig:hover{background:var(--off2);padding-left:.5rem}
+.pdsub.pdov-trig:hover .psa{color:var(--teal-dark)}
+.pdsub.pdov-trig .psn{color:var(--T)}
+.pdsub.pdov-trig:hover .psn{color:var(--teal-dark)}
 </style>
 </head>
 <body>
@@ -781,18 +792,34 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     </div>
 
     <!-- Floating info cards (outside the ring) -->
-    <div class="tbadge tb1" style="top:-10px;left:-70px;min-width:130px">
+    <!-- Grade chips -->
+    <div class="tbadge tb1" style="top:-10px;left:-80px;min-width:118px">
+      <div class="tbv" style="color:var(--teal-dark)">TFX-P25</div>
+      <div class="tbl">ISO P · Steel · AlTiN</div>
+    </div>
+    <div class="tbadge" style="position:absolute;top:80px;right:-80px;min-width:118px;animation:tbf 3.6s ease-in-out infinite;animation-delay:.4s">
+      <div class="tbv" style="color:#c0392b">TFX-M35</div>
+      <div class="tbl">ISO M · Stainless · TiSiN</div>
+    </div>
+    <div class="tbadge tb3" style="top:50%;left:-80px;min-width:118px">
+      <div class="tbv" style="color:#1a7a3f">TFX-K20</div>
+      <div class="tbl">ISO K · Cast Iron · TiCN</div>
+    </div>
+    <div class="tbadge tb2" style="bottom:90px;right:-80px;min-width:118px">
       <div class="tbv">SUPER-U</div>
       <div class="tbl">General Purpose</div>
     </div>
-    <div class="tbadge tb2" style="bottom:10px;right:-70px;min-width:130px">
+    <div class="tbadge" style="position:absolute;bottom:10px;left:-80px;min-width:118px;animation:tbf 3.2s ease-in-out infinite;animation-delay:1.2s">
       <div class="tbv">HYPER-U</div>
       <div class="tbl">High Performance</div>
     </div>
-    <div class="tbadge tb3" style="top:50%;left:-80px;min-width:120px">
-      <div class="tbv">2D · 3D · 5D</div>
-      <div class="tbl">Drill lengths</div>
-    </div>
+    <!-- Coating / feature chips inside diagram -->
+    <div class="fchip" style="position:absolute;top:100px;left:50%;transform:translateX(-50%);animation:tbf 4s ease-in-out infinite;animation-delay:.2s">AlTiN</div>
+    <div class="fchip" style="position:absolute;top:190px;right:5px;animation:tbf 4.2s ease-in-out infinite;animation-delay:.7s">TiSiN</div>
+    <div class="fchip fc-dark" style="position:absolute;top:310px;right:12px;animation:tbf 3.9s ease-in-out infinite;animation-delay:1.1s">Through-Coolant</div>
+    <div class="fchip" style="position:absolute;top:190px;left:5px;animation:tbf 4.1s ease-in-out infinite;animation-delay:1.6s">TiCN</div>
+    <div class="fchip fc-dark" style="position:absolute;top:310px;left:12px;animation:tbf 3.7s ease-in-out infinite;animation-delay:2s">H7 Tolerance</div>
+    <div class="fchip" style="position:absolute;bottom:100px;left:50%;transform:translateX(-50%);animation:tbf 4.3s ease-in-out infinite;animation-delay:.9s">2D · 3D · 5D</div>
 
   </div>
 
@@ -1105,12 +1132,12 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     <div class="pdbody">
       <div class="pdey">01 · Carbide Inserts</div><div class="pdname">Carbide Inserts</div><div class="pdtag">Turning · Milling · Grooving · CBN · Threading · Drilling Inserts.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('turning-ins')" title="Click for full specs">Turning Inserts</div><div class="psd">CNMG · DNMG · VNMG · WNMG · CCMT · DCMT · TNMG · TFX-P25 (Steel) · TFX-M35 (Stainless) · TFX-K20 (Cast Iron)</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('milling-ins')" title="Click for full specs">Milling Inserts</div><div class="psd">APMT · SEKT · SEET · RPMT — face, shoulder & high-feed</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('threading-ins')" title="Click for full specs">Threading Inserts</div><div class="psd">Full profile & 60° — Metric, BSP, UN, ACME, NPT</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('grooving-ins')" title="Click for full specs">Grooving & Parting</div><div class="psd">External · Internal · Face grooving — 2 / 3 / 4 / 5 mm · TFX-P25 (Steel) · TFX-M35 (Stainless)</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('cbn-ins')" title="Click for full specs">CBN Inserts — Hardened Steel</div><div class="psd">TFX-H15 &amp; TFX-H10 · Up to 60 HRC · Zero rake geometry · Finishing &amp; semi-finishing · Stable at high Vc</div></div><div class="psa">&#8594;</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('drilling-ins')" title="Click for full specs">Drilling Inserts</div><div class="psd">SPMG · WCMX — U-Drill bodies, Ø12.5–70mm, L/D2-D5</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('turning-ins')"><div><div class="psn">Turning Inserts</div><div class="psd">CNMG · DNMG · VNMG · WNMG · CCMT · DCMT · TNMG · TFX-P25 (Steel) · TFX-M35 (Stainless) · TFX-K20 (Cast Iron)</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('milling-ins')"><div><div class="psn">Milling Inserts</div><div class="psd">APMT · SEKT · SEET · RPMT — face, shoulder & high-feed</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('threading-ins')"><div><div class="psn">Threading Inserts</div><div class="psd">Full profile & 60° — Metric, BSP, UN, ACME, NPT</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('grooving-ins')"><div><div class="psn">Grooving & Parting</div><div class="psd">External · Internal · Face grooving — 2 / 3 / 4 / 5 mm · TFX-P25 (Steel) · TFX-M35 (Stainless)</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('cbn-ins')"><div><div class="psn">CBN Inserts — Hardened Steel</div><div class="psd">TFX-H15 &amp; TFX-H10 · Up to 60 HRC · Zero rake geometry · Finishing &amp; semi-finishing · Stable at high Vc</div></div><div class="psa">&#8594;</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('drilling-ins')"><div><div class="psn">Drilling Inserts</div><div class="psd">SPMG · WCMX — U-Drill bodies, Ø12.5–70mm, L/D2-D5</div></div><div class="psa">→</div></div>
       </div>
       <div class="grades">
         <span class="gp g1" data-tt="ISO P · Steel, Alloy Steel · TFX-P25 · AlTiN/CVD · High wear resistance">TFX-P25 · ISO P</span>
@@ -1133,10 +1160,10 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 <div class="pdbody">
       <div class="pdey">02 · End Mills</div><div class="pdname">End Mills</div><div class="pdtag">Solid carbide. All metals. All profiles.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('sq-endmills')" title="Click for full specs">Square End Mills</div><div class="psd">2, 4-flute · Slotting, profiling, pocketing · Ø1–25mm</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('ball-endmills')" title="Click for full specs">Ball Nose End Mills</div><div class="psd">2, 4-flute · 3D contouring, die & mould, curved surfaces</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('cr-endmills')" title="Click for full specs">Corner Radius End Mills</div><div class="psd">Reduced chipping · Hardened steel, alloys</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('rough-endmills')" title="Click for full specs">Roughing / Corn Cob</div><div class="psd">Serrated edge · High MRR in steel and cast iron</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('sq-endmills')"><div><div class="psn">Square End Mills</div><div class="psd">2, 4-flute · Slotting, profiling, pocketing · Ø1–25mm</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('ball-endmills')"><div><div class="psn">Ball Nose End Mills</div><div class="psd">2, 4-flute · 3D contouring, die & mould, curved surfaces</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('cr-endmills')"><div><div class="psn">Corner Radius End Mills</div><div class="psd">Reduced chipping · Hardened steel, alloys</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('rough-endmills')"><div><div class="psn">Roughing / Corn Cob</div><div class="psd">Serrated edge · High MRR in steel and cast iron</div></div><div class="psa">→</div></div>
       </div>
       <div class="grades">
         <span class="gp g1" data-tt="TiAlN · Steel, Cast Iron · High heat resistance">TiAlN</span>
@@ -1157,9 +1184,9 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     <div class="pdbody">
       <div class="pdey">03 · Carbide Drills</div><div class="pdname">Carbide Drills</div><div class="pdtag">Precision Drilling. Reliable Performance.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('sc-drills')" title="Click for full specs">Solid Carbide Drills</div><div class="psd">Any required size · AlTiN / TiAlN coated · Through-coolant variants · H7 hole quality · CNC &amp; VMC</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('super-u')" title="Click for full specs">U-Drill SUPER-U (Indexable)</div><div class="psd">Ø8.5–Ø70mm · General purpose · 2D / 3D / 5D · SPMG &amp; WCMX inserts</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('hyper-u')" title="Click for full specs">U-Drill HYPER-U (Indexable)</div><div class="psd">Ø8.5–Ø70mm · High penetration rate · Production drilling · 2D / 3D / 5D</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('sc-drills')"><div><div class="psn">Solid Carbide Drills</div><div class="psd">Any required size · AlTiN / TiAlN coated · Through-coolant variants · H7 hole quality · CNC &amp; VMC</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('super-u')"><div><div class="psn">U-Drill SUPER-U (Indexable)</div><div class="psd">Ø8.5–Ø70mm · General purpose · 2D / 3D / 5D · SPMG &amp; WCMX inserts</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('hyper-u')"><div><div class="psn">U-Drill HYPER-U (Indexable)</div><div class="psd">Ø8.5–Ø70mm · High penetration rate · Production drilling · 2D / 3D / 5D</div></div><div class="psa">→</div></div>
         <div class="pdsub"><div><div class="psn">Application Range</div><div class="psd">Steel · Stainless Steel · Cast Iron · Aluminium &amp; Non-ferrous · Special sizes &amp; lengths on request</div></div><div class="psa">→</div></div>
       </div>
       <div class="szlbl" style="margin-top:.3rem">Coating &amp; Grade — hover for details</div>
@@ -1192,10 +1219,10 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     <div class="pdbody">
       <div class="pdey">04 · Indexable Holders</div><div class="pdname">High-Feed Milling Cutters</div><div class="pdtag">HFMA Rapid Edge · HFMB Force Edge · Fast Milling. Higher Productivity.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('hfma')" title="Click for full specs">HFMA Rapid Edge — High-Feed Milling</div><div class="psd">D16–D63 · Low cutting force · Face milling, pocket milling</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('hfmb')" title="Click for full specs">HFMB Force Edge — High-Feed Milling</div><div class="psd">D16–D63 · Heavy-duty · Aggressive roughing, production</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('shoulder-mill')" title="Click for full specs">Shoulder Milling Holders</div><div class="psd">90° shoulder milling · APMT inserts · D16–D80</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('boring-bar')" title="Click for full specs">Anti-Vibration Boring Bars</div><div class="psd">Damped system · Deep bore L/D up to 10:1</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('hfma')"><div><div class="psn">HFMA Rapid Edge — High-Feed Milling</div><div class="psd">D16–D63 · Low cutting force · Face milling, pocket milling</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('hfmb')"><div><div class="psn">HFMB Force Edge — High-Feed Milling</div><div class="psd">D16–D63 · Heavy-duty · Aggressive roughing, production</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('shoulder-mill')"><div><div class="psn">Shoulder Milling Holders</div><div class="psd">90° shoulder milling · APMT inserts · D16–D80</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('boring-bar')"><div><div class="psn">Anti-Vibration Boring Bars</div><div class="psd">Damped system · Deep bore L/D up to 10:1</div></div><div class="psa">→</div></div>
       </div>
       <div class="grades">
         <span class="gp g1" data-tt="TFX-P25 · Steel">TFX-P25</span>
@@ -1215,10 +1242,10 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 <div class="pdbody">
       <div class="pdey">05 · Turning Holders</div><div class="pdname">Turning Holders</div><div class="pdtag">External · Internal · Parting · Threading.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('ext-turn')" title="Click for full specs">External Turning Holders</div><div class="psd">PCLNR/L · MCLNR/L · DCLNR/L · SCLCR/L — 12–32mm shank</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('int-bore')" title="Click for full specs">Internal Boring Bars</div><div class="psd">S-SCLCR/L · S-SDQCR/L — Ø16–Ø50mm</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('part-groove')" title="Click for full specs">Parting & Grooving Holders</div><div class="psd">External · Internal · Face grooving — 2–8mm blade</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('thread-hold')" title="Click for full specs">Threading Holders</div><div class="psd">External & internal — 11IR/ER, 16IR/ER, 22IR/ER</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('ext-turn')"><div><div class="psn">External Turning Holders</div><div class="psd">PCLNR/L · MCLNR/L · DCLNR/L · SCLCR/L — 12–32mm shank</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('int-bore')"><div><div class="psn">Internal Boring Bars</div><div class="psd">S-SCLCR/L · S-SDQCR/L — Ø16–Ø50mm</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('part-groove')"><div><div class="psn">Parting & Grooving Holders</div><div class="psd">External · Internal · Face grooving — 2–8mm blade</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('thread-hold')"><div><div class="psn">Threading Holders</div><div class="psd">External & internal — 11IR/ER, 16IR/ER, 22IR/ER</div></div><div class="psa">→</div></div>
       </div>
       <div class="pdacts">
         <a href="https://wa.me/918660234766?text=Hi+TOOLFLUX%21+I+need+Turning+Holders+for+my+CNC+lathe." class="btn btn-ink spk" target="_blank"><svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg> Get a Quote</a>
@@ -1233,8 +1260,8 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     <div class="pdbody">
       <div class="pdey">06 · U-Drill System</div><div class="pdname">U-Drill</div><div class="pdtag">SUPER-U & HYPER-U · Ø8.5–70mm · 2D/3D/5D.</div>
       <div class="pdsubs">
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('super-u')" title="Click for full specs">SUPER-U — General Purpose</div><div class="psd">Balanced performance · Steel, cast iron · 2D/3D/5D</div></div><div class="psa">→</div></div>
-        <div class="pdsub"><div><div class="psn" style="cursor:pointer" onclick="openPD('hyper-u')" title="Click for full specs">HYPER-U — High Performance</div><div class="psd">Max penetration rate · Steel, stainless · 2D/3D/5D</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('super-u')"><div><div class="psn">SUPER-U — General Purpose</div><div class="psd">Balanced performance · Steel, cast iron · 2D/3D/5D</div></div><div class="psa">→</div></div>
+        <div class="pdsub pdov-trig" onclick="openPD('hyper-u')"><div><div class="psn">HYPER-U — High Performance</div><div class="psd">Max penetration rate · Steel, stainless · 2D/3D/5D</div></div><div class="psa">→</div></div>
       </div>
       <div class="szlbl">Diameter — click for insert & L/D details</div>
       <div class="szrow" id="ud-sz">
