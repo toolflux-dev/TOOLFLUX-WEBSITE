@@ -1334,6 +1334,7 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     <button class="calc-tab on" onclick="switchCalc(this,'turning')">Turning</button>
     <button class="calc-tab" onclick="switchCalc(this,'drilling')">Drilling</button>
     <button class="calc-tab" onclick="switchCalc(this,'milling')">Milling</button>
+    <button class="calc-tab" onclick="switchCalc(this,'cpc')">Cost Per Part</button>
   </div>
 
   <!-- ══ TURNING ══ -->
@@ -1496,6 +1497,76 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
     </div>
   </div>
 
+
+  <!-- ══ COST PER PART ══ -->
+  <div class="calc-pane" id="cp-cpc">
+    <div class="calc-layout">
+      <div class="calc-inputs">
+        <div class="calc-fhd" style="font-size:.52rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--teal-dark);margin-bottom:.5rem">TOOLFLUX Insert</div>
+        <div class="calc-field">
+          <div class="calc-lbl">Insert Price (₹)</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="tf-p" placeholder="e.g. 280" min="1" step="1">
+            <span class="calc-unit">₹</span>
+          </div>
+        </div>
+        <div class="calc-field">
+          <div class="calc-lbl">Cutting Edges per Insert</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="tf-e" placeholder="e.g. 4" min="1" step="1">
+            <span class="calc-unit">edges</span>
+          </div>
+          <div class="calc-hint">CNMG = 4 · TNMG = 3 · VCMT = 2 · Grooving = 2</div>
+        </div>
+        <div class="calc-field">
+          <div class="calc-lbl">Parts / Holes per Edge</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="tf-h" placeholder="e.g. 80" min="1" step="1">
+            <span class="calc-unit">parts</span>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--rule);padding-top:1.2rem;margin-top:.4rem">
+          <div class="calc-fhd" style="font-size:.52rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--mut);margin-bottom:.5rem">Current Tooling</div>
+        </div>
+        <div class="calc-field">
+          <div class="calc-lbl">Their Insert Price (₹)</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="cm-p" placeholder="e.g. 850" min="1" step="1">
+            <span class="calc-unit">₹</span>
+          </div>
+        </div>
+        <div class="calc-field">
+          <div class="calc-lbl">Their Cutting Edges</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="cm-e" placeholder="e.g. 4" min="1" step="1">
+            <span class="calc-unit">edges</span>
+          </div>
+        </div>
+        <div class="calc-field">
+          <div class="calc-lbl">Their Parts / Holes per Edge</div>
+          <div class="calc-unit-row">
+            <input class="calc-inp" type="number" id="cm-h" placeholder="e.g. 100" min="1" step="1">
+            <span class="calc-unit">parts</span>
+          </div>
+        </div>
+        <button class="calc-go spk" onclick="doCPC()">Compare Cost →</button>
+      </div>
+      <div class="calc-right">
+        <div id="cpc-res" class="calc-res-box">
+          <div class="calc-res-empty">Fill both columns and press Compare — see exact cost per hole side by side.</div>
+        </div>
+        <div class="calc-formulas">
+          <div class="calc-fhd">Formula used</div>
+          <div class="calc-frow"><code>CPP = Price / (Edges × Parts per Edge)</code><span>Cost per part (₹)</span></div>
+          <div class="calc-frow"><code>Saving = Competitor CPP − TOOLFLUX CPP</code><span>₹ saved per part</span></div>
+          <div class="calc-frow"><code>Monthly saving = Saving × monthly volume</code><span>₹/month</span></div>
+        </div>
+        <div style="background:var(--off);border:1px solid var(--rule);padding:1.2rem;font-size:.74rem;font-weight:300;color:var(--mut);line-height:1.7">
+          <strong style="color:var(--T);font-weight:600">Note:</strong> Tooling cost only. Real savings also include reduced machine downtime, fewer rejects and faster cycle times. Call <strong>+91 8660234766</strong> for a full cost-per-part analysis at your machine.
+        </div>
+      </div>
+    </div>
+  </div>
 </section>
 
 
