@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contact Us &mdash; TOOLFLUX</title>
+<meta name="description" content="Contact TOOLFLUX for carbide cutting tool enquiries, application engineering support, or technical assistance. Hubli, Karnataka.">
+<link rel="stylesheet" href="shared.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { padding-top: 70px; }
+
+/* HERO */
+.contact-hero {
+  background: var(--ink); color: #fff;
+  padding: 5rem 3rem 4rem;
+}
+.contact-hero .eyebrow {
+  font-size: .55rem; font-weight: 700; letter-spacing: .32em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 1rem;
+}
+.contact-hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 800; letter-spacing: -.035em; line-height: 1;
+  margin-bottom: 1.25rem;
+}
+.contact-hero h1 em { font-style: normal; color: var(--teal); }
+.contact-hero p {
+  font-size: .9rem; color: rgba(255,255,255,.62);
+  max-width: 520px; line-height: 1.75;
+}
+
+/* WA BANNER */
+.wa-banner {
+  background: #1a1a1a; padding: 0 3rem;
+  max-width: 100%;
+}
+.wa-inner {
+  max-width: 1100px; margin: 0 auto;
+  padding: 1.75rem 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 2rem; flex-wrap: wrap;
+}
+.wa-left {
+  display: flex; align-items: center; gap: 1rem;
+}
+.wa-icon {
+  width: 44px; height: 44px; background: #25D366;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wa-text strong { display: block; font-size: .82rem; font-weight: 700; color: #fff; }
+.wa-text span { font-size: .68rem; color: rgba(255,255,255,.5); }
+.wa-btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: #25D366; color: #fff;
+  font-size: .62rem; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; padding: .7rem 1.6rem;
+  text-decoration: none; border-radius: 1px;
+  transition: background .2s;
+  white-space: nowrap;
+}
+.wa-btn:hover { background: #1ebe5a; color: #fff; }
+
+/* MAIN GRID */
+.contact-main {
+  max-width: 1100px; margin: 0 auto;
+  padding: 5rem 3rem;
+  display: grid; grid-template-columns: 1fr 380px; gap: 5rem; align-items: start;
+}
+
+/* FORM */
+.form-head { margin-bottom: 2rem; }
+.form-head h2 {
+  font-size: 1.5rem; font-weight: 800; letter-spacing: -.025em;
+  color: var(--ink); margin-bottom: .5rem;
+}
+.form-head p { font-size: .82rem; color: var(--mut); }
+
+.cform { display: flex; flex-direction: column; gap: 1rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.field { display: flex; flex-direction: column; gap: .4rem; }
+.field label {
+  font-size: .5rem; font-weight: 700; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--mut);
+}
+.field input, .field select, .field textarea {
+  font-family: inherit; font-size: .85rem;
+  background: var(--W); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 1px;
+  padding: .75rem 1rem; outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(0,151,178,.1);
+}
+.field textarea { resize: vertical; min-height: 140px; line-height: 1.6; }
+.field select { appearance: none; cursor: pointer; }
+.submit-btn {
+  display: inline-flex; align-items: center; gap: .6rem;
+  background: var(--teal); color: #fff;
+  font-family: inherit; font-size: .68rem; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+  padding: 1rem 2.25rem; border: none; border-radius: 1px;
+  cursor: pointer; transition: all .2s; align-self: flex-start;
+  margin-top: .5rem;
+}
+.submit-btn:hover { background: var(--td); }
+.form-note {
+  font-size: .68rem; color: var(--mut); margin-top: .25rem;
+  line-height: 1.6;
+}
+
+/* SIDEBAR */
+.contact-sidebar { display: flex; flex-direction: column; gap: 1.5rem; }
+.cs-card {
+  border: 1px solid var(--rule); border-radius: 2px;
+  overflow: hidden;
+}
+.cs-card-head {
+  background: var(--off); padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: .5rem; font-weight: 700; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--teal);
+}
+.cs-card-body { padding: 1.25rem; }
+.cs-item {
+  display: flex; align-items: flex-start; gap: .9rem;
+  padding: .9rem 0; border-bottom: 1px solid var(--off2);
+}
+.cs-item:last-child { border-bottom: none; padding-bottom: 0; }
+.cs-icon {
+  width: 34px; height: 34px; border-radius: 1px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: .1rem;
+}
+.cs-icon.teal { background: rgba(0,151,178,.1); }
+.cs-icon.wa { background: rgba(37,211,102,.12); }
+.cs-icon.phone { background: rgba(1,43,66,.07); }
+.cs-icon.mail { background: rgba(255,107,26,.1); }
+.cs-icon svg { width: 16px; height: 16px; }
+.cs-detail { flex: 1; min-width: 0; }
+.cs-label { font-size: .5rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--mut); margin-bottom: .2rem; }
+.cs-val { font-size: .82rem; color: var(--ink); font-weight: 600; line-height: 1.4; }
+.cs-val a { color: var(--teal); text-decoration: none; }
+.cs-val a:hover { color: var(--teal-dark); }
+.cs-sub { font-size: .68rem; color: var(--mut); margin-top: .2rem; line-height: 1.5; }
+.hours-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: .5rem .75rem; padding: .25rem 0;
+}
+.hg-day { font-size: .68rem; color: var(--mut); }
+.hg-time { font-size: .68rem; color: var(--ink); font-weight: 600; }
+
+/* MAP SECTION */
+.map-section {
+  background: var(--off); border-top: 1px solid var(--rule);
+  padding: 4rem 3rem;
+}
+.map-inner { max-width: 1100px; margin: 0 auto; }
+.map-head { margin-bottom: 2rem; }
+.map-head h2 { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; color: var(--ink); margin-bottom: .4rem; }
+.map-head p { font-size: .82rem; color: var(--mut); }
+.map-split { display: grid; grid-template-columns: 1fr 340px; gap: 3rem; align-items: start; }
+.map-frame {
+  background: #e8ecee; border-radius: 2px; overflow: hidden;
+  height: 320px; border: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.map-frame iframe { width: 100%; height: 100%; border: 0; }
+.map-details { display: flex; flex-direction: column; gap: 1.25rem; }
+.md-item { display: flex; flex-direction: column; gap: .3rem; }
+.md-label { font-size: .5rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--teal); }
+.md-val { font-size: .85rem; color: var(--ink); line-height: 1.55; }
+.directions-btn {
+  display: inline-flex; align-items: center; gap: .5rem;
+  background: var(--ink); color: #fff;
+  font-size: .6rem; font-weight: 700; letter-spacing: .16em;
+  text-transform: uppercase; padding: .75rem 1.5rem;
+  text-decoration: none; border-radius: 1px; transition: background .2s;
+  align-self: flex-start; margin-top: .5rem;
+}
+.directions-btn:hover { background: var(--teal); color: #fff; }
+
+@media (max-width: 960px) {
+  .contact-main { grid-template-columns: 1fr; gap: 3rem; padding: 3rem 1.5rem; }
+  .contact-hero { padding: 4rem 1.5rem 3rem; }
+  .wa-banner { padding: 0 1.5rem; }
+  .map-section { padding: 3rem 1.5rem; }
+  .map-split { grid-template-columns: 1fr; gap: 2rem; }
+  .map-frame { height: 260px; }
+}
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="nl"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ4OCIgaGVpZ2h0PSI0ODQiIHZpZXdCb3g9IjAgMCAxNDg4IDQ4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggb3BhY2l0eT0iMC45ODYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMCAyNjEuNUMwIDI0OC41IDAgMjM1LjUgMCAyMjIuNUMwLjcyMzk3OCAyMjAuNzgyIDEuMzkwNjQgMjE4Ljk0OCAyIDIxN0MxMy43ODczIDIxMS4wMjMgMjUuNjIwNiAyMDUuMTkgMzcuNSAxOTkuNUM0MC41MzU0IDE4Mi45MzkgNDUuNzAyIDE2Ny4xMDYgNTMgMTUyQzQ2LjY1IDE0MC4zMjMgNDAuMzE2NyAxMjguNjU3IDM0IDExN0M0MS45MDY3IDEwMi4yNTcgNTEuNTczMyA4OC43NTcgNjMgNzYuNUM3Ni41NDczIDc5LjY0NCA5MC4yMTM5IDgxLjgxMSAxMDQgODNDMTE1LjU0MiA3Mi4xMjMgMTI4LjIwOCA2Mi43OSAxNDIgNTVDMTQ0LjcwNCA0MS40MDkgMTQ3LjAzNyAyNy43NDIgMTQ5IDE0QzE2NC4xOTYgNy40ODggMTc5Ljg2MyAyLjgyMSAxOTYgMEMyMDUuMzY0IDkuMDMgMjE0LjM2NCAxOC4zNjMgMjIzIDI4QzIzOS4xNTUgMjcuMjA4IDI1NS4zMjIgMjcuMzc1IDI3MS41IDI4LjVDMjcyLjMzMyAyOC4zMzMgMjczLjE2NyAyOC4xNjcgMjc0IDI4QzI4Mi42MzYgMTguMzYzIDI5MS42MzYgOS4wMyAzMDEgMEMzMTcuMjUzIDIuNjk0IDMzMi45MTkgNy41MjcgMzQ4IDE0LjVDMzUwLjE2IDI3LjExMyAzNTEuOTkzIDM5Ljc3OSAzNTMuNSA1Mi41QzM1My45NjUgNTMuOTMxIDM1NC43OTkgNTUuMDk3IDM1NiA1NkMzNjAuMTY4IDU4LjI1IDM2NC4xNjggNjAuNzUgMzY4IDYzLjVDMzMzLjE3NiA2OS42MDcgMzAwLjg0MyA4Mi4xMDcgMjcxIDEwMUMyMTEuNjE4IDk0Ljc4NSAxNjQuNDUyIDExNS42MTkgMTI5LjUgMTYzLjVDMTAxLjY4MiAyMDguODUzIDk4LjY4MTYgMjU1Ljg1MyAxMjAuNSAzMDQuNUMxMjQuMDM5IDMxMS43NSAxMjguMjA2IDMxOC41ODMgMTMzIDMyNUMxMjYuNzUyIDM1NC44MTUgMTIyLjkxOSAzODQuOTgyIDEyMS41IDQxNS41QzExNS4zNzUgNDExLjA0NCAxMDkuNTQyIDQwNi4yMTEgMTA0IDQwMUM5MC4yMTM5IDQwMi4xODkgNzYuNTQ3MyA0MDQuMzU2IDYzIDQwNy41QzUxLjU3MzMgMzk1LjI0MyA0MS45MDY3IDM4MS43NDMgMzQgMzY3QzQwLjMyNjEgMzU1LjM0OSA0Ni42NTk0IDM0My42ODMgNTMgMzMyQzQ2LjAzODYgMzE2Ljc4MiA0MC44NzE5IDMwMC45NDkgMzcuNSAyODQuNUMyNS43NDI5IDI3OC43MDUgMTMuOTA5NiAyNzMuMDM4IDIgMjY3LjVDMS4zMzEyOCAyNjUuMzY5IDAuNjY0NjE5IDI2My4zNjkgMCAyNjEuNVoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTg2IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTQzMyA3Ni41QzQ0NS4wMjMgODguMzc3IDQ1NS4wMjMgMTAxLjg3NyA0NjMgMTE3QzQ1Ni42ODMgMTI4LjY1NyA0NTAuMzUgMTQwLjMyMyA0NDQgMTUyQzQ1MC45NjEgMTY3LjIxOCA0NTYuMTI4IDE4My4wNTEgNDU5LjUgMTk5LjVDNDcxLjM3OSAyMDUuMTkgNDgzLjIxMyAyMTEuMDIzIDQ5NSAyMTdDNDk1Ljc2NCAyMTkuMDY5IDQ5Ni4yNjQgMjIxLjIzNiA0OTYuNSAyMjMuNUM0OTcuMTY3IDIzNS44MzMgNDk3LjE2NyAyNDguMTY3IDQ5Ni41IDI2MC41QzQ5Ni4zMTQgMjYyLjkgNDk1LjgxNCAyNjUuMjM0IDQ5NSAyNjcuNUM0ODMuMDkgMjczLjAzOCA0NzEuMjU3IDI3OC43MDUgNDU5LjUgMjg0LjVDNDU2LjEyOCAzMDAuOTQ5IDQ1MC45NjEgMzE2Ljc4MiA0NDQgMzMyQzQ1MC4zNDEgMzQzLjY4MyA0NTYuNjc0IDM1NS4zNDkgNDYzIDM2N0M0NTUuMDkzIDM4MS43NDMgNDQ1LjQyNyAzOTUuMjQzIDQzNCA0MDcuNUM0MjAuNDUzIDQwNC4zNTYgNDA2Ljc4NiA0MDIuMTg5IDM5MyA0MDFDMzgxLjE0NiA0MTEuODQxIDM2OC4zMTMgNDIxLjM0MSAzNTQuNSA0MjkuNUMzNTIuMTczIDQ0Mi43NzcgMzUwLjAwNiA0NTYuMTExIDM0OCA0NjkuNUMzMzMuMDUxIDQ3Ni44NyAzMTcuMzg1IDQ4MS43MSAzMDEgNDg0QzI5MS42MzYgNDc0Ljk3IDI4Mi42MzYgNDY1LjY0IDI3NCA0NTZDMjczLjE2NyA0NTUuODMzIDI3Mi4zMzMgNDU1LjY2NyAyNzEuNSA0NTUuNUMyNTUuMzIyIDQ1Ni42MjUgMjM5LjE1NSA0NTYuNzkyIDIyMyA0NTZDMjE0LjM2NCA0NjUuNjQgMjA1LjM2NCA0NzQuOTcgMTk2IDQ4NEMxNzkuNzMzIDQ4MS41OCAxNjQuMDY2IDQ3Ni45MSAxNDkgNDcwQzE0MS4xMzggNDI4LjQ0IDE0MS44MDQgMzg2Ljk0IDE1MSAzNDUuNUMxODguODIzIDM3OS4xNjMgMjMyLjQ4OSAzOTAuNjYzIDI4MiAzODBDMzI3LjQ3MiAzNjcuODQ1IDM1OS45NzIgMzQwLjM0NSAzNzkuNSAyOTcuNUMzOTkuMjg3IDI0NC4zNDEgMzkxLjk1NCAxOTUuMzQxIDM1Ny41IDE1MC41QzM0OS4yNjggMTQxLjU5OCAzNDAuNDM0IDEzMy40MzEgMzMxIDEyNkMzMjEuMTE2IDExOS41NTcgMzEwLjc4MyAxMTMuODkgMzAwIDEwOUMzMjkuMjM4IDkyLjg1NyAzNjAuNTcxIDg0LjUyNCAzOTQgODRDNDA3LjE5NCA4MS43OTMgNDIwLjE5NCA3OS4yOTMgNDMzIDc2LjVaIiBmaWxsPSIjMDA5N0IyIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTc5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMwMyAxNzMuNUMyODEuNjY3IDE3My41IDI2MC4zMzMgMTczLjUgMjM5IDE3My41QzIyOC4yODQgMjI1LjAxNCAyMTcuMjg0IDI3Ni4zNDcgMjA2IDMyNy41QzE5Ny42NjcgMzI3LjUgMTg5LjMzMyAzMjcuNSAxODEgMzI3LjVDMTkwLjUyNSAyODAuNDAxIDIwMC41MjUgMjMzLjQwMSAyMTEgMTg2LjVDMTkzLjY3OSAxODUuNSAxNzYuMzQ2IDE4NS4xNjcgMTU5IDE4NS41QzE2MSAxNzUuMTY3IDE2MyAxNjQuODMzIDE2NSAxNTQuNUMyMTIuMzM4IDE1NC4xNjcgMjU5LjY3MSAxNTQuNSAzMDcgMTU1LjVDMzA1LjI4MyAxNjEuNDE4IDMwMy45NSAxNjcuNDE4IDMwMyAxNzMuNVoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTc5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMwMyAxNzMuNUMzMjMuMDExIDE3My4xNjcgMzQzLjAxMSAxNzMuNSAzNjMgMTc0LjVDMzYwLjcyNiAxODQuMzczIDM1OC4zOTMgMTk0LjIwNyAzNTYgMjA0QzMyNy4wMDIgMjA0LjUgMjk4LjAwMiAyMDQuNjY3IDI2OSAyMDQuNUMyNjYuNjY3IDIxNy4xNjcgMjY0LjMzMyAyMjkuODMzIDI2MiAyNDIuNUMyODcgMjQyLjUgMzEyIDI0Mi41IDMzNyAyNDIuNUMzMzUgMjUzLjE2NyAzMzMgMjYzLjgzMyAzMzEgMjc0LjVDMzA1LjMzMyAyNzQuNSAyNzkuNjY3IDI3NC41IDI1NCAyNzQuNUMyNDkuNDkgMjk4LjIxNiAyNDQuNjU3IDMyMS44ODIgMjM5LjUgMzQ1LjVDMjI3LjA2MiAzNDYuODIxIDIxNC41NjIgMzQ2LjgyMSAyMDIgMzQ1LjVDMjAzLjcxNyAzMzkuNTgyIDIwNS4wNSAzMzMuNTgyIDIwNiAzMjcuNUMyMTcuMjg0IDI3Ni4zNDcgMjI4LjI4NCAyMjUuMDE0IDIzOSAxNzMuNUMyNjAuMzMzIDE3My41IDI4MS42NjcgMTczLjUgMzAzIDE3My41WiIgZmlsbD0iIzAzOTdCMiIvPgo8cGF0aCBvcGFjaXR5PSIwLjk2IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTY5NyAxNzUuNUM3NDMuMjcyIDE3NC4yNjggNzY0LjEwNSAxOTYuNjAyIDc1OS41IDI0Mi41Qzc0OS4yNDMgMjc3LjQxNiA3MjUuOTEgMjk2LjA4MyA2ODkuNSAyOTguNUM2NjMuMjY2IDI5Ny43NDEgNjQ1LjkzMyAyODUuMDc0IDYzNy41IDI2MC41QzYzMi4wNTQgMjI0LjIyNCA2NDUuNTU0IDE5Ny43MjQgNjc4IDE4MUM2ODQuMzE3IDE3OC42NzUgNjkwLjY1IDE3Ni44NDIgNjk3IDE3NS41Wk02OTYgMjAwLjVDNzE4LjQ5OCAxOTcuNTUgNzMwLjgzMSAyMDcuMjE3IDczMyAyMjkuNUM3MzEuMDc4IDI1NC45MTkgNzE3LjU3OCAyNjkuNTg2IDY5Mi41IDI3My41QzY3NC4wMTYgMjcyLjM1IDY2NC4xODMgMjYyLjUxNiA2NjMgMjQ0QzY2NC45OTMgMjIyLjQ1NSA2NzUuOTkzIDIwNy45NTUgNjk2IDIwMC41WiIgZmlsbD0iYmxhY2siLz4KPHBhdGggb3BhY2l0eT0iMC45NiIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik04MzYgMTc1LjVDODYwLjk5NCAxNzIuNDI0IDg4MC40OTQgMTgxLjA5MSA4OTQuNSAyMDEuNUM5MDYuNTYxIDIzMy4zMzMgODk5LjcyOCAyNjAuNSA4NzQgMjgzQzg1My40MzEgMjk4LjAxMyA4MzEuMDk4IDMwMS42NzkgODA3IDI5NEM3ODYuNDc0IDI4NC40NzQgNzc1LjgwOCAyNjguMzA4IDc3NSAyNDUuNUM3NzguMzEzIDIwNy4xOTUgNzk4LjY0NyAxODMuODYxIDgzNiAxNzUuNVpNODM2IDIwMC41Qzg0Ni4yNTYgMTk4Ljk2MyA4NTUuNTg5IDIwMS4xMyA4NjQgMjA3Qzg3My4wOTcgMjE3LjgyOSA4NzUuMjY0IDIyOS45OTYgODcwLjUgMjQzLjVDODYxLjM4IDI2Ni45NzUgODQ0LjU0NiAyNzYuMTQxIDgyMCAyNzFDODA4LjY0NSAyNjUuNDc0IDgwMi45NzggMjU2LjMwNyA4MDMgMjQzLjVDODA0LjY4NiAyMjEuODM2IDgxNS42ODYgMjA3LjUwMyA4MzYgMjAwLjVaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBvcGFjaXR5PSIwLjk1OCIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01NDIgMTc3LjVDNTc1LjAwNyAxNzcuMTY3IDYwOC4wMDcgMTc3LjUgNjQxIDE3OC41QzYzOC42ODMgMTg2LjQzNSA2MzYuNjgzIDE5NC40MzUgNjM1IDIwMi41QzYyMi43NTMgMjAyLjE3OCA2MTAuNTg2IDIwMi41MTIgNTk4LjUgMjAzLjVDNTkwLjAxNyAyMzQuMDk5IDU4MS44NTEgMjY0Ljc2NiA1NzQgMjk1LjVDNTY1IDI5NS41IDU1NiAyOTUuNSA1NDcgMjk1LjVDNTU1LjE1OCAyNjQuNTM2IDU2My4xNTggMjMzLjUzNiA1NzEgMjAyLjVDNTU5LjMxNCAyMDIuODMyIDU0Ny42NDggMjAyLjQ5OSA1MzYgMjAxLjVDNTM4LjMxNyAxOTMuNTY1IDU0MC4zMTcgMTg1LjU2NSA1NDIgMTc3LjVaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBvcGFjaXR5PSIwLjk2NSIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik05MzcgMTc3LjVDOTQ2IDE3Ny41IDk1NSAxNzcuNSA5NjQgMTc3LjVDOTU2LjE3MSAyMDguODE3IDk0Ny44MzggMjM5Ljk4NCA5MzkgMjcxQzk1OC42NjcgMjcxLjMzMyA5NzguMzMzIDI3MS42NjcgOTk4IDI3MkM5OTUuMjk5IDI3OS42MzkgOTkzLjI5OSAyODcuNDcyIDk5MiAyOTUuNUM5NjMuMzMzIDI5NS41IDkzNC42NjcgMjk1LjUgOTA2IDI5NS41QzkxNi4zMzMgMjU2LjE2NyA5MjYuNjY3IDIxNi44MzMgOTM3IDE3Ny41WiIgZmlsbD0iYmxhY2siLz4KPHBhdGggb3BhY2l0eT0iMC45NTgiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTA0MiAxNzcuNUMxMDcyLjMzIDE3Ny41IDExMDIuNjcgMTc3LjUgMTEzMyAxNzcuNUMxMTMxLjE2IDE4NS4xOTYgMTEyOS4xNiAxOTIuODYzIDExMjcgMjAwLjVDMTEwNS42NyAyMDEuMTY3IDEwODQuMzMgMjAxLjgzMyAxMDYzIDIwMi41QzEwNjAuODQgMjEwLjEzNyAxMDU4Ljg0IDIxNy44MDQgMTA1NyAyMjUuNUMxMDc1LjMzIDIyNS41IDEwOTMuNjcgMjI1LjUgMTExMiAyMjUuNUMxMTEwLjg2IDIzMy44OTEgMTEwOC44NiAyNDIuMDU3IDExMDYgMjUwQzEwODcuMzIgMjUwLjE2NyAxMDY4LjY2IDI1MC42NjcgMTA1MCAyNTEuNUMxMDQ2LjE2IDI2NS44NzggMTA0Mi4xNiAyODAuMjExIDEwMzggMjk0LjVDMTAyOSAyOTUuODMzIDEwMjAgMjk1LjgzMyAxMDExIDI5NC41QzEwMjEuODEgMjU1LjYxIDEwMzIuMTQgMjE2LjYxIDEwNDIgMTc3LjVaIiBmaWxsPSIjMDA5N0IyIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTYyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTExNTQgMTc3LjVDMTE2My4wMiAxNzcuMTY4IDExNzIuMDIgMTc3LjUwMiAxMTgxIDE3OC41QzExNzIuMiAyMDkuMzgzIDExNjMuODYgMjQwLjM4MyAxMTU2IDI3MS41QzExNzUuMzMgMjcxLjUgMTE5NC42NyAyNzEuNSAxMjE0IDI3MS41QzEyMTIuNDEgMjc5LjI2NiAxMjEwLjQxIDI4Ni45MzMgMTIwOCAyOTQuNUMxMTc5LjM0IDI5NS42NjcgMTE1MC42NyAyOTUuODMzIDExMjIgMjk1QzExMzIuNzUgMjU1Ljg0OSAxMTQzLjQxIDIxNi42ODIgMTE1NCAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPHBhdGggb3BhY2l0eT0iMC45NTUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTI1OCAxNzcuNUMxMjY3IDE3Ny41IDEyNzYgMTc3LjUgMTI4NSAxNzcuNUMxMjc4LjI2IDIwMi43MjMgMTI3MS45MyAyMjguMDU2IDEyNjYgMjUzLjVDMTI2OC4zMiAyNjkuODQ4IDEyNzcuNjYgMjc2LjAxNSAxMjk0IDI3MkMxMzAwLjMyIDI2OS42NzQgMTMwNS40OSAyNjUuODQgMTMwOS41IDI2MC41QzEzMTEuNzcgMjU2LjI4NiAxMzEzLjc3IDI1MS45NTMgMTMxNS41IDI0Ny41QzEzMjEuNjcgMjI0LjE0OCAxMzI3Ljg0IDIwMC44MTQgMTMzNCAxNzcuNUMxMzQzIDE3Ny41IDEzNTIgMTc3LjUgMTM2MSAxNzcuNUMxMzU0LjMzIDIwMy4xOTEgMTM0Ny40OSAyMjguODU4IDEzNDAuNSAyNTQuNUMxMzI4Ljc0IDI4OS42NCAxMzA0LjU3IDMwMy40NzQgMTI2OCAyOTZDMTI0OC45NyAyOTAuNjE4IDEyMzkuMyAyNzcuOTUxIDEyMzkgMjU4QzEyMzkuMjIgMjUzLjQ2OSAxMjM5LjcyIDI0OC45NjkgMTI0MC41IDI0NC41QzEyNDYuNDkgMjIyLjE5MSAxMjUyLjMzIDE5OS44NTcgMTI1OCAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPHBhdGggb3BhY2l0eT0iMC45NTMiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTM3NyAxNzcuNUMxMzg3LjAxIDE3Ny4zMzQgMTM5Ny4wMSAxNzcuNSAxNDA3IDE3OEMxNDEyLjAyIDE5MC4wNyAxNDE2Ljg2IDIwMi4yMzcgMTQyMS41IDIxNC41QzE0MzIuMzcgMjAyLjYyOCAxNDQyLjg3IDE5MC40NjIgMTQ1MyAxNzhDMTQ2NC42NyAxNzcuMzMzIDE0NzYuMzMgMTc3LjMzMyAxNDg4IDE3OEMxNDY5LjQ4IDE5Ny42ODMgMTQ1MS4xNSAyMTcuNTE2IDE0MzMgMjM3LjVDMTQ0MS41NCAyNTYuNzQxIDE0NTAuMiAyNzUuOTA4IDE0NTkgMjk1QzE0NDguNjUgMjk1LjgzMiAxNDM4LjMyIDI5NS42NjYgMTQyOCAyOTQuNUMxNDIzLjMxIDI4MS45MjkgMTQxOC4xNSAyNjkuNTk2IDE0MTIuNSAyNTcuNUMxNDAyLjA0IDI3MC4yOTUgMTM5MS4yMSAyODIuNzk1IDEzODAgMjk1QzEzNjguNjUgMjk1LjgzMiAxMzU3LjMyIDI5NS42NjYgMTM0NiAyOTQuNUMxMzY0LjQ4IDI3NC4xODMgMTM4My4xNSAyNTQuMDE2IDE0MDIgMjM0QzEzOTMuMjUgMjE1LjMzNyAxMzg0LjkyIDE5Ni41MDMgMTM3NyAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPC9zdmc+Cg==" alt="TOOLFLUX" style="height:28px;display:block"></a>
+  <ul class="nm"><li><a href="index.html#about">About</a></li><li><a href="index.html#products">Products</a></li><li><a href="index.html#solutions">Solutions</a></li><li><a href="index.html#calculators">Calculator</a></li><li><a href="index.html#blog">Blog</a></li><li><a href="contact.html"class="active">Contact</a></li></ul>
+  <a href="https://wa.me/918660234766" class="n-cta" target="_blank">WhatsApp Us</a>
+</nav>
+
+<section class="contact-hero">
+  <div style="max-width:1100px;margin:0 auto">
+    <div class="eyebrow">Get in Touch</div>
+    <h1>Tell us your<br><em>machining problem.</em></h1>
+    <p>Material, operation, machine model, what is going wrong. We give you a specific fix, not a catalogue page. WhatsApp gets the fastest reply.</p>
+  </div>
+</section>
+
+<div class="wa-banner">
+  <div class="wa-inner">
+    <div class="wa-left">
+      <div class="wa-icon">
+        <svg viewBox="0 0 24 24" fill="white" width="22" height="22"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </div>
+      <div class="wa-text">
+        <strong>WhatsApp is the fastest way to reach us</strong>
+        <span>Describe your problem and we will respond with a specific recommendation, usually within the hour.</span>
+      </div>
+    </div>
+    <a href="https://wa.me/918660234766?text=Hi+TOOLFLUX%21+I+need+application+engineering+support." class="wa-btn" target="_blank">
+      Open WhatsApp &rarr;
+    </a>
+  </div>
+</div>
+
+<div class="contact-main">
+
+  <!-- ENQUIRY FORM -->
+  <div>
+    <div class="form-head">
+      <h2>Send an Enquiry</h2>
+      <p>Fill in the form below and we will respond within one business day.</p>
+    </div>
+    <form class="cform" id="contactForm" onsubmit="handleSubmit(event)">
+      <div class="form-row">
+        <div class="field">
+          <label for="fname">Your Name *</label>
+          <input type="text" id="fname" name="name" placeholder="Rajesh Kumar" required>
+        </div>
+        <div class="field">
+          <label for="fcompany">Company Name</label>
+          <input type="text" id="fcompany" name="company" placeholder="Precision Parts Pvt Ltd">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="fphone">Mobile Number *</label>
+          <input type="tel" id="fphone" name="phone" placeholder="+91 98765 43210" required>
+        </div>
+        <div class="field">
+          <label for="fstate">State</label>
+          <select id="fstate" name="state">
+            <option value="">Select state</option>
+            <option>Karnataka</option>
+            <option>Tamil Nadu</option>
+            <option>Maharashtra</option>
+            <option>Gujarat</option>
+            <option>Andhra Pradesh</option>
+            <option>Telangana</option>
+            <option>Rajasthan</option>
+            <option>Punjab</option>
+            <option>Haryana</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="fmsg">Describe Your Problem or Enquiry *</label>
+        <textarea id="fmsg" name="message" placeholder="Material &middot; Operation &middot; Machine model &middot; What is going wrong (short tool life, poor finish, breakage, vibration) &middot; Current tooling brand..." required></textarea>
+      </div>
+      <p class="form-note">* Required fields. We will not share your details with third parties. See our <a href="privacy.html">Privacy Policy</a>.</p>
+      <button type="submit" class="submit-btn" id="submitBtn">
+        Continue on WhatsApp
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="white" style="flex-shrink:0"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </button>
+    </form>
+    <div id="formSuccess" style="display:none;margin-top:1.5rem;padding:1.25rem 1.5rem;background:rgba(0,151,178,.08);border:1px solid rgba(0,151,178,.3);border-radius:2px;">
+      <p style="font-size:.88rem;color:var(--teal-dark);font-weight:600;margin-bottom:.35rem;">WhatsApp opened.</p>
+      <p style="font-size:.82rem;color:var(--mid);">Your message has been pre-filled in WhatsApp. Hit Send and we will reply, usually within the hour. If the window did not open, message us directly at <a href="https://wa.me/918660234766">+91 8660234766</a>.</p>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="contact-sidebar">
+
+    <div class="cs-card">
+      <div class="cs-card-head">Direct Contact</div>
+      <div class="cs-card-body">
+        <div class="cs-item">
+          <div class="cs-icon wa">
+            <svg viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          </div>
+          <div class="cs-detail">
+            <div class="cs-label">WhatsApp</div>
+            <div class="cs-val"><a href="https://wa.me/918660234766">+91 8660234766</a></div>
+            <div class="cs-sub">Fastest response. Usually within the hour.</div>
+          </div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-icon phone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 7.81 19.79 19.79 0 01.99 4.23 2 2 0 013 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9a16 16 0 006.86 6.86l.21-.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <div class="cs-detail">
+            <div class="cs-label">Phone</div>
+            <div class="cs-val"><a href="tel:+918660234766">+91 8660234766</a></div>
+            <div class="cs-sub">Monday to Saturday, 9am to 6pm IST.</div>
+          </div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-icon mail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--spark)" stroke-width="2" stroke-linecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg>
+          </div>
+          <div class="cs-detail">
+            <div class="cs-label">Email</div>
+            <div class="cs-val"><a href="mailto:toolflux@gmail.com">toolflux@gmail.com</a></div>
+            <div class="cs-sub">Response within one business day.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cs-card">
+      <div class="cs-card-head">Business Hours</div>
+      <div class="cs-card-body">
+        <div class="hours-grid">
+          <span class="hg-day">Monday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Tuesday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Wednesday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Thursday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Friday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Saturday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
+          <span class="hg-day">Sunday</span><span class="hg-time" style="color:var(--mut)">Closed</span>
+        </div>
+        <p style="font-size:.68rem;color:var(--mut);margin-top:1rem;line-height:1.6">WhatsApp enquiries are monitored outside these hours and answered the next business morning.</p>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- MAP SECTION -->
+<section class="map-section">
+  <div class="map-inner">
+    <div class="map-head">
+      <h2>Visit Us</h2>
+      <p>Our office and dispatch facility is located in Vidyanagar, Hubli, Karnataka.</p>
+    </div>
+    <div class="map-split">
+      <div class="map-frame">
+        <iframe
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3847.3428271!2d75.1322!3d15.3644!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bb8d6b8f04b2e1f%3A0x0!2sVidyanagar%2C+Hubli%2C+Karnataka+580021!5e0!3m2!1sen!2sin!4v1"
+          allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+          title="TOOLFLUX office location, Vidyanagar, Hubli">
+        </iframe>
+      </div>
+      <div class="map-details">
+        <div class="md-item">
+          <span class="md-label">Address</span>
+          <span class="md-val">54, Laxmi Colony<br>Vidyanagar, Hubli 580021<br>Karnataka, India</span>
+        </div>
+        <div class="md-item">
+          <span class="md-label">Nearest Landmark</span>
+          <span class="md-val">Vidyanagar, Hubli</span>
+        </div>
+        <div class="md-item">
+          <span class="md-label">GST No.</span>
+          <span class="md-val">29EQAPD9045L1ZH</span>
+        </div>
+        <div class="md-item">
+          <span class="md-label">Same-day Dispatch</span>
+          <span class="md-val">Orders confirmed before 2:00 pm IST are dispatched the same day for most stocked items.</span>
+        </div>
+        <a href="https://maps.google.com/?q=54+Laxmi+Colony+Vidyanagar+Hubli+580021+Karnataka" class="directions-btn" target="_blank">
+          Get Directions
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="ftop">
+    <div class="fbrand">
+      <div class="flogo"><img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQ4OCIgaGVpZ2h0PSI0ODQiIHZpZXdCb3g9IjAgMCAxNDg4IDQ4NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggb3BhY2l0eT0iMC45ODYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMCAyNjEuNUMwIDI0OC41IDAgMjM1LjUgMCAyMjIuNUMwLjcyMzk3OCAyMjAuNzgyIDEuMzkwNjQgMjE4Ljk0OCAyIDIxN0MxMy43ODczIDIxMS4wMjMgMjUuNjIwNiAyMDUuMTkgMzcuNSAxOTkuNUM0MC41MzU0IDE4Mi45MzkgNDUuNzAyIDE2Ny4xMDYgNTMgMTUyQzQ2LjY1IDE0MC4zMjMgNDAuMzE2NyAxMjguNjU3IDM0IDExN0M0MS45MDY3IDEwMi4yNTcgNTEuNTczMyA4OC43NTcgNjMgNzYuNUM3Ni41NDczIDc5LjY0NCA5MC4yMTM5IDgxLjgxMSAxMDQgODNDMTE1LjU0MiA3Mi4xMjMgMTI4LjIwOCA2Mi43OSAxNDIgNTVDMTQ0LjcwNCA0MS40MDkgMTQ3LjAzNyAyNy43NDIgMTQ5IDE0QzE2NC4xOTYgNy40ODggMTc5Ljg2MyAyLjgyMSAxOTYgMEMyMDUuMzY0IDkuMDMgMjE0LjM2NCAxOC4zNjMgMjIzIDI4QzIzOS4xNTUgMjcuMjA4IDI1NS4zMjIgMjcuMzc1IDI3MS41IDI4LjVDMjcyLjMzMyAyOC4zMzMgMjczLjE2NyAyOC4xNjcgMjc0IDI4QzI4Mi42MzYgMTguMzYzIDI5MS42MzYgOS4wMyAzMDEgMEMzMTcuMjUzIDIuNjk0IDMzMi45MTkgNy41MjcgMzQ4IDE0LjVDMzUwLjE2IDI3LjExMyAzNTEuOTkzIDM5Ljc3OSAzNTMuNSA1Mi41QzM1My45NjUgNTMuOTMxIDM1NC43OTkgNTUuMDk3IDM1NiA1NkMzNjAuMTY4IDU4LjI1IDM2NC4xNjggNjAuNzUgMzY4IDYzLjVDMzMzLjE3NiA2OS42MDcgMzAwLjg0MyA4Mi4xMDcgMjcxIDEwMUMyMTEuNjE4IDk0Ljc4NSAxNjQuNDUyIDExNS42MTkgMTI5LjUgMTYzLjVDMTAxLjY4MiAyMDguODUzIDk4LjY4MTYgMjU1Ljg1MyAxMjAuNSAzMDQuNUMxMjQuMDM5IDMxMS43NSAxMjguMjA2IDMxOC41ODMgMTMzIDMyNUMxMjYuNzUyIDM1NC44MTUgMTIyLjkxOSAzODQuOTgyIDEyMS41IDQxNS41QzExNS4zNzUgNDExLjA0NCAxMDkuNTQyIDQwNi4yMTEgMTA0IDQwMUM5MC4yMTM5IDQwMi4xODkgNzYuNTQ3MyA0MDQuMzU2IDYzIDQwNy41QzUxLjU3MzMgMzk1LjI0MyA0MS45MDY3IDM4MS43NDMgMzQgMzY3QzQwLjMyNjEgMzU1LjM0OSA0Ni42NTk0IDM0My42ODMgNTMgMzMyQzQ2LjAzODYgMzE2Ljc4MiA0MC44NzE5IDMwMC45NDkgMzcuNSAyODQuNUMyNS43NDI5IDI3OC43MDUgMTMuOTA5NiAyNzMuMDM4IDIgMjY3LjVDMS4zMzEyOCAyNjUuMzY5IDAuNjY0NjE5IDI2My4zNjkgMCAyNjEuNVoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTg2IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTQzMyA3Ni41QzQ0NS4wMjMgODguMzc3IDQ1NS4wMjMgMTAxLjg3NyA0NjMgMTE3QzQ1Ni42ODMgMTI4LjY1NyA0NTAuMzUgMTQwLjMyMyA0NDQgMTUyQzQ1MC45NjEgMTY3LjIxOCA0NTYuMTI4IDE4My4wNTEgNDU5LjUgMTk5LjVDNDcxLjM3OSAyMDUuMTkgNDgzLjIxMyAyMTEuMDIzIDQ5NSAyMTdDNDk1Ljc2NCAyMTkuMDY5IDQ5Ni4yNjQgMjIxLjIzNiA0OTYuNSAyMjMuNUM0OTcuMTY3IDIzNS44MzMgNDk3LjE2NyAyNDguMTY3IDQ5Ni41IDI2MC41QzQ5Ni4zMTQgMjYyLjkgNDk1LjgxNCAyNjUuMjM0IDQ5NSAyNjcuNUM0ODMuMDkgMjczLjAzOCA0NzEuMjU3IDI3OC43MDUgNDU5LjUgMjg0LjVDNDU2LjEyOCAzMDAuOTQ5IDQ1MC45NjEgMzE2Ljc4MiA0NDQgMzMyQzQ1MC4zNDEgMzQzLjY4MyA0NTYuNjc0IDM1NS4zNDkgNDYzIDM2N0M0NTUuMDkzIDM4MS43NDMgNDQ1LjQyNyAzOTUuMjQzIDQzNCA0MDcuNUM0MjAuNDUzIDQwNC4zNTYgNDA2Ljc4NiA0MDIuMTg5IDM5MyA0MDFDMzgxLjE0NiA0MTEuODQxIDM2OC4zMTMgNDIxLjM0MSAzNTQuNSA0MjkuNUMzNTIuMTczIDQ0Mi43NzcgMzUwLjAwNiA0NTYuMTExIDM0OCA0NjkuNUMzMzMuMDUxIDQ3Ni44NyAzMTcuMzg1IDQ4MS43MSAzMDEgNDg0QzI5MS42MzYgNDc0Ljk3IDI4Mi42MzYgNDY1LjY0IDI3NCA0NTZDMjczLjE2NyA0NTUuODMzIDI3Mi4zMzMgNDU1LjY2NyAyNzEuNSA0NTUuNUMyNTUuMzIyIDQ1Ni42MjUgMjM5LjE1NSA0NTYuNzkyIDIyMyA0NTZDMjE0LjM2NCA0NjUuNjQgMjA1LjM2NCA0NzQuOTcgMTk2IDQ4NEMxNzkuNzMzIDQ4MS41OCAxNjQuMDY2IDQ3Ni45MSAxNDkgNDcwQzE0MS4xMzggNDI4LjQ0IDE0MS44MDQgMzg2Ljk0IDE1MSAzNDUuNUMxODguODIzIDM3OS4xNjMgMjMyLjQ4OSAzOTAuNjYzIDI4MiAzODBDMzI3LjQ3MiAzNjcuODQ1IDM1OS45NzIgMzQwLjM0NSAzNzkuNSAyOTcuNUMzOTkuMjg3IDI0NC4zNDEgMzkxLjk1NCAxOTUuMzQxIDM1Ny41IDE1MC41QzM0OS4yNjggMTQxLjU5OCAzNDAuNDM0IDEzMy40MzEgMzMxIDEyNkMzMjEuMTE2IDExOS41NTcgMzEwLjc4MyAxMTMuODkgMzAwIDEwOUMzMjkuMjM4IDkyLjg1NyAzNjAuNTcxIDg0LjUyNCAzOTQgODRDNDA3LjE5NCA4MS43OTMgNDIwLjE5NCA3OS4yOTMgNDMzIDc2LjVaIiBmaWxsPSIjMDA5N0IyIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTc5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMwMyAxNzMuNUMyODEuNjY3IDE3My41IDI2MC4zMzMgMTczLjUgMjM5IDE3My41QzIyOC4yODQgMjI1LjAxNCAyMTcuMjg0IDI3Ni4zNDcgMjA2IDMyNy41QzE5Ny42NjcgMzI3LjUgMTg5LjMzMyAzMjcuNSAxODEgMzI3LjVDMTkwLjUyNSAyODAuNDAxIDIwMC41MjUgMjMzLjQwMSAyMTEgMTg2LjVDMTkzLjY3OSAxODUuNSAxNzYuMzQ2IDE4NS4xNjcgMTU5IDE4NS41QzE2MSAxNzUuMTY3IDE2MyAxNjQuODMzIDE2NSAxNTQuNUMyMTIuMzM4IDE1NC4xNjcgMjU5LjY3MSAxNTQuNSAzMDcgMTU1LjVDMzA1LjI4MyAxNjEuNDE4IDMwMy45NSAxNjcuNDE4IDMwMyAxNzMuNVoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTc5IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTMwMyAxNzMuNUMzMjMuMDExIDE3My4xNjcgMzQzLjAxMSAxNzMuNSAzNjMgMTc0LjVDMzYwLjcyNiAxODQuMzczIDM1OC4zOTMgMTk0LjIwNyAzNTYgMjA0QzMyNy4wMDIgMjA0LjUgMjk4LjAwMiAyMDQuNjY3IDI2OSAyMDQuNUMyNjYuNjY3IDIxNy4xNjcgMjY0LjMzMyAyMjkuODMzIDI2MiAyNDIuNUMyODcgMjQyLjUgMzEyIDI0Mi41IDMzNyAyNDIuNUMzMzUgMjUzLjE2NyAzMzMgMjYzLjgzMyAzMzEgMjc0LjVDMzA1LjMzMyAyNzQuNSAyNzkuNjY3IDI3NC41IDI1NCAyNzQuNUMyNDkuNDkgMjk4LjIxNiAyNDQuNjU3IDMyMS44ODIgMjM5LjUgMzQ1LjVDMjI3LjA2MiAzNDYuODIxIDIxNC41NjIgMzQ2LjgyMSAyMDIgMzQ1LjVDMjAzLjcxNyAzMzkuNTgyIDIwNS4wNSAzMzMuNTgyIDIwNiAzMjcuNUMyMTcuMjg0IDI3Ni4zNDcgMjI4LjI4NCAyMjUuMDE0IDIzOSAxNzMuNUMyNjAuMzMzIDE3My41IDI4MS42NjcgMTczLjUgMzAzIDE3My41WiIgZmlsbD0iIzAzOTdCMiIvPgo8cGF0aCBvcGFjaXR5PSIwLjk2IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTY5NyAxNzUuNUM3NDMuMjcyIDE3NC4yNjggNzY0LjEwNSAxOTYuNjAyIDc1OS41IDI0Mi41Qzc0OS4yNDMgMjc3LjQxNiA3MjUuOTEgMjk2LjA4MyA2ODkuNSAyOTguNUM2NjMuMjY2IDI5Ny43NDEgNjQ1LjkzMyAyODUuMDc0IDYzNy41IDI2MC41QzYzMi4wNTQgMjI0LjIyNCA2NDUuNTU0IDE5Ny43MjQgNjc4IDE4MUM2ODQuMzE3IDE3OC42NzUgNjkwLjY1IDE3Ni44NDIgNjk3IDE3NS41Wk02OTYgMjAwLjVDNzE4LjQ5OCAxOTcuNTUgNzMwLjgzMSAyMDcuMjE3IDczMyAyMjkuNUM3MzEuMDc4IDI1NC45MTkgNzE3LjU3OCAyNjkuNTg2IDY5Mi41IDI3My41QzY3NC4wMTYgMjcyLjM1IDY2NC4xODMgMjYyLjUxNiA2NjMgMjQ0QzY2NC45OTMgMjIyLjQ1NSA2NzUuOTkzIDIwNy45NTUgNjk2IDIwMC41WiIgZmlsbD0iYmxhY2siLz4KPHBhdGggb3BhY2l0eT0iMC45NiIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik04MzYgMTc1LjVDODYwLjk5NCAxNzIuNDI0IDg4MC40OTQgMTgxLjA5MSA4OTQuNSAyMDEuNUM5MDYuNTYxIDIzMy4zMzMgODk5LjcyOCAyNjAuNSA4NzQgMjgzQzg1My40MzEgMjk4LjAxMyA4MzEuMDk4IDMwMS42NzkgODA3IDI5NEM3ODYuNDc0IDI4NC40NzQgNzc1LjgwOCAyNjguMzA4IDc3NSAyNDUuNUM3NzguMzEzIDIwNy4xOTUgNzk4LjY0NyAxODMuODYxIDgzNiAxNzUuNVpNODM2IDIwMC41Qzg0Ni4yNTYgMTk4Ljk2MyA4NTUuNTg5IDIwMS4xMyA4NjQgMjA3Qzg3My4wOTcgMjE3LjgyOSA4NzUuMjY0IDIyOS45OTYgODcwLjUgMjQzLjVDODYxLjM4IDI2Ni45NzUgODQ0LjU0NiAyNzYuMTQxIDgyMCAyNzFDODA4LjY0NSAyNjUuNDc0IDgwMi45NzggMjU2LjMwNyA4MDMgMjQzLjVDODA0LjY4NiAyMjEuODM2IDgxNS42ODYgMjA3LjUwMyA4MzYgMjAwLjVaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBvcGFjaXR5PSIwLjk1OCIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik01NDIgMTc3LjVDNTc1LjAwNyAxNzcuMTY3IDYwOC4wMDcgMTc3LjUgNjQxIDE3OC41QzYzOC42ODMgMTg2LjQzNSA2MzYuNjgzIDE5NC40MzUgNjM1IDIwMi41QzYyMi43NTMgMjAyLjE3OCA2MTAuNTg2IDIwMi41MTIgNTk4LjUgMjAzLjVDNTkwLjAxNyAyMzQuMDk5IDU4MS44NTEgMjY0Ljc2NiA1NzQgMjk1LjVDNTY1IDI5NS41IDU1NiAyOTUuNSA1NDcgMjk1LjVDNTU1LjE1OCAyNjQuNTM2IDU2My4xNTggMjMzLjUzNiA1NzEgMjAyLjVDNTU5LjMxNCAyMDIuODMyIDU0Ny42NDggMjAyLjQ5OSA1MzYgMjAxLjVDNTM4LjMxNyAxOTMuNTY1IDU0MC4zMTcgMTg1LjU2NSA1NDIgMTc3LjVaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBvcGFjaXR5PSIwLjk2NSIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik05MzcgMTc3LjVDOTQ2IDE3Ny41IDk1NSAxNzcuNSA5NjQgMTc3LjVDOTU2LjE3MSAyMDguODE3IDk0Ny44MzggMjM5Ljk4NCA5MzkgMjcxQzk1OC42NjcgMjcxLjMzMyA5NzguMzMzIDI3MS42NjcgOTk4IDI3MkM5OTUuMjk5IDI3OS42MzkgOTkzLjI5OSAyODcuNDcyIDk5MiAyOTUuNUM5NjMuMzMzIDI5NS41IDkzNC42NjcgMjk1LjUgOTA2IDI5NS41QzkxNi4zMzMgMjU2LjE2NyA5MjYuNjY3IDIxNi44MzMgOTM3IDE3Ny41WiIgZmlsbD0iYmxhY2siLz4KPHBhdGggb3BhY2l0eT0iMC45NTgiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTA0MiAxNzcuNUMxMDcyLjMzIDE3Ny41IDExMDIuNjcgMTc3LjUgMTEzMyAxNzcuNUMxMTMxLjE2IDE4NS4xOTYgMTEyOS4xNiAxOTIuODYzIDExMjcgMjAwLjVDMTEwNS42NyAyMDEuMTY3IDEwODQuMzMgMjAxLjgzMyAxMDYzIDIwMi41QzEwNjAuODQgMjEwLjEzNyAxMDU4Ljg0IDIxNy44MDQgMTA1NyAyMjUuNUMxMDc1LjMzIDIyNS41IDEwOTMuNjcgMjI1LjUgMTExMiAyMjUuNUMxMTEwLjg2IDIzMy44OTEgMTEwOC44NiAyNDIuMDU3IDExMDYgMjUwQzEwODcuMzIgMjUwLjE2NyAxMDY4LjY2IDI1MC42NjcgMTA1MCAyNTEuNUMxMDQ2LjE2IDI2NS44NzggMTA0Mi4xNiAyODAuMjExIDEwMzggMjk0LjVDMTAyOSAyOTUuODMzIDEwMjAgMjk1LjgzMyAxMDExIDI5NC41QzEwMjEuODEgMjU1LjYxIDEwMzIuMTQgMjE2LjYxIDEwNDIgMTc3LjVaIiBmaWxsPSIjMDA5N0IyIi8+CjxwYXRoIG9wYWNpdHk9IjAuOTYyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTExNTQgMTc3LjVDMTE2My4wMiAxNzcuMTY4IDExNzIuMDIgMTc3LjUwMiAxMTgxIDE3OC41QzExNzIuMiAyMDkuMzgzIDExNjMuODYgMjQwLjM4MyAxMTU2IDI3MS41QzExNzUuMzMgMjcxLjUgMTE5NC42NyAyNzEuNSAxMjE0IDI3MS41QzEyMTIuNDEgMjc5LjI2NiAxMjEwLjQxIDI4Ni45MzMgMTIwOCAyOTQuNUMxMTc5LjM0IDI5NS42NjcgMTE1MC42NyAyOTUuODMzIDExMjIgMjk1QzExMzIuNzUgMjU1Ljg0OSAxMTQzLjQxIDIxNi42ODIgMTE1NCAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPHBhdGggb3BhY2l0eT0iMC45NTUiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTI1OCAxNzcuNUMxMjY3IDE3Ny41IDEyNzYgMTc3LjUgMTI4NSAxNzcuNUMxMjc4LjI2IDIwMi43MjMgMTI3MS45MyAyMjguMDU2IDEyNjYgMjUzLjVDMTI2OC4zMiAyNjkuODQ4IDEyNzcuNjYgMjc2LjAxNSAxMjk0IDI3MkMxMzAwLjMyIDI2OS42NzQgMTMwNS40OSAyNjUuODQgMTMwOS41IDI2MC41QzEzMTEuNzcgMjU2LjI4NiAxMzEzLjc3IDI1MS45NTMgMTMxNS41IDI0Ny41QzEzMjEuNjcgMjI0LjE0OCAxMzI3Ljg0IDIwMC44MTQgMTMzNCAxNzcuNUMxMzQzIDE3Ny41IDEzNTIgMTc3LjUgMTM2MSAxNzcuNUMxMzU0LjMzIDIwMy4xOTEgMTM0Ny40OSAyMjguODU4IDEzNDAuNSAyNTQuNUMxMzI4Ljc0IDI4OS42NCAxMzA0LjU3IDMwMy40NzQgMTI2OCAyOTZDMTI0OC45NyAyOTAuNjE4IDEyMzkuMyAyNzcuOTUxIDEyMzkgMjU4QzEyMzkuMjIgMjUzLjQ2OSAxMjM5LjcyIDI0OC45NjkgMTI0MC41IDI0NC41QzEyNDYuNDkgMjIyLjE5MSAxMjUyLjMzIDE5OS44NTcgMTI1OCAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPHBhdGggb3BhY2l0eT0iMC45NTMiIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMTM3NyAxNzcuNUMxMzg3LjAxIDE3Ny4zMzQgMTM5Ny4wMSAxNzcuNSAxNDA3IDE3OEMxNDEyLjAyIDE5MC4wNyAxNDE2Ljg2IDIwMi4yMzcgMTQyMS41IDIxNC41QzE0MzIuMzcgMjAyLjYyOCAxNDQyLjg3IDE5MC40NjIgMTQ1MyAxNzhDMTQ2NC42NyAxNzcuMzMzIDE0NzYuMzMgMTc3LjMzMyAxNDg4IDE3OEMxNDY5LjQ4IDE5Ny42ODMgMTQ1MS4xNSAyMTcuNTE2IDE0MzMgMjM3LjVDMTQ0MS41NCAyNTYuNzQxIDE0NTAuMiAyNzUuOTA4IDE0NTkgMjk1QzE0NDguNjUgMjk1LjgzMiAxNDM4LjMyIDI5NS42NjYgMTQyOCAyOTQuNUMxNDIzLjMxIDI4MS45MjkgMTQxOC4xNSAyNjkuNTk2IDE0MTIuNSAyNTcuNUMxNDAyLjA0IDI3MC4yOTUgMTM5MS4yMSAyODIuNzk1IDEzODAgMjk1QzEzNjguNjUgMjk1LjgzMiAxMzU3LjMyIDI5NS42NjYgMTM0NiAyOTQuNUMxMzY0LjQ4IDI3NC4xODMgMTM4My4xNSAyNTQuMDE2IDE0MDIgMjM0QzEzOTMuMjUgMjE1LjMzNyAxMzg0LjkyIDE5Ni41MDMgMTM3NyAxNzcuNVoiIGZpbGw9IiMwMDk3QjIiLz4KPC9zdmc+Cg==" alt="TOOLFLUX" style="height:24px;display:block;margin-bottom:1rem"></div>
+      <p>Application engineering partners for CNC and VMC machining. Carbide cutting tools, precision parameters and on-site support. Hubli, Karnataka.</p>
+    </div>
+    <div class="fcol">
+      <h5>Products</h5>
+      <ul>
+        <li><a href="index.html#products">Carbide Inserts</a></li>
+        <li><a href="index.html#products">End Mills</a></li>
+        <li><a href="index.html#products">Carbide Drills</a></li>
+        <li><a href="index.html#products">Indexable Holders</a></li>
+        <li><a href="index.html#products">Turning Holders</a></li>
+      </ul>
+    </div>
+    <div class="fcol">
+      <h5>Tools</h5>
+      <ul>
+        <li><a href="index.html#solutions">Diagnose My Process</a></li>
+        <li><a href="index.html#calculators">Speed &amp; Feed Calculator</a></li>
+        <li><a href="index.html#calculators">Cost Per Hole Calc</a></li>
+      </ul>
+    </div>
+    <div class="fcol">
+      <h5>Legal</h5>
+      <ul>
+        <li><a href="privacy.html">Privacy Policy</a></li>
+        <li><a href="terms.html">Terms &amp; Conditions</a></li>
+        <li><a href="contact.html">Contact Us</a></li>
+        <li><a href="https://wa.me/918660234766" target="_blank">WhatsApp: +91 8660234766</a></li>
+        <li><a href="mailto:toolflux@gmail.com">toolflux@gmail.com</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="fbot">
+    <div class="fcopy">
+      &copy; 2026 TOOLFLUX &middot; 54, Laxmi Colony, Vidyanagar, Hubli 580021 &middot;
+      <a href="privacy.html">Privacy</a> &middot; <a href="terms.html">Terms</a>
+    </div>
+    <div class="fsoc">
+      <a href="#">LinkedIn</a>
+      <a href="#">Instagram</a>
+      <a href="#">YouTube</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+function handleSubmit(e) {
+  e.preventDefault();
+  const btn    = document.getElementById('submitBtn');
+  const form   = document.getElementById('contactForm');
+  const success = document.getElementById('formSuccess');
+  const name    = (document.getElementById('fname').value   || '').trim();
+  const company = (document.getElementById('fcompany').value|| '').trim();
+  const phone   = (document.getElementById('fphone').value  || '').trim();
+  const state   = (document.getElementById('fstate').value  || '').trim();
+  const message = (document.getElementById('fmsg').value    || '').trim();
+  const lines = [
+    'Hi TOOLFLUX! New website enquiry:',
+    '',
+    'Name: '    + name,
+    company ? 'Company: ' + company : null,
+    'Phone: '   + phone,
+    state   ? 'State: '   + state   : null,
+    '',
+    'Problem: ' + message
+  ].filter(l => l !== null).join('\n');
+  btn.textContent = 'Opening WhatsApp...';
+  btn.disabled = true;
+  window.open('https://wa.me/918660234766?text=' + encodeURIComponent(lines), '_blank');
+  setTimeout(() => {
+    form.style.display = 'none';
+    success.style.display = 'block';
+  }, 600);
+}
+</script>
+</body>
+</html>
