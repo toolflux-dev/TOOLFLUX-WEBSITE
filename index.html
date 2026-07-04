@@ -252,8 +252,8 @@ h1 .tl{color:var(--teal-dark)} h1 .w3{font-weight:300;color:var(--mid)}
 .prob-tag{font-size:.48rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;padding:.18rem .55rem;border-radius:1px;background:var(--off2);color:var(--mut)}
 .prob-arr{font-size:.75rem;color:var(--teal-dark);transition:transform .25s;margin-left:.5rem}
 .prob-item.open .prob-arr{transform:rotate(90deg)}
-.prob-body{display:none;padding:0 0 1.4rem 2.2rem}
-.prob-item.open .prob-body{display:block}
+.prob-body{max-height:0;overflow:hidden;opacity:0;padding:0 0 0 2.2rem;transition:max-height .45s ease,opacity .35s ease,padding-bottom .45s ease}
+.prob-item.open .prob-body{max-height:900px;opacity:1;padding-bottom:1.4rem}
 .prob-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.2rem;margin-bottom:.8rem}
 .prob-col-hd{font-size:.48rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;margin-bottom:.4rem}
 .prob-col-hd.rc{color:#c0392b}.prob-col-hd.sc{color:var(--teal-dark)}.prob-col-hd.ic{color:#1a7a3f}
@@ -671,6 +671,26 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 /* ── POLISH ── */
 ::selection{background:var(--teal);color:#fff}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+/* ── LIVELINESS ── */
+#sprog{position:fixed;top:0;left:0;height:3px;background:var(--teal);z-index:950;width:0;transition:width .1s linear}
+.nm a.act{color:var(--teal-dark);position:relative}
+.nm a.act::after{content:'';position:absolute;bottom:-6px;left:0;right:0;height:2px;background:var(--teal)}
+@keyframes pdIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.pdet.on{animation:pdIn .4s ease}
+@keyframes cellIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.calc-res-grid .calc-res-cell{animation:cellIn .4s ease backwards}
+.calc-res-grid .calc-res-cell:nth-child(2){animation-delay:.08s}
+.calc-res-grid .calc-res-cell:nth-child(3){animation-delay:.16s}
+.calc-res-grid .calc-res-cell:nth-child(4){animation-delay:.24s}
+@keyframes fabPulse{0%{box-shadow:0 4px 16px rgba(0,0,0,.14),0 0 0 0 rgba(0,151,178,.45)}70%{box-shadow:0 4px 16px rgba(0,0,0,.14),0 0 0 12px rgba(0,151,178,0)}100%{box-shadow:0 4px 16px rgba(0,0,0,.14),0 0 0 0 rgba(0,151,178,0)}}
+.fb-wa{animation:fabPulse 3s ease-out infinite}
+.psc{transition:background .25s,transform .25s}
+.psc:hover{transform:translateY(-3px)}
+.tkt:hover{animation-play-state:paused}
+@keyframes bmIn{from{opacity:0;transform:translateY(24px) scale(.98)}to{opacity:1;transform:none}}
+.bmod-overlay.open .bmod-box{animation:bmIn .35s ease}
+@media(prefers-reduced-motion:reduce){#sprog,.pdet.on,.calc-res-cell,.fb-wa,.bmod-box{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -1904,17 +1924,10 @@ function calcMill(){const insCode=document.getElementById('ml-ins').value.trim()
 function toggleProb(hd){
   const item=hd.parentElement;
   const isOpen=item.classList.contains('open');
-  // Close all
-  document.querySelectorAll('.prob-item.open').forEach(i=>{
-    i.classList.remove('open');
-    i.querySelector('.prob-body').style.display='none';
-  });
-  // Open clicked one if it was closed
+  document.querySelectorAll('.prob-item.open').forEach(i=>i.classList.remove('open'));
   if(!isOpen){
     item.classList.add('open');
-    item.querySelector('.prob-body').style.display='block';
-    // Smooth scroll into view on mobile
-    setTimeout(()=>item.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+    setTimeout(()=>item.scrollIntoView({behavior:'smooth',block:'nearest'}),120);
   }
 }
 
@@ -2243,6 +2256,20 @@ function calcM(){
 // MOBILE NAV
 function mnToggle(){document.getElementById('mn').classList.toggle('mopen')}
 document.querySelectorAll('.nm a').forEach(function(a){a.addEventListener('click',function(){document.getElementById('mn').classList.remove('mopen')})});
+
+// SCROLL PROGRESS + NAV SPY
+(function(){
+  var ids=['about','products','solutions','calculators','blog','contact'];
+  var links={};
+  document.querySelectorAll('.nm a').forEach(function(a){var t=a.getAttribute('href');if(t&&t[0]==='#')links[t.slice(1)]=a});
+  window.addEventListener('scroll',function(){
+    var sp=document.getElementById('sprog');
+    if(sp){var d=document.documentElement;sp.style.width=(d.scrollTop/(d.scrollHeight-d.clientHeight)*100)+'%'}
+    var cur='';
+    ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=130)cur=id});
+    for(var k in links)links[k].classList.toggle('act',k===cur);
+  },{passive:true});
+})();
 </script>
 
 <!-- ══ PRODUCT DETAIL OVERLAY ══ -->
@@ -2268,5 +2295,6 @@ document.querySelectorAll('.nm a').forEach(function(a){a.addEventListener('click
     </div>
   </div>
 </div>
+<div id="sprog"></div>
 </body>
 </html>
