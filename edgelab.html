@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#012B42">
+<link rel="manifest" href="edgelab.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>TOOLFLUX — EDGE LAB</title>
+<style>
+/* ═══════════════════════════════════════════════
+   TOOLFLUX EDGE LAB
+   Insert wear diagnostics. Engineering ledger, light only.
+   ═══════════════════════════════════════════════ */
+:root {
+  --teal:    #0097B2;
+  --teal-d:  #00748a;
+  --navy:    #012B42;
+  --ink:     #08141a;
+  --T:       #0d1e26;
+  --mut:     #5a7282;
+  --W:       #FEFFFE;
+  --off:     #f2f5f7;
+  --off2:    #e4eaed;
+  --rule:    #ccd4d8;
+  --rule2:   #a8b6bc;
+  --teal-tint: #e5f4f7;
+  --warn:    #b06000;
+  --warn-bg: #fff3e0;
+  --bad:     #a62d1e;
+  --bad-bg:  #fdf0ee;
+  --ok:      #1a6e50;
+  --ok-bg:   #eaf4ef;
+  --mono: ui-monospace,'Cascadia Mono',Consolas,'Courier New',monospace;
+  --r: 1px;
+  --sh: 0 1px 6px rgba(0,0,0,.09);
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
+html { -webkit-text-size-adjust: 100% }
+body {
+  background: var(--off);
+  color: var(--T);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: .9rem;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+button { font-family: inherit; cursor: pointer }
+input, select, textarea {
+  font-family: inherit; font-size: 1rem; color: var(--T); background: var(--W);
+  border: 1px solid var(--rule); border-radius: var(--r);
+  padding: .55rem .65rem; width: 100%; min-height: 46px;
+}
+textarea { min-height: 72px; resize: vertical }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a7282'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right .7rem center; padding-right: 1.8rem }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--teal); outline-offset: 1px; border-color: var(--teal) }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px }
+::selection { background: var(--teal); color: #fff }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { transition-duration: .01ms !important; animation-duration: .01ms !important } }
+
+.lbl { font-size: .58rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut) }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums }
+.muted { color: var(--mut) }
+
+/* ─── header ─── */
+header.bar {
+  position: sticky; top: 0; z-index: 600;
+  background: var(--W);
+  border-bottom: 2px solid var(--navy);
+  box-shadow: var(--sh);
+}
+.bar-top { display: flex; align-items: baseline; gap: .7rem; padding: .65rem 1rem .45rem }
+.bar-brand { font-size: .82rem; font-weight: 800; letter-spacing: .26em; color: var(--navy) }
+.bar-brand em { font-style: normal; color: var(--teal) }
+.bar-app { font-size: .58rem; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--mut) }
+.tabs { display: flex; padding: 0 .6rem; overflow-x: auto; scrollbar-width: none }
+.tabs::-webkit-scrollbar { display: none }
+.tab {
+  appearance: none; border: 0; background: none;
+  padding: .55rem .8rem .5rem; min-height: 42px;
+  font-size: .6rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--mut); white-space: nowrap;
+  border-bottom: 2px solid transparent; transition: color .15s;
+}
+.tab[aria-selected=true] { color: var(--navy); border-bottom-color: var(--teal) }
+
+/* ─── layout ─── */
+main { max-width: 660px; margin: 0 auto; padding: .9rem .9rem 7.5rem }
+.view { display: none }
+.view.active { display: block }
+
+.sec { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); margin-bottom: .85rem }
+.sec-hd {
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: .6rem .85rem .5rem; border-bottom: 1px solid var(--rule);
+}
+.sec-no { font-family: var(--mono); font-size: .68rem; font-weight: 700; color: var(--teal) }
+.sec-ttl { font-size: .62rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: var(--navy) }
+.sec-note { margin-left: auto; font-size: .62rem; color: var(--mut) }
+.sec-bd { padding: .75rem .85rem .9rem }
+
+.f { margin-bottom: .8rem }
+.f:last-child { margin-bottom: 0 }
+.f > label { display: block; margin-bottom: .28rem }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .6rem }
+.opt { font-weight: 400; letter-spacing: .1em; text-transform: none; color: var(--rule2) }
+
+/* segmented control */
+.seg { display: flex; flex-wrap: wrap; gap: 0; border: 1px solid var(--rule); border-radius: var(--r); overflow: hidden; background: var(--W) }
+.seg button {
+  flex: 1 1 auto; min-height: 46px; padding: .4rem .5rem;
+  background: var(--W); border: 0; border-right: 1px solid var(--rule);
+  font-size: .78rem; font-weight: 600; color: var(--mut); transition: background .15s, color .15s;
+}
+.seg button:last-child { border-right: 0 }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff }
+.seg.seg-sm button { min-height: 42px; font-size: .72rem }
+
+/* checkbox chips */
+.chips { display: flex; flex-wrap: wrap; gap: .45rem }
+.chip {
+  border: 1px solid var(--rule); border-radius: var(--r); background: var(--W);
+  padding: .5rem .7rem; min-height: 44px; font-size: .78rem; font-weight: 600; color: var(--T);
+  transition: background .15s, border-color .15s;
+}
+.chip[aria-pressed=true] { background: var(--teal-tint); border-color: var(--teal); color: var(--teal-d) }
+
+/* insert parse readout */
+.parse {
+  margin-top: .45rem; padding: .5rem .6rem;
+  border: 1px solid var(--rule); border-left-width: 1px; background: var(--off);
+  font-size: .74rem; line-height: 1.45; border-radius: var(--r); display: none;
+}
+.parse.show { display: block }
+.parse .pk { font-family: var(--mono); font-weight: 700; color: var(--navy) }
+.parse.unrec { background: var(--warn-bg); border-color: #e8c9a0 }
+
+/* computed strip */
+.calc {
+  display: none; margin-top: .2rem; padding: .55rem .65rem;
+  background: var(--off); border: 1px dashed var(--rule2); border-radius: var(--r);
+  font-family: var(--mono); font-size: .74rem; font-variant-numeric: tabular-nums; color: var(--T);
+}
+.calc.show { display: block }
+.calc b { color: var(--navy) }
+
+/* photo slots */
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem }
+.shot {
+  border: 1px dashed var(--rule2); border-radius: var(--r); background: var(--off);
+  min-height: 128px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .3rem;
+  text-align: center; padding: .5rem; cursor: pointer;
+}
+.shot.filled { border-style: solid; border-color: var(--teal); background: var(--ink) }
+.shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain }
+.shot .cam { font-size: 1.4rem; line-height: 1 }
+.shot .tag {
+  position: absolute; left: 0; bottom: 0; right: 0;
+  background: rgba(1,43,66,.82); color: #fff;
+  font-size: .58rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  padding: .3rem .4rem;
+}
+.shot .x {
+  position: absolute; top: .3rem; right: .3rem; z-index: 2;
+  width: 32px; height: 32px; border-radius: var(--r);
+  background: rgba(1,43,66,.85); color: #fff; border: 0; font-size: .9rem; line-height: 1;
+}
+.shot input[type=file] { display: none }
+
+/* run bar */
+.runbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 700;
+  background: var(--W); border-top: 2px solid var(--navy);
+  box-shadow: 0 -2px 24px rgba(0,0,0,.08);
+  padding: .6rem .9rem calc(.6rem + env(safe-area-inset-bottom));
+}
+.runbar-in { max-width: 660px; margin: 0 auto; display: flex; align-items: center; gap: .8rem }
+.run-meta { line-height: 1.3; min-width: 0 }
+.run-meta .n { font-family: var(--mono); font-size: .92rem; font-weight: 700; color: var(--navy) }
+.btn {
+  appearance: none; border: 0; border-radius: var(--r);
+  min-height: 50px; padding: .6rem 1.3rem;
+  font-size: .68rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+  transition: background .15s;
+}
+.btn-pri { background: var(--teal); color: #fff; margin-left: auto; flex-shrink: 0 }
+.btn-pri:hover { background: var(--teal-d) }
+.btn-pri:disabled { background: var(--rule2); cursor: default }
+.btn-sec { background: none; border: 1px solid var(--rule2); color: var(--T) }
+.btn-sec:hover { border-color: var(--navy) }
+.btn-block { width: 100% }
+
+/* progress overlay */
+.busy {
+  position: fixed; inset: 0; z-index: 900; display: none;
+  background: rgba(242,245,247,.96);
+  flex-direction: column; align-items: center; justify-content: center; gap: 1rem; text-align: center; padding: 2rem;
+}
+.busy.show { display: flex }
+.busy-rule { width: 46px; height: 3px; background: var(--teal); position: relative; overflow: hidden }
+.busy-rule::after { content: ''; position: absolute; inset: 0; background: var(--navy); transform: translateX(-100%); animation: sweep 1.4s ease-in-out infinite }
+@keyframes sweep { 50% { transform: translateX(0) } 100% { transform: translateX(100%) } }
+.busy .stage { font-size: .95rem; font-weight: 600; color: var(--navy) }
+.busy .t { font-family: var(--mono); font-size: .8rem; color: var(--mut) }
+
+/* toast */
+.toast {
+  position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+  z-index: 950; background: var(--navy); color: #fff;
+  padding: .6rem 1rem; border-radius: var(--r); font-size: .8rem; max-width: 90vw;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.toast.show { opacity: 1 }
+
+/* ─── report ─── */
+.rep-hd { background: var(--navy); color: #fff; padding: .9rem .95rem; border-radius: var(--r) var(--r) 0 0 }
+.rep-hd .lbl { color: #9fc2cf }
+.rep-hd h2 { font-size: 1.05rem; font-weight: 700; letter-spacing: .04em; margin: .15rem 0 .3rem }
+.rep-hd .sub { font-family: var(--mono); font-size: .72rem; color: #cfe2e8 }
+.rep { background: var(--W); border: 1px solid var(--rule); border-top: 0; border-radius: 0 0 var(--r) var(--r); margin-bottom: .85rem }
+.rep-row { padding: .7rem .95rem; border-bottom: 1px solid var(--rule) }
+.rep-row:last-child { border-bottom: 0 }
+.rep-row .lbl { display: block; margin-bottom: .3rem }
+.sev {
+  display: inline-block; padding: .18rem .55rem; border-radius: var(--r);
+  font-size: .62rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+}
+.sev.light        { background: var(--ok-bg);   color: var(--ok) }
+.sev.moderate     { background: var(--warn-bg); color: var(--warn) }
+.sev.severe, .sev.catastrophic { background: var(--bad-bg); color: var(--bad) }
+.sev.neutral      { background: var(--off2); color: var(--mut) }
+.wearline { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem }
+.wearname { font-size: 1.05rem; font-weight: 700; color: var(--navy) }
+.first {
+  background: var(--teal-tint); border: 1px solid var(--teal); border-radius: var(--r);
+  padding: .7rem .8rem; margin-top: .3rem;
+}
+.first .lbl { color: var(--teal-d) }
+.first p { font-weight: 600; color: var(--navy); margin-top: .2rem }
+table.pt { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums }
+table.pt th {
+  text-align: left; font-size: .56rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--mut); padding: .3rem .4rem .3rem 0; border-bottom: 1px solid var(--rule2);
+}
+table.pt td { padding: .5rem .4rem .15rem 0; vertical-align: top; border-bottom: 0 }
+table.pt tr.rsn td { padding: 0 .4rem .55rem 0; border-bottom: 1px solid var(--rule); font-size: .74rem; color: var(--mut) }
+table.pt tr:last-child td { border-bottom: 0 }
+table.pt .pname { font-family: var(--mono); font-weight: 700; color: var(--navy); white-space: nowrap }
+table.pt .arrow { color: var(--teal); font-weight: 700 }
+.cause { display: flex; gap: .55rem; align-items: flex-start; padding: .45rem 0; border-bottom: 1px solid var(--off2) }
+.cause:last-child { border-bottom: 0 }
+.cause .lk { flex-shrink: 0; margin-top: .1rem }
+.cause .ev { font-size: .76rem; color: var(--mut) }
+ul.plain { list-style: none }
+ul.plain li { padding: .3rem 0 .3rem 1rem; position: relative }
+ul.plain li::before { content: '—'; position: absolute; left: 0; color: var(--teal) }
+.rep-actions { display: flex; gap: .6rem; margin-bottom: .85rem }
+.rep-actions .btn { flex: 1 }
+
+/* ─── history ─── */
+.hrow {
+  width: 100%; text-align: left; background: var(--W);
+  border: 1px solid var(--rule); border-radius: var(--r); margin-bottom: .55rem;
+  padding: .65rem .8rem; display: flex; gap: .7rem; align-items: center;
+}
+.hrow img { width: 52px; height: 52px; object-fit: cover; border-radius: var(--r); background: var(--ink); flex-shrink: 0 }
+.hrow .hmain { min-width: 0; flex: 1 }
+.hrow .hd1 { font-family: var(--mono); font-weight: 700; color: var(--navy); font-size: .86rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.hrow .hd2 { font-size: .74rem; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.empty { text-align: center; color: var(--mut); padding: 2.5rem 1rem; font-size: .85rem }
+.empty .lbl { display: block; margin-bottom: .5rem }
+
+/* setup */
+.hint { font-size: .74rem; color: var(--mut); margin-top: .3rem; line-height: 1.5 }
+.hint a { color: var(--teal) }
+.status-line { font-family: var(--mono); font-size: .78rem; margin-top: .5rem }
+.status-line.ok { color: var(--ok) }
+.status-line.bad { color: var(--bad) }
+
+@media (max-width: 430px) {
+  .row3 { grid-template-columns: 1fr 1fr }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-top">
+    <div class="bar-brand">TOOL<em>FLUX</em></div>
+    <div class="bar-app">Edge Lab · Insert Diagnostics</div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-view="form">Diagnose</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="report">Report</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="history">History</button>
+    <button class="tab" role="tab" aria-selected="false" data-view="setup">Setup</button>
+  </nav>
+</header>
+
+<main>
+
+<!-- ════════ DIAGNOSE FORM ════════ -->
+<section id="view-form" class="view active">
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">01</span><span class="sec-ttl">Job</span></div>
+    <div class="sec-bd">
+      <div class="row2">
+        <div class="f"><label class="lbl" for="operator">Operator</label>
+          <input id="operator" autocomplete="off" placeholder="Name"></div>
+        <div class="f"><label class="lbl" for="machine">Machine <span class="opt">no. / name</span></label>
+          <input id="machine" autocomplete="off" placeholder="VMC-2"></div>
+      </div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="machineType">Machine type</label>
+          <select id="machineType">
+            <option value="">—</option>
+            <option>CNC Lathe</option><option>VMC</option><option>HMC</option>
+            <option>CNC Turn-Mill</option><option>Conventional Lathe</option>
+            <option>Conventional Mill</option><option>Radial Drill</option><option>Other</option>
+          </select></div>
+        <div class="f"><label class="lbl" for="operation">Operation</label>
+          <select id="operation">
+            <option value="" data-kind="">— select —</option>
+            <option data-kind="turn">Turning — OD rough</option>
+            <option data-kind="turn">Turning — OD finish</option>
+            <option data-kind="turn">Boring / ID turning</option>
+            <option data-kind="turn">Facing</option>
+            <option data-kind="turn">Grooving / Parting</option>
+            <option data-kind="turn">Threading</option>
+            <option data-kind="mill">Face milling</option>
+            <option data-kind="mill">Shoulder milling</option>
+            <option data-kind="mill">Slot milling</option>
+            <option data-kind="mill">High-feed milling</option>
+            <option data-kind="drill">U-Drilling</option>
+            <option data-kind="drill">Solid carbide drilling</option>
+            <option data-kind="">Other</option>
+          </select></div>
+      </div>
+      <div class="f"><label class="lbl" for="component">Component / feature <span class="opt">optional</span></label>
+        <input id="component" autocomplete="off" placeholder="Gear blank OD, 80 mm"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">02</span><span class="sec-ttl">Material</span></div>
+    <div class="sec-bd">
+      <div class="f"><label class="lbl" for="material">Material machined</label>
+        <input id="material" autocomplete="off" placeholder="EN8 / SS304 / FG260 / Al6061"></div>
+      <div class="f"><label class="lbl">ISO group</label>
+        <div class="seg seg-sm" id="isoGroup" data-value="">
+          <button type="button" data-v="P">P steel</button>
+          <button type="button" data-v="M">M s.steel</button>
+          <button type="button" data-v="K">K c.iron</button>
+          <button type="button" data-v="N">N non-fe</button>
+          <button type="button" data-v="S">S HRSA</button>
+          <button type="button" data-v="H">H hard</button>
+        </div></div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="hardness">Hardness <span class="opt">optional</span></label>
+          <input id="hardness" autocomplete="off" placeholder="200 HB / 45 HRC"></div>
+        <div class="f"><label class="lbl" for="materialCondition">Condition <span class="opt">optional</span></label>
+          <select id="materialCondition">
+            <option value="">—</option>
+            <option>Rolled / bright bar</option><option>Forged</option>
+            <option>Cast — with skin</option><option>Cast — skin removed</option>
+            <option>Heat treated</option><option>Pre-machined</option>
+          </select></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">03</span><span class="sec-ttl">Tooling</span></div>
+    <div class="sec-bd">
+      <div class="f"><label class="lbl" for="insertDesig">Insert designation</label>
+        <input id="insertDesig" autocomplete="off" autocapitalize="characters" placeholder="CNMG120408 / APMT1604PDER" style="text-transform:uppercase">
+        <div class="parse" id="parseOut"></div></div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="brand">Insert brand</label>
+          <input id="brand" autocomplete="off" list="brandList" placeholder="TOOLFLUX">
+          <datalist id="brandList">
+            <option value="TOOLFLUX"><option value="Sandvik"><option value="Kennametal">
+            <option value="Iscar"><option value="Mitsubishi"><option value="Kyocera">
+            <option value="Taegutec"><option value="Korloy"><option value="Widia">
+            <option value="Tungaloy"><option value="Ceratizit"><option value="ZCC-CT">
+          </datalist></div>
+        <div class="f"><label class="lbl" for="grade">Insert grade</label>
+          <input id="grade" autocomplete="off" list="gradeList" placeholder="TFX-P25 / 4225 / PC9030">
+          <datalist id="gradeList">
+            <option value="TFX-P25"><option value="TFX-M35"><option value="TFX-K20">
+            <option value="TFX-U15"><option value="TFX-S30"><option value="TFX-H15"><option value="TFX-H10">
+          </datalist></div>
+      </div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="chipbreaker">Chipbreaker / geometry <span class="opt">optional</span></label>
+          <input id="chipbreaker" autocomplete="off" placeholder="PM / MA / -TR"></div>
+        <div class="f"><label class="lbl" for="cutterBody">Cutter body / holder</label>
+          <input id="cutterBody" autocomplete="off" placeholder="PCLNR2525M12 / HFMA D50"></div>
+      </div>
+      <div class="row3">
+        <div class="f mill-f drill-f"><label class="lbl" for="cutterDia">Cutter Ø <span class="opt">mm</span></label>
+          <input id="cutterDia" inputmode="decimal" autocomplete="off" placeholder="50"></div>
+        <div class="f mill-f"><label class="lbl" for="teeth">Teeth z</label>
+          <input id="teeth" inputmode="numeric" autocomplete="off" placeholder="4"></div>
+        <div class="f"><label class="lbl" for="overhang">Overhang <span class="opt">mm</span></label>
+          <input id="overhang" inputmode="decimal" autocomplete="off" placeholder="45"></div>
+      </div>
+      <div class="f"><label class="lbl" for="workholding">Workholding</label>
+        <select id="workholding">
+          <option value="">—</option>
+          <option>3-jaw chuck</option><option>3-jaw + tailstock</option><option>Collet</option>
+          <option>Between centres</option><option>Face plate</option>
+          <option>Machine vice</option><option>Dedicated fixture</option><option>Magnetic table</option>
+          <option>Thin-wall / weak clamping</option>
+        </select></div>
+      <div class="f"><label class="lbl" for="holderNotes">Setup / rigidity notes <span class="opt">optional</span></label>
+        <input id="holderNotes" autocomplete="off" placeholder="Long boring bar, slight chatter audible"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">04</span><span class="sec-ttl">Present parameters</span><span class="sec-note">as running now</span></div>
+    <div class="sec-bd">
+      <div class="row2">
+        <div class="f"><label class="lbl" for="vc">Vc <span class="opt">m/min</span></label>
+          <input id="vc" inputmode="decimal" autocomplete="off" placeholder="180"></div>
+        <div class="f"><label class="lbl" for="rpm">Spindle n <span class="opt">rpm</span></label>
+          <input id="rpm" inputmode="decimal" autocomplete="off" placeholder="or enter rpm"></div>
+      </div>
+      <div class="row2">
+        <div class="f turn-f drill-f"><label class="lbl" for="feedPerRev">Feed fn <span class="opt">mm/rev</span></label>
+          <input id="feedPerRev" inputmode="decimal" autocomplete="off" placeholder="0.25"></div>
+        <div class="f mill-f"><label class="lbl" for="feedPerTooth">Feed fz <span class="opt">mm/tooth</span></label>
+          <input id="feedPerTooth" inputmode="decimal" autocomplete="off" placeholder="0.12"></div>
+        <div class="f turn-f"><label class="lbl" for="workDia">Workpiece Ø <span class="opt">mm</span></label>
+          <input id="workDia" inputmode="decimal" autocomplete="off" placeholder="80"></div>
+      </div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="ap">Depth ap <span class="opt">mm</span></label>
+          <input id="ap" inputmode="decimal" autocomplete="off" placeholder="2.0"></div>
+        <div class="f mill-f"><label class="lbl" for="ae">Width ae <span class="opt">mm</span></label>
+          <input id="ae" inputmode="decimal" autocomplete="off" placeholder="35"></div>
+      </div>
+      <div class="calc" id="calcOut"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">05</span><span class="sec-ttl">Coolant</span></div>
+    <div class="sec-bd">
+      <div class="f"><label class="lbl">Coolant</label>
+        <div class="seg" id="coolantType" data-value="">
+          <button type="button" data-v="Dry">Dry</button>
+          <button type="button" data-v="Flood emulsion">Flood</button>
+          <button type="button" data-v="Mist / MQL">Mist</button>
+          <button type="button" data-v="Through-tool">Thru-tool</button>
+          <button type="button" data-v="Air blast">Air</button>
+        </div></div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="coolantConc">Concentration <span class="opt">%, optional</span></label>
+          <input id="coolantConc" inputmode="decimal" autocomplete="off" placeholder="7"></div>
+        <div class="f"><label class="lbl" for="coolantPressure">Pressure <span class="opt">bar, optional</span></label>
+          <input id="coolantPressure" inputmode="decimal" autocomplete="off" placeholder="4"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">06</span><span class="sec-ttl">Edge life &amp; failure</span></div>
+    <div class="sec-bd">
+      <div class="row3">
+        <div class="f" style="grid-column: span 1"><label class="lbl" for="edgeLife">Life this edge</label>
+          <input id="edgeLife" inputmode="decimal" autocomplete="off" placeholder="42"></div>
+        <div class="f"><label class="lbl" for="edgeLifeUnit">Unit</label>
+          <select id="edgeLifeUnit">
+            <option>pcs / edge</option><option>min in cut</option><option>passes</option>
+          </select></div>
+        <div class="f"><label class="lbl" for="expectedLife">Usual life <span class="opt">opt.</span></label>
+          <input id="expectedLife" inputmode="decimal" autocomplete="off" placeholder="60"></div>
+      </div>
+      <div class="f"><label class="lbl">What did you observe? <span class="opt">tap all that apply</span></label>
+        <div class="chips" id="failureModes">
+          <button type="button" class="chip">Edge chipped</button>
+          <button type="button" class="chip">Insert broke</button>
+          <button type="button" class="chip">Wore out fast</button>
+          <button type="button" class="chip">Material stuck on edge</button>
+          <button type="button" class="chip">Notch at depth line</button>
+          <button type="button" class="chip">Cracks on edge</button>
+          <button type="button" class="chip">Edge deformed</button>
+          <button type="button" class="chip">Finish degraded</button>
+          <button type="button" class="chip">Size drifting</button>
+          <button type="button" class="chip">Chatter / noise</button>
+          <button type="button" class="chip">Burr on part</button>
+          <button type="button" class="chip">Sparks / red chips</button>
+          <button type="button" class="chip">Not sure</button>
+        </div></div>
+      <div class="row2">
+        <div class="f"><label class="lbl" for="failureTiming">When did it fail?</label>
+          <select id="failureTiming">
+            <option value="">—</option>
+            <option>Right at first cut</option><option>Within a few parts</option>
+            <option>Gradually over the run</option><option>Suddenly mid-run</option>
+            <option>On interrupted section</option><option>Random / varies</option>
+          </select></div>
+        <div class="f"><label class="lbl" for="chipNotes">Chip colour / form <span class="opt">optional</span></label>
+          <input id="chipNotes" autocomplete="off" placeholder="Blue, long stringy"></div>
+      </div>
+      <div class="f"><label class="lbl" for="notes">Anything else <span class="opt">optional</span></label>
+        <textarea id="notes" placeholder="Two inserts from the same box did the same thing…"></textarea></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">07</span><span class="sec-ttl">Photos of the used insert</span></div>
+    <div class="sec-bd">
+      <div class="shots">
+        <label class="shot" id="shot0">
+          <span class="cam">◉</span>
+          <span class="lbl">Tap to photograph</span>
+          <span class="tag">Rake face / top</span>
+          <input type="file" accept="image/*" capture="environment" data-slot="0">
+        </label>
+        <label class="shot" id="shot1">
+          <span class="cam">◉</span>
+          <span class="lbl">Optional 2nd angle</span>
+          <span class="tag">Flank / side</span>
+          <input type="file" accept="image/*" capture="environment" data-slot="1">
+        </label>
+      </div>
+      <p class="hint">Fill the frame with the worn corner. Daylight or torch from the side shows wear best. Wipe off coolant first.</p>
+    </div>
+  </div>
+
+</section>
+
+<!-- ════════ REPORT ════════ -->
+<section id="view-report" class="view">
+  <div id="reportBody">
+    <div class="empty"><span class="lbl">No report yet</span>Run a diagnosis from the Diagnose tab.</div>
+  </div>
+</section>
+
+<!-- ════════ HISTORY ════════ -->
+<section id="view-history" class="view">
+  <div id="historyBody"></div>
+</section>
+
+<!-- ════════ SETUP ════════ -->
+<section id="view-setup" class="view">
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">S1</span><span class="sec-ttl">Backend</span></div>
+    <div class="sec-bd">
+      <div class="f"><label class="lbl" for="backendUrl">Apps Script Web App URL</label>
+        <input id="backendUrl" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec">
+        <p class="hint">Deploy <span class="mono">edgelab-sync.gs</span> as a Web App (Execute as: Me, Access: Anyone) and paste the /exec URL here. The Anthropic API key stays in the script, never on this phone.</p></div>
+      <button class="btn btn-sec btn-block" id="testBtn">Test connection</button>
+      <div class="status-line" id="testOut"></div>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">S2</span><span class="sec-ttl">Defaults</span></div>
+    <div class="sec-bd">
+      <div class="f"><label class="lbl" for="defOperator">Default operator name</label>
+        <input id="defOperator" autocomplete="off" placeholder="Name shown on every run"></div>
+      <p class="hint">Operator, machine, material and tooling fields remember their last values so a repeat diagnosis takes seconds.</p>
+    </div>
+  </div>
+  <div class="sec">
+    <div class="sec-hd"><span class="sec-no">S3</span><span class="sec-ttl">Data</span></div>
+    <div class="sec-bd">
+      <p class="hint" style="margin:0 0 .7rem">Every diagnosis is stored in the Google Sheet (inputs, photos link, AI report) for future reference and development. The last 40 reports are also kept on this phone.</p>
+      <button class="btn btn-sec btn-block" id="clearHistBtn">Clear on-phone history</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- run bar -->
+<div class="runbar" id="runbar">
+  <div class="runbar-in">
+    <div class="run-meta">
+      <span class="lbl">Inputs given</span><br>
+      <span class="n" id="inputCount">0</span> <span class="muted" style="font-size:.72rem">· more inputs = sharper diagnosis</span>
+    </div>
+    <button class="btn btn-pri" id="runBtn">Run diagnosis</button>
+  </div>
+</div>
+
+<div class="busy" id="busy">
+  <div class="busy-rule"></div>
+  <div class="stage" id="busyStage">Preparing…</div>
+  <div class="t" id="busyTimer">0 s</div>
+  <div class="muted" style="font-size:.78rem">A full read of the edge typically takes 30–90 seconds.<br>Keep the app open.</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="insert-parser.js"></script>
+<script>
+'use strict';
+/* ═══ TOOLFLUX EDGE LAB — app logic ═══ */
+
+const $ = id => document.getElementById(id);
+const LS_SET = 'edgelab_settings', LS_HIST = 'edgelab_history', LS_LAST = 'edgelab_lastform';
+const HIST_MAX = 40;
+
+const state = {
+  settings: loadJSON(LS_SET, { backendUrl: '', operator: '' }),
+  images: [null, null],          // {data(base64), mime, label, previewUrl}
+  history: loadJSON(LS_HIST, []),
+  currentReport: null
+};
+
+function loadJSON(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch (_) { return fb; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} }
+
+/* ─── tabs ─── */
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showView(t.dataset.view)));
+function showView(name) {
+  document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + name));
+  $('runbar').style.display = name === 'form' ? '' : 'none';
+  if (name === 'history') renderHistory();
+  window.scrollTo(0, 0);
+}
+
+/* ─── segmented + chips ─── */
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    const on = b.getAttribute('aria-pressed') === 'true';
+    seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', String(!on));
+    seg.dataset.value = on ? '' : b.dataset.v;
+    updateCount();
+  }));
+});
+document.querySelectorAll('#failureModes .chip').forEach(c => c.addEventListener('click', () => {
+  c.setAttribute('aria-pressed', c.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+  updateCount();
+}));
+
+/* ─── operation kind: show/hide turn / mill / drill fields ─── */
+$('operation').addEventListener('change', applyOpKind);
+function opKind() {
+  const o = $('operation');
+  return (o.selectedOptions[0] && o.selectedOptions[0].dataset.kind) || '';
+}
+function applyOpKind() {
+  const k = opKind();
+  document.querySelectorAll('.turn-f, .mill-f, .drill-f').forEach(el => {
+    const show = !k || el.classList.contains(k + '-f');
+    el.style.display = show ? '' : 'none';
+  });
+  recalc();
+}
+
+/* ─── insert parse ─── */
+$('insertDesig').addEventListener('input', () => {
+  const out = $('parseOut');
+  const raw = $('insertDesig').value.trim();
+  if (raw.length < 3) { out.className = 'parse'; out.innerHTML = ''; updateCount(); return; }
+  const p = parseInsertCode(raw);
+  if (p && p.recognized) {
+    out.className = 'parse show' + (p.uncertain ? ' unrec' : '');
+    out.innerHTML =
+      '<span class="pk">' + esc(p.family) + '</span> · ' + esc(p.shape) +
+      (p.ic_mm ? ' · size ' + p.ic_mm : '') +
+      (p.corner_r_mm ? ' · r ' + p.corner_r_mm + ' mm' : '') +
+      ' · κ ' + p.kapr + '°' + (p.ctf > 1.05 ? ' · chip-thinning ×' + p.ctf : '') +
+      '<br>' + esc(p.desc);
+  } else {
+    out.className = 'parse show unrec';
+    out.innerHTML = 'Not a recognised ISO 1832 code — that’s fine, it will still be sent to the diagnosis.';
+  }
+  updateCount();
+});
+
+/* ─── live calculation strip ─── */
+['vc','rpm','feedPerRev','feedPerTooth','teeth','cutterDia','workDia','ap','ae'].forEach(id =>
+  $(id).addEventListener('input', recalc));
+function num(id) { const v = parseFloat($(id).value); return isFinite(v) && v > 0 ? v : null; }
+function recalc() {
+  const k = opKind();
+  const D = (k === 'turn') ? num('workDia') : num('cutterDia') || num('workDia');
+  let vc = num('vc'), n = num('rpm');
+  const out = $('calcOut'); const bits = [];
+  if (D) {
+    if (vc && !n) n = 1000 * vc / (Math.PI * D);
+    else if (n && !vc) vc = n * Math.PI * D / 1000;
+    if (n)  bits.push('n ≈ <b>' + Math.round(n) + '</b> rpm');
+    if (vc) bits.push('Vc ≈ <b>' + Math.round(vc) + '</b> m/min');
+  }
+  if (n) {
+    const fn = num('feedPerRev'), fz = num('feedPerTooth'), z = num('teeth');
+    if (k === 'mill' && fz && z) bits.push('vf ≈ <b>' + Math.round(n * fz * z) + '</b> mm/min');
+    else if (fn) bits.push('feed ≈ <b>' + Math.round(n * fn) + '</b> mm/min');
+  }
+  const p = parseInsertCode($('insertDesig').value.trim());
+  if (p && p.recognized && p.ctf > 1.3 && num('feedPerTooth'))
+    bits.push('h<sub>m</sub> reduced ×' + p.ctf + ' (' + esc(p.family) + ') — commanded fz can run higher than nominal');
+  out.innerHTML = bits.join(' &nbsp;·&nbsp; ');
+  out.className = 'calc' + (bits.length ? ' show' : '');
+  updateCount();
+}
+
+/* ─── photos ─── */
+document.querySelectorAll('.shot input[type=file]').forEach(inp => {
+  inp.addEventListener('change', async e => {
+    const slot = +inp.dataset.slot;
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    try {
+      const img = await downscale(file, 1280, 0.85);
+      state.images[slot] = { data: img.base64, mime: 'image/jpeg', label: slot === 0 ? 'rake' : 'flank', previewUrl: img.dataUrl };
+      renderShot(slot);
+    } catch (err) { toast('Could not read that photo: ' + err.message); }
+    inp.value = '';
+    updateCount();
+  });
+});
+function renderShot(slot) {
+  const el = $('shot' + slot);
+  el.querySelectorAll('img, .x').forEach(n => n.remove());
+  const img = state.images[slot];
+  el.classList.toggle('filled', !!img);
+  if (!img) return;
+  const im = document.createElement('img'); im.src = img.previewUrl; im.alt = 'Insert photo';
+  const x = document.createElement('button'); x.type = 'button'; x.className = 'x'; x.textContent = '✕';
+  x.setAttribute('aria-label', 'Remove photo');
+  x.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); state.images[slot] = null; renderShot(slot); updateCount(); });
+  el.appendChild(im); el.appendChild(x);
+}
+function downscale(file, maxPx, q) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const sc = Math.min(1, maxPx / Math.max(im.width, im.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      const dataUrl = c.toDataURL('image/jpeg', q);
+      resolve({ dataUrl: dataUrl, base64: dataUrl.split(',')[1] });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable image')); };
+    im.src = url;
+  });
+}
+function thumb(dataUrl) {
+  return new Promise(resolve => {
+    const im = new Image();
+    im.onload = () => {
+      const sc = 96 / Math.max(im.width, im.height);
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.width * sc); c.height = Math.round(im.height * sc);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.6));
+    };
+    im.onerror = () => resolve('');
+    im.src = dataUrl;
+  });
+}
+
+/* ─── collect record ─── */
+const TEXT_IDS = ['operator','machine','machineType','operation','component','material','hardness',
+  'materialCondition','insertDesig','brand','grade','chipbreaker','cutterBody','cutterDia','teeth',
+  'overhang','workholding','holderNotes','vc','rpm','feedPerRev','feedPerTooth','workDia','ap','ae',
+  'coolantConc','coolantPressure','edgeLife','edgeLifeUnit','expectedLife','failureTiming','chipNotes','notes'];
+
+function collectRecord() {
+  const r = {};
+  TEXT_IDS.forEach(id => { const v = $(id).value.trim(); if (v) r[id] = v; });
+  if ($('isoGroup').dataset.value) r.isoGroup = $('isoGroup').dataset.value;
+  if ($('coolantType').dataset.value) r.coolantType = $('coolantType').dataset.value;
+  const fm = [...document.querySelectorAll('#failureModes .chip[aria-pressed=true]')].map(c => c.textContent);
+  if (fm.length) r.failureModes = fm;
+  const p = parseInsertCode(r.insertDesig || '');
+  if (p && p.recognized) {
+    r.insertParsed = p.family + ' — ' + p.shape +
+      (p.corner_r_mm ? ', nose r ' + p.corner_r_mm + 'mm' : '') + ', kapr ' + p.kapr + '°' +
+      (p.ctf > 1.05 ? ', chip-thinning factor ' + p.ctf : '') + '. ' + p.desc;
+  }
+  // derived values so the model doesn't have to redo arithmetic
+  const k = opKind(); const D = (k === 'turn') ? num('workDia') : num('cutterDia') || num('workDia');
+  let vc = num('vc'), n = num('rpm');
+  if (D && vc && !n) r.rpm = String(Math.round(1000 * vc / (Math.PI * D)));
+  if (D && n && !vc) r.vc = String(Math.round(n * Math.PI * D / 1000));
+  const n2 = n || (D && vc ? 1000 * vc / (Math.PI * D) : null);
+  if (n2) {
+    const fz = num('feedPerTooth'), z = num('teeth'), fn = num('feedPerRev');
+    if (fz && z) r.feedRate = String(Math.round(n2 * fz * z));
+    else if (fn) r.feedRate = String(Math.round(n2 * fn));
+  }
+  return r;
+}
+
+function updateCount() {
+  let c = 0;
+  TEXT_IDS.forEach(id => {
+    if (id === 'edgeLifeUnit') return;          // pre-selected unit isn't an input
+    if ($(id).value.trim()) c++;
+  });
+  if ($('isoGroup').dataset.value) c++;
+  if ($('coolantType').dataset.value) c++;
+  if (document.querySelector('#failureModes .chip[aria-pressed=true]')) c++;
+  state.images.forEach(i => { if (i) c++; });
+  $('inputCount').textContent = c;
+}
+TEXT_IDS.forEach(id => $(id).addEventListener('input', updateCount));
+
+/* ─── run ─── */
+$('runBtn').addEventListener('click', runDiagnosis);
+async function runDiagnosis() {
+  const missing = [];
+  if (!state.settings.backendUrl) missing.push('backend URL (Setup tab)');
+  if (!$('insertDesig').value.trim()) missing.push('insert designation');
+  if (!$('material').value.trim()) missing.push('material');
+  if (!$('operation').value) missing.push('operation');
+  if (!state.images[0] && !state.images[1]) missing.push('a photo of the used insert');
+  if (!num('vc') && !num('rpm')) missing.push('Vc or rpm');
+  if (missing.length) { toast('Needed: ' + missing.join(' · ')); return; }
+
+  const record = collectRecord();
+  const images = state.images.filter(Boolean).map(i => ({ label: i.label, mime: i.mime, data: i.data }));
+
+  saveLastForm();
+  busy(true);
+  const t0 = Date.now();
+  const timer = setInterval(() => { $('busyTimer').textContent = Math.round((Date.now() - t0) / 1000) + ' s'; }, 1000);
+  const stages = ['Uploading photo & data…', 'Fable is reading the edge…', 'Cross-checking parameters…', 'Writing the report…'];
+  let si = 0; $('busyStage').textContent = stages[0];
+  const stager = setInterval(() => { si = Math.min(si + 1, stages.length - 1); $('busyStage').textContent = stages[si]; }, 14000);
+
+  try {
+    const res = await fetch(state.settings.backendUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'diagnose', record: record, images: images })
+    });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'Diagnosis failed.');
+    state.currentReport = { ts: Date.now(), record: record, diagnosis: out.diagnosis, model: out.model, runId: out.runId };
+    renderReport(state.currentReport);
+    await pushHistory(state.currentReport);
+    showView('report');
+  } catch (err) {
+    toast(err.message.indexOf('fetch') !== -1 || err.name === 'TypeError'
+      ? 'Could not reach the backend. Check network and the URL in Setup.'
+      : err.message);
+  } finally {
+    clearInterval(timer); clearInterval(stager); busy(false);
+  }
+}
+function busy(on) { $('busy').classList.toggle('show', on); }
+
+async function pushHistory(rep) {
+  const src = state.images[0] || state.images[1];
+  const th = src ? await thumb(src.previewUrl) : '';
+  state.history.unshift({
+    ts: rep.ts, runId: rep.runId, model: rep.model, thumb: th,
+    record: {
+      insertDesig: rep.record.insertDesig || '', material: rep.record.material || '',
+      operation: rep.record.operation || '', grade: rep.record.grade || '', brand: rep.record.brand || ''
+    },
+    diagnosis: rep.diagnosis
+  });
+  if (state.history.length > HIST_MAX) state.history.length = HIST_MAX;
+  saveJSON(LS_HIST, state.history);
+}
+
+/* ─── report rendering ─── */
+const WEAR_LABEL = {
+  flank_wear: 'Flank wear', crater_wear: 'Crater wear', built_up_edge: 'Built-up edge',
+  chipping: 'Edge chipping', notch_wear: 'Notch wear', thermal_cracking: 'Thermal cracking',
+  plastic_deformation: 'Plastic deformation', fracture: 'Fracture', edge_rounding: 'Edge rounding',
+  unknown: 'Undetermined'
+};
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function sev(v, cls) { return '<span class="sev ' + (cls || esc(v)) + '">' + esc(v) + '</span>'; }
+
+function renderReport(rep) {
+  const d = rep.diagnosis, r = rep.record;
+  const dt = new Date(rep.ts);
+  const when = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) +
+    ' · ' + dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  let h = '';
+  h += '<div class="rep-hd"><span class="lbl">Diagnostic report ' + esc(rep.runId || '') + '</span>' +
+       '<h2>' + esc(r.insertDesig || 'Insert') + (r.grade ? ' · ' + esc(r.grade) : '') + '</h2>' +
+       '<div class="sub">' + esc(r.material || '') + (r.operation ? ' — ' + esc(r.operation) : '') + ' · ' + when + '</div></div>';
+  h += '<div class="rep">';
+
+  h += '<div class="rep-row"><span class="lbl">Wear identification</span>' +
+    '<div class="wearline"><span class="wearname">' + esc(WEAR_LABEL[d.wear.primary_mode] || d.wear.primary_mode) + '</span>' +
+    sev(d.wear.severity) + sev(d.wear.confidence + ' confidence', 'neutral') + '</div>' +
+    (d.wear.secondary_modes && d.wear.secondary_modes.length
+      ? '<p class="muted" style="font-size:.78rem;margin-top:.25rem">Also present: ' + d.wear.secondary_modes.map(m => esc(WEAR_LABEL[m] || m)).join(', ') + '</p>' : '') +
+    '<p style="font-size:.82rem;margin-top:.4rem">' + esc(d.wear.image_observations) + '</p></div>';
+
+  h += '<div class="rep-row"><span class="lbl">Verdict</span><p>' + esc(d.summary) + '</p>' +
+    '<div class="first"><span class="lbl">Apply first — one change only</span><p>' + esc(d.apply_first) + '</p></div></div>';
+
+  if (d.parameter_changes && d.parameter_changes.length) {
+    h += '<div class="rep-row"><span class="lbl">Parameter changes</span><table class="pt">' +
+      '<tr><th>Param</th><th>Now</th><th></th><th>Set to</th><th>Δ</th></tr>';
+    d.parameter_changes.forEach(p => {
+      h += '<tr><td class="pname">' + esc(p.parameter) + '</td><td class="mono">' + esc(p.current) + '</td>' +
+        '<td class="arrow">→</td><td class="mono" style="font-weight:700">' + esc(p.recommended) + '</td>' +
+        '<td class="mono">' + esc(p.change) + '</td></tr>' +
+        '<tr class="rsn"><td colspan="5">' + esc(p.reason) + '</td></tr>';
+    });
+    h += '</table></div>';
+  }
+
+  if (d.root_causes && d.root_causes.length) {
+    h += '<div class="rep-row"><span class="lbl">Root causes</span>';
+    d.root_causes.forEach(c => {
+      h += '<div class="cause"><span class="lk">' + sev(c.likelihood, c.likelihood === 'high' ? 'severe' : c.likelihood === 'medium' ? 'moderate' : 'neutral') + '</span>' +
+        '<div><div style="font-weight:600">' + esc(c.cause) + '</div><div class="ev">' + esc(c.evidence) + '</div></div></div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div class="rep-row"><span class="lbl">Coolant</span><p><b>' + esc(d.coolant.verdict) + '</b> — ' + esc(d.coolant.recommendation) + '</p></div>';
+
+  if (d.setup_rigidity && d.setup_rigidity.length) {
+    h += '<div class="rep-row"><span class="lbl">Setup &amp; rigidity</span><ul class="plain">' +
+      d.setup_rigidity.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul></div>';
+  }
+
+  h += '<div class="rep-row"><span class="lbl">Grade &amp; geometry</span><p><b>' + esc(d.grade_geometry.verdict) + '</b> — ' + esc(d.grade_geometry.recommendation) + '</p></div>';
+  h += '<div class="rep-row"><span class="lbl">Expected result</span><p>' + esc(d.expected_result) + '</p></div>';
+
+  if (d.checks && d.checks.length) {
+    h += '<div class="rep-row"><span class="lbl">Record next run</span><ul class="plain">' +
+      d.checks.map(s => '<li>' + esc(s) + '</li>').join('') + '</ul></div>';
+  }
+
+  h += '<div class="rep-row muted" style="font-size:.7rem">Engine: ' + esc(rep.model || '') + ' · Logged to sheet as ' + esc(rep.runId || '—') + '. AI guidance — verify against machine and tooling limits before applying.</div>';
+  h += '</div>';
+
+  h += '<div class="rep-actions">' +
+    '<button class="btn btn-sec" id="copyRepBtn">Copy as text</button>' +
+    '<button class="btn btn-pri" style="margin:0" id="newRunBtn">New diagnosis</button></div>';
+
+  $('reportBody').innerHTML = h;
+  $('newRunBtn').addEventListener('click', () => showView('form'));
+  $('copyRepBtn').addEventListener('click', () => {
+    navigator.clipboard.writeText(reportText(rep)).then(() => toast('Report copied'), () => toast('Copy failed'));
+  });
+}
+
+function reportText(rep) {
+  const d = rep.diagnosis, r = rep.record, L = [];
+  L.push('TOOLFLUX EDGE LAB — ' + (rep.runId || ''));
+  L.push((r.insertDesig || '') + ' ' + (r.grade || '') + ' | ' + (r.material || '') + ' | ' + (r.operation || ''));
+  L.push('WEAR: ' + (WEAR_LABEL[d.wear.primary_mode] || d.wear.primary_mode) + ' (' + d.wear.severity + ', ' + d.wear.confidence + ' confidence)');
+  L.push('VERDICT: ' + d.summary);
+  L.push('APPLY FIRST: ' + d.apply_first);
+  (d.parameter_changes || []).forEach(p => L.push('  ' + p.parameter + ': ' + p.current + ' -> ' + p.recommended + ' (' + p.change + ') — ' + p.reason));
+  (d.root_causes || []).forEach(c => L.push('CAUSE [' + c.likelihood + ']: ' + c.cause));
+  L.push('COOLANT: ' + d.coolant.verdict + ' — ' + d.coolant.recommendation);
+  (d.setup_rigidity || []).forEach(s => L.push('SETUP: ' + s));
+  L.push('GRADE: ' + d.grade_geometry.verdict + ' — ' + d.grade_geometry.recommendation);
+  L.push('EXPECTED: ' + d.expected_result);
+  return L.join('\n');
+}
+
+/* ─── history ─── */
+function renderHistory() {
+  const el = $('historyBody');
+  if (!state.history.length) {
+    el.innerHTML = '<div class="empty"><span class="lbl">No diagnoses yet</span>Reports appear here after each run — tap one to reopen it.</div>';
+    return;
+  }
+  el.innerHTML = '';
+  state.history.forEach((hRec, i) => {
+    const b = document.createElement('button');
+    b.className = 'hrow'; b.type = 'button';
+    const dt = new Date(hRec.ts).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    const wear = hRec.diagnosis && hRec.diagnosis.wear ? hRec.diagnosis.wear : null;
+    b.innerHTML = (hRec.thumb ? '<img src="' + hRec.thumb + '" alt="">' : '') +
+      '<div class="hmain"><div class="hd1">' + esc(hRec.record.insertDesig || 'Insert') + (hRec.record.grade ? ' · ' + esc(hRec.record.grade) : '') + '</div>' +
+      '<div class="hd2">' + dt + ' · ' + esc(hRec.record.material || '') + ' · ' + esc(hRec.record.operation || '') + '</div></div>' +
+      (wear ? sev(wear.severity) : '');
+    b.addEventListener('click', () => {
+      state.currentReport = { ts: hRec.ts, runId: hRec.runId, model: hRec.model, record: hRec.record, diagnosis: hRec.diagnosis };
+      renderReport(state.currentReport);
+      showView('report');
+    });
+    el.appendChild(b);
+  });
+}
+$('clearHistBtn').addEventListener('click', () => {
+  if (!confirm('Remove the on-phone history? The Google Sheet keeps everything.')) return;
+  state.history = []; saveJSON(LS_HIST, state.history); toast('On-phone history cleared');
+});
+
+/* ─── setup ─── */
+$('backendUrl').value = state.settings.backendUrl || '';
+$('defOperator').value = state.settings.operator || '';
+$('backendUrl').addEventListener('change', () => { state.settings.backendUrl = $('backendUrl').value.trim(); saveJSON(LS_SET, state.settings); });
+$('defOperator').addEventListener('change', () => {
+  state.settings.operator = $('defOperator').value.trim(); saveJSON(LS_SET, state.settings);
+  if (!$('operator').value) $('operator').value = state.settings.operator;
+});
+$('testBtn').addEventListener('click', async () => {
+  const url = $('backendUrl').value.trim();
+  const out = $('testOut');
+  if (!url) { out.className = 'status-line bad'; out.textContent = 'Paste the /exec URL first.'; return; }
+  state.settings.backendUrl = url; saveJSON(LS_SET, state.settings);
+  out.className = 'status-line'; out.textContent = 'Testing…';
+  try {
+    const res = await fetch(url + (url.indexOf('?') === -1 ? '?' : '&') + 'action=ping');
+    const j = await res.json();
+    if (j.ok && j.hasKey) { out.className = 'status-line ok'; out.textContent = '✓ Connected. API key configured.'; }
+    else if (j.ok) { out.className = 'status-line bad'; out.textContent = '△ Reached the script, but ANTHROPIC_API_KEY is not set in Script Properties.'; }
+    else throw new Error();
+  } catch (_) { out.className = 'status-line bad'; out.textContent = '✕ Could not reach the script. Check the URL and that access is set to “Anyone”.'; }
+});
+
+/* ─── remember last form values ─── */
+const REMEMBER = ['operator','machine','machineType','material','hardness','brand','grade','cutterBody','workholding'];
+function saveLastForm() {
+  const o = {};
+  REMEMBER.forEach(id => { o[id] = $(id).value; });
+  o.isoGroup = $('isoGroup').dataset.value;
+  saveJSON(LS_LAST, o);
+}
+function restoreLastForm() {
+  const o = loadJSON(LS_LAST, null);
+  if (o) {
+    REMEMBER.forEach(id => { if (o[id]) $(id).value = o[id]; });
+    if (o.isoGroup) {
+      const btn = document.querySelector('#isoGroup button[data-v="' + o.isoGroup + '"]');
+      if (btn) { btn.setAttribute('aria-pressed', 'true'); $('isoGroup').dataset.value = o.isoGroup; }
+    }
+  }
+  if (!$('operator').value && state.settings.operator) $('operator').value = state.settings.operator;
+}
+
+/* ─── toast ─── */
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 4200);
+}
+
+/* ─── init ─── */
+restoreLastForm();
+applyOpKind();
+updateCount();
+if (!state.settings.backendUrl) {
+  setTimeout(() => toast('First run: open Setup and paste your Apps Script URL.'), 800);
+}
+</script>
+</body>
+</html>
