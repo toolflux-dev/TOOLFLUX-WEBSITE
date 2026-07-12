@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="contract-strike.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>CONTRACT STRIKE — TOOLFLUX</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   CONTRACT STRIKE — the TOOLFLUX career game.
+   Dark tactical UI. Static art only, no animation engine.
+   ═══════════════════════════════════════════════════════════ */
+:root{
+  --bg:#0b1220; --bg2:#0e1626; --panel:#141e30; --panel2:#1a2740;
+  --line:#243550; --line2:#2f4568;
+  --T:#e8eef7; --mut:#8aa0bd; --dim:#5b7291;
+  --orange:#ff7a1a; --orange-d:#c85a08; --gold:#f5c542; --teal:#19c3dd;
+  --ok:#34d17b; --bad:#ff4d5e; --purple:#9d7bff;
+  --tier0:#9aa7b5; --tier1:#19c3dd; --tier2:#7b9bff; --tier3:#ff7a1a; --tier4:#f5c542; --tier5:#ffd700;
+  --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+  --cut:12px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg);
+  background-image:radial-gradient(1200px 500px at 50% -10%, #16233c 0%, transparent 60%);
+  color:var(--T);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-size:.92rem;line-height:1.5;min-height:100vh;
+}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{
+  font-family:inherit;font-size:1rem;color:var(--T);background:var(--bg2);
+  border:1px solid var(--line2);border-radius:2px;padding:.55rem .65rem;width:100%;min-height:46px;
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px}
+::selection{background:var(--orange);color:#000}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+.lbl{font-size:.58rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--mut)}
+.cut{clip-path:polygon(0 0,calc(100% - var(--cut)) 0,100% var(--cut),100% 100%,var(--cut) 100%,0 calc(100% - var(--cut)))}
+
+/* ─── header ─── */
+header.bar{
+  position:sticky;top:0;z-index:600;background:rgba(11,18,32,.92);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:.6rem;padding:.55rem .9rem;
+}
+.logo{font-size:.86rem;font-weight:900;letter-spacing:.14em;color:var(--T);white-space:nowrap}
+.logo em{font-style:normal;color:var(--orange)}
+.logo .fx{color:var(--teal);font-size:.6rem;letter-spacing:.3em;display:block;margin-top:-2px}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:.55rem}
+.chip-flux{
+  display:flex;align-items:center;gap:.3rem;background:var(--panel);border:1px solid var(--line2);
+  padding:.25rem .55rem;font-family:var(--mono);font-size:.78rem;font-weight:700;color:var(--gold);
+  clip-path:polygon(6px 0,100% 0,100% 100%,0 100%,0 6px);
+}
+.gear{appearance:none;border:1px solid var(--line2);background:var(--panel);color:var(--mut);
+  width:38px;height:34px;font-size:1rem;line-height:1}
+.gear[aria-selected=true]{color:var(--teal);border-color:var(--teal)}
+
+/* ─── layout / views ─── */
+main{max-width:560px;margin:0 auto;padding:.85rem .85rem 6.4rem}
+.view{display:none}
+.view.active{display:block}
+
+.card{background:var(--panel);border:1px solid var(--line);margin-bottom:.8rem;position:relative}
+.card.hot{border-color:var(--orange-d)}
+.card-hd{display:flex;align-items:baseline;gap:.55rem;padding:.6rem .8rem .45rem;border-bottom:1px solid var(--line)}
+.card-ttl{font-size:.64rem;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:var(--T)}
+.card-note{margin-left:auto;font-size:.62rem;color:var(--dim);letter-spacing:.06em}
+.card-bd{padding:.7rem .8rem .8rem}
+
+/* ─── HQ scene ─── */
+.scene{position:relative;border:1px solid var(--line2);overflow:hidden;margin-bottom:.8rem}
+.scene svg{display:block;width:100%;height:auto}
+.scene-tag{position:absolute;left:.6rem;top:.55rem;font-size:.56rem;font-weight:700;letter-spacing:.28em;
+  text-transform:uppercase;color:rgba(255,255,255,.55)}
+.scene-name{position:absolute;left:.6rem;bottom:.55rem;font-size:.8rem;font-weight:900;letter-spacing:.12em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.scene-name small{display:block;font-size:.55rem;font-weight:700;letter-spacing:.3em;color:var(--gold)}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem}
+.stat{background:var(--panel);border:1px solid var(--line);padding:.6rem .7rem}
+.stat .v{font-family:var(--mono);font-size:1.5rem;font-weight:800;line-height:1.15}
+.stat .d{font-size:.68rem;font-weight:700;margin-top:.1rem}
+.up{color:var(--ok)} .dn{color:var(--bad)} .fl{color:var(--gold)}
+
+.rankline{display:flex;align-items:center;gap:.7rem}
+.rankbadge{flex:0 0 auto}
+.rankinfo{flex:1;min-width:0}
+.rankname{font-size:.95rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.xpbar{height:10px;background:var(--bg2);border:1px solid var(--line2);margin-top:.35rem;position:relative}
+.xpbar i{position:absolute;inset:1px auto 1px 1px;background:linear-gradient(90deg,var(--teal),var(--orange));display:block}
+.xptxt{font-size:.62rem;color:var(--mut);margin-top:.25rem}
+
+/* missions */
+.m-item{display:flex;gap:.6rem;align-items:flex-start;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.m-item:last-child{border-bottom:0}
+.m-check{flex:0 0 auto;width:30px;height:30px;border:2px solid var(--line2);background:var(--bg2);
+  color:transparent;font-size:.95rem;font-weight:900;line-height:1}
+.m-check.done{border-color:var(--ok);color:var(--ok);background:rgba(52,209,123,.08)}
+.m-check.auto{border-style:dashed;cursor:default}
+.m-body{flex:1;min-width:0}
+.m-t{font-size:.85rem;font-weight:600}
+.m-t.done{color:var(--dim);text-decoration:line-through}
+.m-sub{font-size:.66rem;color:var(--mut)}
+.m-pay{flex:0 0 auto;text-align:right;font-family:var(--mono);font-size:.64rem;color:var(--dim);line-height:1.5}
+.m-pay b{color:var(--gold)}
+
+/* heists */
+.heist{border:1px solid var(--line2);margin-bottom:.85rem;background:linear-gradient(160deg,var(--panel2),var(--panel))}
+.heist.locked{opacity:.9}
+.heist-hd{padding:.65rem .8rem .5rem;border-bottom:1px solid var(--line);display:flex;gap:.6rem;align-items:center}
+.heist-ico{flex:0 0 auto;width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line2);background:var(--bg2);font-size:1.05rem}
+.heist-ttl{font-size:.86rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;line-height:1.25}
+.heist-ttl small{display:block;font-size:.56rem;font-weight:700;letter-spacing:.3em;color:var(--orange)}
+.heist-state{margin-left:auto;font-size:.58rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;
+  padding:.2rem .45rem;border:1px solid}
+.st-open{color:var(--teal);border-color:var(--teal)}
+.st-ready{color:var(--gold);border-color:var(--gold)}
+.st-done{color:var(--ok);border-color:var(--ok)}
+.st-lock{color:var(--dim);border-color:var(--line2)}
+.heist-bd{padding:.6rem .8rem .75rem}
+.prep-line{display:flex;align-items:center;gap:.55rem;padding:.34rem 0}
+.prep-line button.pchk{width:26px;height:26px;flex:0 0 auto;border:2px solid var(--line2);background:var(--bg2);color:transparent;font-weight:900;font-size:.8rem}
+.prep-line button.pchk.done{border-color:var(--teal);color:var(--teal)}
+.prep-line span{font-size:.8rem}
+.prep-line span.done{color:var(--dim);text-decoration:line-through}
+.mainm{margin-top:.55rem;border:1px dashed var(--orange-d);padding:.55rem .65rem;background:rgba(255,122,26,.05)}
+.mainm .tag{font-size:.56rem;font-weight:800;letter-spacing:.26em;color:var(--orange)}
+.mainm .t{font-size:.85rem;font-weight:700;margin:.15rem 0 .1rem}
+.mainm .sub{font-size:.64rem;color:var(--mut)}
+.lockveil{padding:1rem .8rem;text-align:center}
+.lockveil .padlock{font-size:1.6rem}
+.lockveil .req{font-size:.64rem;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-top:.3rem}
+.heist-target-sil{filter:blur(3px) brightness(.6)}
+
+.btn{
+  appearance:none;border:1px solid var(--line2);background:var(--panel2);color:var(--T);
+  min-height:46px;padding:.55rem .9rem;font-size:.72rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+  width:100%;transition:background .15s;
+}
+.btn:active{background:var(--line)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#12100b}
+.btn.primary:disabled{background:var(--line);border-color:var(--line);color:var(--dim);cursor:not-allowed}
+.btn.ghost{background:transparent}
+.btn.sm{min-height:38px;padding:.35rem .6rem;font-size:.62rem;width:auto}
+.btnrow{display:flex;gap:.55rem}
+.btnrow .btn{flex:1}
+
+/* range */
+.rangegrid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.qcat{border:1px solid var(--line2);background:linear-gradient(160deg,var(--panel2),var(--panel));
+  padding:.75rem .7rem;text-align:left;color:var(--T);min-height:104px;display:flex;flex-direction:column;gap:.25rem}
+.qcat .ic{font-size:1.25rem}
+.qcat .n{font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;line-height:1.3}
+.qcat .s{font-size:.6rem;color:var(--mut)}
+.qcat:disabled{opacity:.45;cursor:not-allowed}
+.qwrap{border:1px solid var(--orange-d);background:var(--panel);margin-top:.8rem}
+.qhd{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border-bottom:1px solid var(--line)}
+.qkind{font-size:.6rem;font-weight:800;letter-spacing:.24em;text-transform:uppercase;color:var(--orange)}
+.qbody{padding:.7rem .75rem .85rem}
+.qtext{font-size:.92rem;font-weight:600;line-height:1.5;margin-bottom:.7rem;white-space:pre-line}
+.qopt{display:block;width:100%;text-align:left;border:1px solid var(--line2);background:var(--bg2);color:var(--T);
+  padding:.6rem .65rem;margin-bottom:.5rem;font-size:.85rem;min-height:48px}
+.qopt .k{font-family:var(--mono);font-weight:800;color:var(--teal);margin-right:.45rem}
+.qopt.correct{border-color:var(--ok);background:rgba(52,209,123,.1)}
+.qopt.wrong{border-color:var(--bad);background:rgba(255,77,94,.08)}
+.qopt:disabled{cursor:default;opacity:.92}
+.coach{border-left:3px solid var(--teal);background:var(--bg2);padding:.6rem .7rem;font-size:.8rem;line-height:1.55;margin-top:.25rem}
+.coach b{color:var(--teal)}
+.qfoot{display:flex;gap:.55rem;margin-top:.7rem}
+
+/* empire */
+.race{margin:.2rem 0 .4rem}
+.racebar{height:22px;background:var(--bg2);border:1px solid var(--line2);position:relative;overflow:hidden}
+.racebar .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--teal),var(--orange))}
+.racebar .pacemark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--gold)}
+.racebar .lbl2{position:absolute;right:.4rem;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:.68rem;font-weight:800;color:#fff;text-shadow:0 1px 3px #000}
+.legend{display:flex;gap:1rem;font-size:.6rem;color:var(--mut);margin-top:.3rem}
+.legend i{display:inline-block;width:9px;height:9px;margin-right:.3rem;vertical-align:-1px}
+table.tbl{width:100%;border-collapse:collapse;font-size:.78rem}
+table.tbl th{font-size:.56rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+  text-align:left;padding:.3rem .35rem;border-bottom:1px solid var(--line)}
+table.tbl td{padding:.42rem .35rem;border-bottom:1px solid var(--line)}
+table.tbl td.r,table.tbl th.r{text-align:right;font-family:var(--mono)}
+
+/* shop */
+.tierhd{display:flex;align-items:baseline;gap:.5rem;margin:.9rem 0 .45rem}
+.tierhd .t{font-size:.66rem;font-weight:900;letter-spacing:.24em;text-transform:uppercase}
+.tierhd .p{margin-left:auto;font-family:var(--mono);font-size:.66rem;color:var(--gold)}
+.shopitem{display:flex;align-items:center;gap:.6rem;border:1px solid var(--line);background:var(--panel);padding:.55rem .65rem;margin-bottom:.5rem}
+.shopitem .n{flex:1;font-size:.84rem;font-weight:600}
+.shopitem .n small{display:block;font-size:.6rem;color:var(--dim)}
+.buy{flex:0 0 auto;border:1px solid var(--gold);background:transparent;color:var(--gold);
+  font-family:var(--mono);font-weight:800;font-size:.72rem;padding:.45rem .6rem;min-height:42px}
+.buy:disabled{border-color:var(--line2);color:var(--dim);cursor:not-allowed}
+
+/* setup */
+.f{margin-bottom:.85rem}
+.f>label{display:block;margin-bottom:.3rem}
+.status{padding:.5rem .65rem;border:1px solid var(--line2);background:var(--bg2);font-size:.76rem;font-family:var(--mono);word-break:break-word}
+.status.ok{border-color:var(--ok);color:var(--ok)}
+.status.bad{border-color:var(--bad);color:var(--bad)}
+
+/* bottom nav */
+nav.dock{
+  position:fixed;left:0;right:0;bottom:0;z-index:700;
+  background:rgba(11,18,32,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line2);
+  display:flex;justify-content:space-around;padding:.3rem .2rem calc(.3rem + env(safe-area-inset-bottom))
+}
+nav.dock button{
+  appearance:none;border:0;background:none;color:var(--dim);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  font-size:.53rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  padding:.35rem .5rem;min-width:58px;min-height:52px
+}
+nav.dock button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.dock button[aria-selected=true]{color:var(--orange)}
+nav.dock button .bdg{position:relative}
+nav.dock button .bdg[data-n]:not([data-n="0"])::after{
+  content:attr(data-n);position:absolute;top:-5px;right:-9px;background:var(--bad);color:#fff;
+  font-size:.5rem;font-weight:800;min-width:14px;height:14px;line-height:14px;text-align:center;border-radius:7px;padding:0 3px}
+
+/* overlays */
+.ovl{position:fixed;inset:0;z-index:900;background:rgba(5,9,17,.94);display:none;
+  align-items:center;justify-content:center;padding:1.2rem;overflow-y:auto}
+.ovl.show{display:flex}
+.ovl-card{width:100%;max-width:420px;text-align:center;border:1px solid var(--gold);
+  background:linear-gradient(170deg,#1a2740,#10182b);padding:1.4rem 1.1rem 1.2rem;position:relative;overflow:hidden}
+.ovl-kicker{font-size:.6rem;font-weight:900;letter-spacing:.42em;text-transform:uppercase;color:var(--gold)}
+.ovl-title{font-size:1.5rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin:.3rem 0 .1rem;line-height:1.2}
+.ovl-sub{font-size:.78rem;color:var(--mut);margin-bottom:.8rem}
+.ovl-pay{font-family:var(--mono);font-size:.95rem;font-weight:800;color:var(--gold);margin:.5rem 0 .9rem}
+.confetti{position:absolute;inset:0;pointer-events:none;opacity:.6}
+.toast{
+  position:fixed;left:50%;bottom:5.6rem;transform:translateX(-50%);z-index:950;
+  background:var(--panel2);border:1px solid var(--teal);color:var(--T);
+  padding:.55rem .9rem;font-size:.78rem;font-weight:600;max-width:88vw;
+  box-shadow:0 4px 18px rgba(0,0,0,.5);display:none;text-align:center}
+.toast.show{display:block}
+.toast.warn{border-color:var(--bad)}
+.offline-strip{background:rgba(255,77,94,.12);border:1px solid var(--bad);color:#ffb9bf;
+  font-size:.68rem;font-weight:700;letter-spacing:.1em;padding:.4rem .7rem;margin-bottom:.8rem;display:none;text-align:center}
+.offline-strip.show{display:block}
+.divider{margin:1.1rem 0 .6rem}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="logo">CONTRACT <em>STRIKE</em><span class="fx">A TOOLFLUX OPERATION</span></div>
+  <div class="hdr-right">
+    <div class="chip-flux" id="hdrFlux" title="FLUX coins">⬧ 0</div>
+    <button class="gear" id="gearBtn" aria-label="Setup">⚙</button>
+  </div>
+</header>
+
+<main>
+  <div class="offline-strip" id="offlineStrip">OFFLINE MODE — ZOHO VERIFICATION PAUSED</div>
+
+  <!-- ═══ HQ ═══ -->
+  <section class="view active" id="view-hq">
+    <div class="scene cut" id="agentScene"></div>
+
+    <div class="card cut">
+      <div class="card-bd">
+        <div class="rankline">
+          <div class="rankbadge" id="rankBadge"></div>
+          <div class="rankinfo">
+            <div class="lbl">Career rank</div>
+            <div class="rankname" id="rankName">—</div>
+            <div class="xpbar"><i id="xpFill" style="width:0%"></i></div>
+            <div class="xptxt mono" id="xpTxt"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="duo">
+      <div class="stat cut">
+        <div class="lbl">Flux rating · <span id="seasonTag">S1</span></div>
+        <div class="v mono" id="ratingV">—</div>
+        <div class="d mono" id="ratingD"></div>
+      </div>
+      <div class="stat cut">
+        <div class="lbl">Streak</div>
+        <div class="v mono" id="streakV">0</div>
+        <div class="d muted" id="streakD">days played</div>
+      </div>
+    </div>
+
+    <div class="card cut hot">
+      <div class="card-hd"><span class="card-ttl">Today's contracts</span><span class="card-note mono" id="todayDate"></span></div>
+      <div class="card-bd" id="todayList"></div>
+    </div>
+
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Command feed</span><span class="card-note" id="syncNote">never synced</span></div>
+      <div class="card-bd" id="feedList" style="font-size:.78rem"></div>
+    </div>
+  </section>
+
+  <!-- ═══ MISSIONS ═══ -->
+  <section class="view" id="view-missions">
+    <div class="card-hd" style="border:0;padding:.2rem .2rem .6rem"><span class="card-ttl" style="font-size:.8rem">HEIST BOARD — SEASON 1</span></div>
+    <div id="heistBoard"></div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Side missions</span><span class="card-note">small XP, keeps rating alive</span></div>
+      <div class="card-bd">
+        <div id="sideList"></div>
+        <div class="btnrow" style="margin-top:.6rem">
+          <input id="customTask" placeholder="Add your own mission…" style="flex:2">
+          <button class="btn sm" id="addTaskBtn" style="flex:1">ADD</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ RANGE ═══ -->
+  <section class="view" id="view-range">
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">The Range</span><span class="card-note mono" id="quizCount">0/5 today</span></div>
+      <div class="card-bd">
+        <div class="rangegrid">
+          <button class="qcat cut" data-kind="insert"><span class="ic">◆</span><span class="n">Insert Selection</span><span class="s">AI scenario — pick the right insert &amp; grade</span></button>
+          <button class="qcat cut" data-kind="trade"><span class="ic">⚙</span><span class="n">Trade Trivia</span><span class="s">ISO codes, coatings, cutting data</span></button>
+          <button class="qcat cut" data-kind="numbers"><span class="ic">₹</span><span class="n">Know Your Numbers</span><span class="s">Quizzed on YOUR live Zoho data</span></button>
+          <button class="qcat cut" data-kind="decision"><span class="ic">🎯</span><span class="n">Decision Prompt</span><span class="s">Pick today's target — spawns a mission</span></button>
+        </div>
+        <div id="qArena"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ EMPIRE ═══ -->
+  <section class="view" id="view-empire">
+    <div class="card cut hot">
+      <div class="card-hd"><span class="card-ttl">Revenue race — this month vs the record</span></div>
+      <div class="card-bd" id="raceBox"></div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">13-month revenue</span><span class="card-note mono" id="chartNote"></span></div>
+      <div class="card-bd" id="chartBox"></div>
+    </div>
+    <div class="duo">
+      <div class="stat cut"><div class="lbl">Receivables out</div><div class="v mono" id="recvV">—</div><div class="d muted" id="recvD"></div></div>
+      <div class="stat cut"><div class="lbl">New customers · season</div><div class="v mono" id="newcV">—</div><div class="d muted">first invoice in S1</div></div>
+    </div>
+    <div class="card cut" id="intelRoom"></div>
+    <div class="card cut" id="warRoom"></div>
+  </section>
+
+  <!-- ═══ SHOP ═══ -->
+  <section class="view" id="view-shop">
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Treat shop</span><span class="card-note mono" id="shopFlux"></span></div>
+      <div class="card-bd">
+        <p class="muted" style="font-size:.72rem;margin-bottom:.2rem">Real rewards, paid in FLUX you earned. Edit anything in SETUP.</p>
+        <div id="shopList"></div>
+      </div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Gear locker — Agent SPAHAN</span></div>
+      <div class="card-bd" id="gearList"></div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Trophy ledger</span></div>
+      <div class="card-bd" id="trophyList"><span class="muted" style="font-size:.76rem">Nothing claimed yet. Go earn it.</span></div>
+    </div>
+  </section>
+
+  <!-- ═══ SETUP ═══ -->
+  <section class="view" id="view-setup">
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Backend link</span></div>
+      <div class="card-bd">
+        <div class="f"><label class="lbl">Apps Script Web App URL (…/exec)</label>
+          <input id="backendUrl" inputmode="url" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div class="btnrow">
+          <button class="btn" id="testBtn">TEST</button>
+          <button class="btn primary" id="syncBtn">SYNC ZOHO NOW</button>
+        </div>
+        <div class="status" id="setupStatus" style="margin-top:.6rem">Not connected. The game runs offline; Zoho auto-verification and AI trivia need this link.</div>
+      </div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Heist targets</span></div>
+      <div class="card-bd" id="targetEdit"></div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Treat shop editor</span></div>
+      <div class="card-bd">
+        <div id="treatEdit"></div>
+        <div class="btnrow" style="margin-top:.5rem">
+          <input id="newTreatName" placeholder="New treat…" style="flex:2">
+          <input id="newTreatCost" inputmode="numeric" placeholder="FLUX" style="flex:1">
+          <button class="btn sm" id="addTreatBtn">ADD</button>
+        </div>
+      </div>
+    </div>
+    <div class="card cut">
+      <div class="card-hd"><span class="card-ttl">Save data</span></div>
+      <div class="card-bd">
+        <div class="btnrow">
+          <button class="btn" id="backupBtn">BACKUP → SHEET</button>
+          <button class="btn" id="restoreBtn">RESTORE ← SHEET</button>
+        </div>
+        <div class="btnrow" style="margin-top:.55rem">
+          <button class="btn ghost" id="exportBtn">EXPORT JSON</button>
+          <button class="btn ghost" id="resetBtn" style="color:var(--bad);border-color:var(--bad)">RESET GAME</button>
+        </div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:.62rem;text-align:center">CONTRACT STRIKE v1 · state lives on this phone (localStorage) · deploy guide: CONTRACT-STRIKE-SETUP.md</p>
+  </section>
+</main>
+
+<nav class="dock" role="tablist">
+  <button data-view="hq" aria-selected="true"><span class="bdg"><svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h14V10"/></svg></span>HQ</button>
+  <button data-view="missions"><span class="bdg" id="navMisBdg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg></span>MISSIONS</button>
+  <button data-view="range"><span class="bdg"><svg viewBox="0 0 24 24"><path d="M12 2l3 6 7 1-5 5 1.4 7L12 17.5 5.6 21 7 14 2 9l7-1z"/></svg></span>RANGE</button>
+  <button data-view="empire"><span class="bdg"><svg viewBox="0 0 24 24"><path d="M4 20V9M10 20V4M16 20v-8M22 20H2"/></svg></span>EMPIRE</button>
+  <button data-view="shop"><span class="bdg"><svg viewBox="0 0 24 24"><path d="M4 8h16l-1.5 12h-13z"/><path d="M8 8a4 4 0 018 0"/></svg></span>SHOP</button>
+</nav>
+
+<div class="ovl" id="winOvl"><div class="ovl-card cut">
+  <svg class="confetti" viewBox="0 0 400 300" preserveAspectRatio="none" id="confettiSvg"></svg>
+  <div class="ovl-kicker" id="winKick">HEIST COMPLETE</div>
+  <div class="ovl-title" id="winTitle"></div>
+  <div id="winAgent" style="margin:.4rem auto;max-width:210px"></div>
+  <div class="ovl-sub" id="winSub"></div>
+  <div class="ovl-pay" id="winPay"></div>
+  <button class="btn primary" id="winClose">COLLECT</button>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ═══════════════════════════ CONSTANTS ═══════════════════════════ */
+const LS_STATE='cstrike_state', LS_SET='cstrike_settings';
+const INR=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const todayStr=()=>new Date().toISOString().slice(0,10);
+const monthStr=()=>new Date().toISOString().slice(0,7);
+
+const RANKS=[
+  {n:'Apprentice I',xp:0,tier:0},{n:'Apprentice II',xp:300,tier:0},{n:'Apprentice III',xp:700,tier:0},{n:'Apprentice IV',xp:1200,tier:0},
+  {n:'Operator I',xp:1800,tier:1},{n:'Operator II',xp:2600,tier:1},{n:'Operator III',xp:3600,tier:1},{n:'Operator IV',xp:4800,tier:1},
+  {n:'Specialist I',xp:6200,tier:2},{n:'Specialist II',xp:7800,tier:2},{n:'Specialist III',xp:9600,tier:2},{n:'Specialist IV',xp:11600,tier:2},
+  {n:'Veteran I',xp:14000,tier:3},{n:'Veteran II',xp:17000,tier:3},{n:'Veteran III',xp:20500,tier:3},
+  {n:'Supplier Elite I',xp:24500,tier:4},{n:'Supplier Elite II',xp:29000,tier:4},
+  {n:'GLOBAL ELITE SUPPLIER',xp:34000,tier:5}
+];
+const TIER_COLORS=['#9aa7b5','#19c3dd','#7b9bff','#ff7a1a','#f5c542','#ffd700'];
+const TIER_NAMES=['Apprentice','Operator','Specialist','Veteran','Supplier Elite','Global Elite'];
+const GEAR=[
+  {tier:0,n:'Standard issue',d:'Navy jacket, headset, TFX emblem'},
+  {tier:1,n:'Field watch',d:'Operator tier — time is money'},
+  {tier:2,n:'Tactical gloves + shades',d:'Specialist tier'},
+  {tier:3,n:'The briefcase',d:'Veteran tier — carries the contracts'},
+  {tier:4,n:'Gold trim jacket',d:'Supplier Elite tier'},
+  {tier:5,n:'Golden visor',d:'GLOBAL ELITE — the crown'}
+];
+const SCENES=['THE WORKSHOP','THE OFFICE','DISPATCH BAY','THE SHOWROOM','GLASS HQ','THE SUMMIT'];
+
+const RECORD={m:'2025-11',revenue:1487891};
+const RECV_BASELINE=1235252;
+const SEASON={id:'S1',label:'SEASON 1 · JUL–SEP 2026',start:'2026-07-01',end:'2026-09-30'};
+const DAILY_Q_CAP=5;
+
+const SEED_HEISTS=[
+ {id:'record',ico:'🏆',code:'OPERATION HIGH SCORE',title:'The Record',
+  desc:'Nov 2025 stands at ₹14.88L — your best month ever. Break it.',
+  unlock:null,rewardXp:1200,rewardFlux:3000,
+  preps:[{id:'p1',label:'Pipeline audit — list every live enquiry'},{id:'p2',label:'3 fresh quotes out the door'},{id:'p3',label:'Reactivate 2 quiet accounts'},{id:'p4',label:'Dispatch plan for month-end week'}],
+  main:{label:'Invoice more than ₹14,87,891 in one month',verify:'record'}},
+ {id:'vc1',ico:'🗝',code:'HEIST: IRON GATE',title:'Vendor Code — Ashok Iron Works',
+  desc:'Belgaum. Blocks, heads, transmission housings 20–2500 kg. Large in-house machining lines — a cast-iron goldmine (TFX-K20 territory).',
+  unlock:null,rewardXp:1500,rewardFlux:4000,target:'Ashok Iron',
+  preps:[{id:'p1',label:'Intro contact made (call / reference)'},{id:'p2',label:'Plant visit / meeting done'},{id:'p3',label:'Trial insert run approved'},{id:'p4',label:'Vendor registration docs submitted'}],
+  main:{label:'First invoice raised to Ashok Iron Works',verify:'target'}},
+ {id:'vc2',ico:'🗝',code:'HEIST: MOLTEN CORE',title:'Vendor Code — Belgaum Ferrocast',
+  desc:'BFPL — machined castings for hydraulics, pumps, valves, transmission.',
+  unlock:{type:'either',rank:8,heist:'vc1'},rewardXp:1500,rewardFlux:4000,target:'Ferrocast',
+  preps:[{id:'p1',label:'Intro contact made'},{id:'p2',label:'Plant visit / meeting done'},{id:'p3',label:'Trial insert run approved'},{id:'p4',label:'Vendor registration docs submitted'}],
+  main:{label:'First invoice raised to Belgaum Ferrocast',verify:'target'}},
+ {id:'vc3',ico:'🗝',code:'HEIST: VALVE LINE',title:'Vendor Code — Belgaum Aqua Valves',
+  desc:'Industrial valves for oil, gas, power. You already supply Microfinish and BDK — walk in with proof.',
+  unlock:{type:'either',rank:8,heist:'vc1'},rewardXp:1500,rewardFlux:4000,target:'Aqua Valves',
+  preps:[{id:'p1',label:'Intro contact made'},{id:'p2',label:'Plant visit / meeting done'},{id:'p3',label:'Trial insert run approved'},{id:'p4',label:'Vendor registration docs submitted'}],
+  main:{label:'First invoice raised to Belgaum Aqua Valves',verify:'target'}},
+ {id:'recovery',ico:'💰',code:'OPERATION CLEAN SLATE',title:'The Recovery',
+  desc:'₹12.35L is sitting in other people\'s bank accounts. 59 invoices overdue. Get it back — milestone bonus every ₹2L recovered.',
+  unlock:null,rewardXp:1000,rewardFlux:2500,
+  preps:[{id:'p1',label:'Print the ageing list — know every debtor'},{id:'p2',label:'Call the top 5 debtors'},{id:'p3',label:'Payment plan agreed with the worst one'}],
+  main:{label:'Outstanding receivables below ₹2,00,000',verify:'recv'}},
+ {id:'line',ico:'🚀',code:'OPERATION NEW STEEL',title:'Product Line Launch',
+  desc:'Finalize the new line and get it earning. Rename this heist to the real line in SETUP.',
+  unlock:{type:'rank',rank:7},rewardXp:800,rewardFlux:2000,
+  preps:[{id:'p1',label:'Samples in hand & tested'},{id:'p2',label:'Price list finalized'},{id:'p3',label:'Launch stock ordered'}],
+  main:{label:'5 customers invoiced with the new line',verify:'manual'}}
+];
+
+const SEED_SHOP=[
+ {id:'t1a',tier:1,cost:500,n:'Dessert run',d:'You earned the sugar'},
+ {id:'t1b',tier:1,cost:500,n:'Movie night',d:'Full immersion, phone away'},
+ {id:'t1c',tier:1,cost:600,n:'Guilt-free CS2 marathon (2 hrs)',d:'Premier grind, sanctioned'},
+ {id:'t2a',tier:2,cost:2500,n:'Dinner out — proper one',d:'Not the usual place'},
+ {id:'t2b',tier:2,cost:2500,n:'New game / accessory',d:'Steam sale immunity'},
+ {id:'t3a',tier:3,cost:10000,n:'Gadget upgrade',d:'The one in your wishlist'},
+ {id:'t3b',tier:3,cost:10000,n:'Weekend trip',d:'Out of Hubli, no laptop'},
+ {id:'boss',tier:4,cost:25000,n:'THE BOSS REWARD',d:'Define it in SETUP. Locked until Veteran I.',lockRank:12}
+];
+
+/* Offline question bank — insert selection + trade trivia with coaching */
+const BANK=[
+ {kind:'insert',q:'Roughing EN8 (C45 steel) shafts on a rigid lathe, dry-ish cut, 3 mm DOC, continuous cut.\nWhich insert/grade combo?',
+  o:['CNMG 1204 in TFX-P25','VBMT 1604 in TFX-U15','CCGT 09T3 polished, TFX-U15','TNMG 1604 in TFX-H10 (CBN)'],c:0,
+  coach:'Roughing steel = strong 80° rhombic negative insert (CNMG) and an ISO-P steel grade — <b>TFX-P25</b> with AlTiN handles the heat. VBMT is a finishing geometry, U15/CCGT is for aluminium, and CBN is for hardened steel — wasted (and fragile) on soft C45.'},
+ {kind:'insert',q:'SS316 flange, interrupted facing cut, medium feed. Edges keep chipping with your steel grade.\nBest move?',
+  o:['Switch to TFX-M35 and drop Vc ~15%','Raise Vc 30% to "cut through" the interruptions','Switch to CBN TFX-H10','Use an aluminium polished grade for sharpness'],c:0,
+  coach:'Stainless + interruptions wants a tougher ISO-M grade — <b>TFX-M35</b> (TiSiN) — with moderate speed. Raising Vc on 316 accelerates notch wear and BUE; CBN shatters in interrupted stainless; polished N-grades have no edge security here.'},
+ {kind:'insert',q:'FG260 grey cast iron brake drums, high volume boring, continuous cut. Priority: cheapest cost per edge.\nGrade?',
+  o:['TFX-K20','TFX-P25','TFX-S30','TFX-M35'],c:0,
+  coach:'Grey iron = ISO K. <b>TFX-K20</b> (TiCN) resists the abrasive flake graphite. P25 wears fast in iron, S30 is for superalloys, M35 for stainless. Iron also loves a plain strong edge — no need for sharp positive geometry.'},
+ {kind:'insert',q:'Aluminium 6061 housing, finishing pass, want mirror finish and zero BUE.\nInsert?',
+  o:['CCGT with polished rake, TFX-U15, high Vc','CNMG heavy chipbreaker, TFX-P25','Round RCMT in TFX-K20','TNMG rough geometry, low Vc'],c:0,
+  coach:'Aluminium wants razor-sharp <b>polished positive geometry (CCGT) in an uncoated/N grade — TFX-U15</b> — run FAST. Speed suppresses built-up edge in aluminium; slow cutting causes it. Coated steel grades smear and weld.'},
+ {kind:'insert',q:'Hardened die steel, 58 HRC, finish profiling. Which edge survives?',
+  o:['TFX-H10 CBN','TFX-P25','TFX-M35','HSS tool, slow'],c:0,
+  coach:'Above ~50 HRC, carbide finishing dies fast — this is <b>CBN territory: TFX-H10</b>, small DOC, no coolant shock. Hard turning replaces grinding when done right. HSS wouldn\'t last one pass.'},
+ {kind:'insert',q:'Ti-6Al-4V titanium pocket milling. What kills your inserts fastest if you copy steel parameters?',
+  o:['Heat — titanium doesn\'t conduct it away, so the edge takes it all','Chip colour','Too little vibration','Titanium is soft, nothing happens'],c:0,
+  coach:'Ti conducts heat ~15× worse than steel — the edge absorbs everything. Run <b>low Vc (30–60 m/min), constant chip load, flood coolant, TFX-S30</b>. Never dwell; a rubbing edge work-hardens the surface instantly.'},
+ {kind:'insert',q:'CNMG 120408 — what does the "08" tell you?',
+  o:['Nose radius 0.8 mm','Thickness 8 mm','Edge length 8 mm','Chipbreaker code'],c:0,
+  coach:'Last pair in ISO 1832 turning inserts = <b>nose radius in tenths of mm: 08 → 0.8 mm</b>. Bigger radius = stronger edge & better finish at high feed, but more radial pressure (vibration risk on slender parts).'},
+ {kind:'insert',q:'High-feed milling with your HFMA cutter. Why can you run fz 1.0+ mm/tooth without snapping inserts?',
+  o:['Small approach angle thins the chip drastically','The inserts are thicker','The coating is magic','Spindle torque is lower'],c:0,
+  coach:'<b>Chip thinning.</b> At ~10–17° approach, actual chip thickness is a fraction of fz — so a huge programmed feed produces a thin, safe chip directed axially into the spindle. That\'s the whole high-feed trick.'},
+ {kind:'trade',q:'ISO colour code: which application group is BLUE?',
+  o:['P — steel','M — stainless','K — cast iron','N — non-ferrous'],c:0,
+  coach:'<b>P = blue = steel</b>. M = yellow (stainless), K = red (cast iron), N = green (non-ferrous), S = brown (superalloys/Ti), H = grey (hardened). Worth knowing cold — it\'s on every box you sell.'},
+ {kind:'trade',q:'Flank wear vs crater wear — where does crater wear appear?',
+  o:['On the rake face, where the chip rubs','On the clearance face','On the insert screw','Under the shim'],c:0,
+  coach:'Crater wear digs into the <b>rake face</b> from hot chip contact (diffusion at high Vc). Flank wear is on the clearance face. Uniform flank wear ending an edge at good life = a healthy, economic death.'},
+ {kind:'trade',q:'You double the feed in turning. Surface roughness (Ra) roughly…',
+  o:['Quadruples — Ra scales with f²','Doubles','Stays the same','Halves'],c:0,
+  coach:'Ra ≈ f² / (32·rε). <b>Feed enters squared</b> — doubling feed ≈ 4× rougher. To rescue finish: bigger nose radius or a wiper insert lets you keep the feed and the finish.'},
+ {kind:'trade',q:'Built-up edge (BUE) is usually cured by…',
+  o:['Raising cutting speed (more heat at the chip interface)','Lowering speed further','Removing coolant only','Bigger nose radius'],c:0,
+  coach:'BUE forms in a low-temperature window where material welds to the edge. <b>Raise Vc</b> (and/or use sharper positive geometry, better lubrication) to get out of the sticky zone. Classic on stainless and aluminium run too slow.'},
+ {kind:'trade',q:'A customer runs Vc 220 m/min on 42CrMo4 with a P25-class insert, 12 min edge life, wants 20 min. Cheapest fix?',
+  o:['Drop Vc ~15% — life responds exponentially to speed','Double the feed','Buy a premium grade at 2× price','Add a second insert'],c:0,
+  coach:'Taylor\'s law: edge life is hyper-sensitive to Vc. <b>–15% speed can nearly double life</b> and costs nothing. Feed changes affect life far less — cut speed first, then talk grades.'},
+ {kind:'trade',q:'WNMG has how many usable cutting edges (negative, double-sided)?',
+  o:['6','3','4','8'],c:0,
+  coach:'W = trigon, 3 corners per side × 2 sides = <b>6 edges</b>. CNMG gives 4, TNMG 6, SNMG 8. Edges-per-insert is your favourite sales math: cost per edge beats cost per insert.'},
+ {kind:'trade',q:'U-Drill (indexable insert drill) starts squealing and the hole runs oversize. First check?',
+  o:['Centre-height / runout of the setup','Coolant brand','Insert colour','Machine paint'],c:0,
+  coach:'Indexable drills live and die on <b>runout and centre alignment</b> — 0.05 mm off centre shifts the load between centre and periphery inserts, causing squeal, oversize and early failure. Check alignment before touching parameters.'},
+ {kind:'trade',q:'Which coating family runs hottest before breaking down (best for dry high-speed steel cutting)?',
+  o:['AlTiN / TiSiN class','TiN classic gold','Uncoated','TiCN'],c:0,
+  coach:'<b>AlTiN/TiSiN</b> form a protective aluminium-oxide layer at heat — stable to ~900–1100°C, made for dry/high-speed. TiN gives up around 550°C. TiCN is tough but less heat-proof (great in cast iron). That\'s why TFX-P25 wears AlTiN.'}
+];
+
+/* ═══════════════════════════ STATE ═══════════════════════════ */
+let S=null, SET=null;
+function freshState(){
+  return {
+    v:1, created:todayStr(), lastPlayed:null, streak:0, bestStreak:0,
+    xp:3600, flux:200, rankIdx:6, /* Operator III — earned by 3 real years, ₹1.47Cr lifetime */
+    rating:null, ratingPrev:null, ratingHist:[],
+    heists:SEED_HEISTS.map(h=>({id:h.id,status:'seed',preps:{},mainDone:false,doneAt:null,customTitle:null,customTarget:null})),
+    sides:[], shop:SEED_SHOP.map(s=>({...s})), trophies:[],
+    quiz:{date:null,count:0}, decisionDate:null,
+    monthAwards:{}, recvMilestones:0,
+    kpi:null, feed:[],
+    today:{date:null,items:[]}
+  };
+}
+function load(){
+  try{S=JSON.parse(localStorage.getItem(LS_STATE))||null}catch(_){S=null}
+  if(!S||S.v!==1)S=freshState();
+  try{SET=JSON.parse(localStorage.getItem(LS_SET))||{}}catch(_){SET={}}
+}
+function save(){localStorage.setItem(LS_STATE,JSON.stringify(S))}
+function saveSet(){localStorage.setItem(LS_SET,JSON.stringify(SET))}
+
+function heistDef(id){return SEED_HEISTS.find(h=>h.id===id)}
+function heistState(id){return S.heists.find(h=>h.id===id)}
+
+/* ═══════════════════════════ RANK / XP / RATING ═══════════════════ */
+function rankOf(xp){let i=0;for(let k=0;k<RANKS.length;k++)if(xp>=RANKS[k].xp)i=k;return i}
+function award(xp,flux,why){
+  const mult=1+Math.min(S.streak,10)*.05;
+  const gx=Math.round(xp*mult);
+  const before=rankOf(S.xp);
+  S.xp+=gx; S.flux+=flux;
+  const after=rankOf(S.xp);
+  if(why)pushFeed('+'+gx+' XP · +'+flux+' ⬧ — '+why);
+  save(); renderHeader();
+  if(after>before){S.rankIdx=after;save();showWin('RANK UP','You are now','',RANKS[after].n,gx,flux,true)}
+  else toast('+'+gx+' XP&ensp;·&ensp;+'+flux+' <span style="color:var(--gold)">⬧ FLUX</span>'+(why?'<br><span class="muted">'+why+'</span>':''));
+}
+function pushFeed(t){S.feed.unshift({t:t,d:new Date().toISOString().slice(5,16).replace('T',' ')});S.feed=S.feed.slice(0,14)}
+
+function computeRating(){
+  const k=S.kpi; if(!k)return null;
+  const months=k.months||[];
+  const prev3=months.slice(-4,-1);
+  const avg3=prev3.length?prev3.reduce((a,m)=>a+m.revenue,0)/prev3.length:0;
+  const cm=k.curMonth||{revenue:0,count:0,dayOfMonth:1,daysInMonth:30};
+  const dayFrac=Math.max(cm.dayOfMonth/cm.daysInMonth,.08);
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  let pts=10000;
+  if(avg3>0){pts+=clamp(((cm.revenue/dayFrac)/avg3-1)*2,-1,1)*8000}
+  pts+=clamp(cm.revenue/RECORD.revenue,0,1)*3000;
+  if(k.receivables)pts+=clamp((RECV_BASELINE-k.receivables.total)/RECV_BASELINE*2,-1,1)*4000;
+  pts+=Math.min((k.newCustomers||[]).length,4)*800;
+  const avgCnt=prev3.length?prev3.reduce((a,m)=>a+m.count,0)/prev3.length:0;
+  if(avgCnt>0)pts+=clamp((cm.count/dayFrac)/avgCnt-1,-1,1)*2500;
+  return Math.round(clamp(pts,1000,30000));
+}
+
+/* ═══════════════════════════ AGENT SVG ═══════════════════════════ */
+function agentSVG(tier,pose){
+  const jacket=tier>=4?'#20304e':'#1c2a45', trim=tier>=4?'#f5c542':'#ff7a1a';
+  const visor=tier>=5?'#f5c542':(tier>=2?'#0e1626':'none');
+  const bg=[
+   ['#182338','#0f1626'],['#1b2c44','#111a2c'],['#26344e','#131c2e'],
+   ['#2c3350','#141a30'],['#243d5c','#101a2e'],['#3a3350','#141126']][tier];
+  const sceneEls=[
+   '<rect x="20" y="120" width="80" height="6" fill="#2c3a52"/><rect x="24" y="126" width="8" height="30" fill="#2c3a52"/><rect x="86" y="126" width="8" height="30" fill="#2c3a52"/><rect x="30" y="100" width="14" height="20" fill="#233047"/><rect x="50" y="104" width="14" height="16" fill="#233047"/>',
+   '<rect x="18" y="60" width="70" height="90" fill="#1a2740" stroke="#2c3a52"/><rect x="24" y="68" width="26" height="30" fill="#254060"/><rect x="54" y="68" width="26" height="30" fill="#254060"/><rect x="24" y="104" width="56" height="6" fill="#2c3a52"/>',
+   '<rect x="10" y="90" width="110" height="60" fill="#1a2334"/><rect x="18" y="100" width="40" height="26" fill="#26344e"/><rect x="22" y="126" width="10" height="10" fill="#0e1626"/><rect x="44" y="126" width="10" height="10" fill="#0e1626"/><rect x="66" y="96" width="46" height="40" fill="#203046"/><text x="89" y="120" font-size="10" fill="#ff7a1a" text-anchor="middle" font-weight="bold">TFX</text>',
+   '<rect x="12" y="70" width="100" height="84" fill="#1c2438"/><rect x="20" y="80" width="20" height="20" fill="#2a3c58"/><rect x="46" y="80" width="20" height="20" fill="#2a3c58"/><rect x="72" y="80" width="20" height="20" fill="#2a3c58"/><rect x="20" y="106" width="72" height="6" fill="#f5c54233"/>',
+   '<rect x="8" y="30" width="34" height="126" fill="#1e2c48"/><rect x="48" y="50" width="30" height="106" fill="#243654"/><rect x="84" y="20" width="34" height="136" fill="#1e2c48"/><rect x="12" y="38" width="26" height="4" fill="#31507a"/><rect x="12" y="50" width="26" height="4" fill="#31507a"/><rect x="88" y="30" width="26" height="4" fill="#31507a"/><rect x="88" y="42" width="26" height="4" fill="#31507a"/>',
+   '<circle cx="60" cy="50" r="26" fill="#f5c54222"/><path d="M0 150 L40 90 L70 130 L100 70 L140 150 Z" fill="#221c38"/><path d="M120 150 L180 60 L240 150 Z" fill="#2a2244"/>'
+  ][tier];
+  const arm2 = tier>=3
+   ? '<rect x="252" y="150" width="14" height="52" rx="6" fill="'+jacket+'"/><rect x="246" y="196" width="26" height="20" rx="2" fill="#0e1626" stroke="'+trim+'" stroke-width="1.5"/><rect x="252" y="192" width="14" height="6" fill="'+trim+'"/>'
+   : '<rect x="252" y="150" width="14" height="56" rx="6" fill="'+jacket+'"/><circle cx="259" cy="210" r="7" fill="'+(tier>=2?'#0e1626':'#c9a179')+'"/>';
+  const armPose = pose==='win'
+   ? '<rect x="174" y="106" width="14" height="54" rx="6" fill="'+jacket+'" transform="rotate(-140 181 160)"/><circle cx="150" cy="118" r="7" fill="'+(tier>=2?'#0e1626':'#c9a179')+'"/>'
+   : '<rect x="174" y="150" width="14" height="56" rx="6" fill="'+jacket+'"/>'+(tier>=1?'<rect x="172" y="182" width="18" height="7" rx="2" fill="'+trim+'"/>':'')+'<circle cx="181" cy="210" r="7" fill="'+(tier>=2?'#0e1626':'#c9a179')+'"/>';
+  return '<svg viewBox="0 0 440 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Agent SPAHAN">'
+   +'<defs><linearGradient id="bgg'+tier+pose+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+bg[0]+'"/><stop offset="1" stop-color="'+bg[1]+'"/></linearGradient></defs>'
+   +'<rect width="440" height="260" fill="url(#bgg'+tier+pose+')"/>'
+   +'<g opacity=".9">'+sceneEls+'</g>'
+   +'<rect x="0" y="228" width="440" height="32" fill="#0a0f1c"/>'
+   +'<g>' /* agent, centered-right */
+   +'<ellipse cx="220" cy="232" rx="46" ry="7" fill="#000" opacity=".45"/>'
+   /* legs */
+   +'<rect x="200" y="176" width="17" height="56" rx="4" fill="#151d30"/><rect x="223" y="176" width="17" height="56" rx="4" fill="#151d30"/>'
+   +'<rect x="197" y="226" width="22" height="9" rx="2" fill="#0a0f1c"/><rect x="221" y="226" width="22" height="9" rx="2" fill="#0a0f1c"/>'
+   /* torso */
+   +'<rect x="192" y="118" width="56" height="66" rx="8" fill="'+jacket+'"/>'
+   +'<path d="M192 126 h56 v8 h-56 z" fill="'+trim+'" opacity=".9"/>'
+   +'<rect x="216" y="118" width="8" height="66" fill="#0e1626" opacity=".55"/>'
+   /* insert emblem: gold rhombus */
+   +'<g transform="translate(233 146) rotate(45)"><rect width="13" height="13" fill="'+trim+'"/><rect x="3.5" y="3.5" width="6" height="6" fill="'+jacket+'"/></g>'
+   +armPose+arm2
+   /* head */
+   +'<rect x="206" y="86" width="28" height="30" rx="9" fill="#c9a179"/>'
+   +'<path d="M204 92 a18 14 0 0 1 32 0 l0 6 -32 0 z" fill="#141c2e"/>'
+   +(visor!=='none'?'<rect x="208" y="98" width="24" height="8" rx="3" fill="'+visor+'" opacity="'+(tier>=5?'.95':'.85')+'"/>':'<rect x="210" y="99" width="6" height="4" fill="#141c2e"/><rect x="224" y="99" width="6" height="4" fill="#141c2e"/>')
+   /* headset */
+   +'<rect x="202" y="96" width="5" height="12" rx="2" fill="'+trim+'"/><rect x="205" y="108" width="10" height="3" rx="1.5" fill="'+trim+'"/>'
+   +(tier>=5?'<path d="M208 82 l6 -9 6 6 6 -6 6 9 z" fill="#f5c542"/>':'')
+   +'</g></svg>';
+}
+function rankBadgeSVG(idx,size){
+  const r=RANKS[idx],col=TIER_COLORS[r.tier];
+  const sub=idx-RANKS.findIndex(x=>x.tier===r.tier)+1;
+  let chev='';
+  for(let i=0;i<Math.min(sub,4);i++){const y=34-i*7;chev+='<path d="M14 '+(y+5)+' L24 '+y+' L34 '+(y+5)+'" stroke="'+col+'" stroke-width="3.4" fill="none" stroke-linecap="round"/>'}
+  const star=r.tier>=5?'<path d="M24 6l2.6 5.4 6 .7-4.4 4 1.2 5.9L24 19l-5.4 3 1.2-5.9-4.4-4 6-.7z" fill="'+col+'"/>':'';
+  return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 48 48"><path d="M24 2 L44 10 V26 C44 37 35 44 24 46 C13 44 4 37 4 26 V10 Z" fill="#0e1626" stroke="'+col+'" stroke-width="2"/>'+chev+star+'</svg>';
+}
+
+/* ═══════════════════════════ RENDERING ═══════════════════════════ */
+const $=id=>document.getElementById(id);
+function renderHeader(){$('hdrFlux').textContent='⬧ '+S.flux.toLocaleString('en-IN')}
+
+function renderHQ(){
+  const tier=RANKS[S.rankIdx].tier;
+  $('agentScene').innerHTML='<span class="scene-tag">'+SCENES[tier]+'</span>'+agentSVG(tier,'idle')
+    +'<div class="scene-name"><small>'+TIER_NAMES[tier].toUpperCase()+' TIER</small>AGENT SPAHAN</div>';
+  $('rankBadge').innerHTML=rankBadgeSVG(S.rankIdx,56);
+  $('rankName').textContent=RANKS[S.rankIdx].n;
+  $('rankName').style.color=TIER_COLORS[tier];
+  const cur=RANKS[S.rankIdx].xp,next=RANKS[S.rankIdx+1]?RANKS[S.rankIdx+1].xp:null;
+  if(next){const p=Math.min((S.xp-cur)/(next-cur)*100,100);$('xpFill').style.width=p+'%';
+    $('xpTxt').textContent=S.xp.toLocaleString('en-IN')+' XP · '+(next-S.xp).toLocaleString('en-IN')+' to '+RANKS[S.rankIdx+1].n}
+  else{$('xpFill').style.width='100%';$('xpTxt').textContent=S.xp.toLocaleString('en-IN')+' XP · MAX RANK'}
+  $('seasonTag').textContent=SEASON.id;
+  if(S.rating!=null){$('ratingV').textContent=S.rating.toLocaleString('en-IN');
+    const d=S.ratingPrev!=null?S.rating-S.ratingPrev:0;
+    $('ratingD').textContent=d===0?'· no change':(d>0?'▲ +':'▼ ')+d.toLocaleString('en-IN');
+    $('ratingD').className='d mono '+(d>=0?'up':'dn')}
+  else{$('ratingV').textContent='—';$('ratingD').textContent='sync to calibrate';$('ratingD').className='d muted'}
+  $('streakV').textContent=S.streak;
+  $('streakD').textContent=S.streak>=3?'🔥 best '+S.bestStreak:'days played · best '+S.bestStreak;
+  $('todayDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+  const tl=$('todayList');tl.innerHTML='';
+  S.today.items.forEach(it=>{
+    tl.insertAdjacentHTML('beforeend','<div class="m-item">'
+     +'<button class="m-check'+(it.done?' done':'')+'" data-today="'+it.id+'">✓</button>'
+     +'<div class="m-body"><div class="m-t'+(it.done?' done':'')+'">'+it.label+'</div><div class="m-sub">'+it.sub+'</div></div>'
+     +'<div class="m-pay"><b>+'+it.xp+'</b> XP<br>+'+it.flux+' ⬧</div></div>')});
+  $('syncNote').textContent=S.kpi?('synced '+new Date(S.kpi.syncedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})):'never synced';
+  $('feedList').innerHTML=S.feed.length?S.feed.map(f=>'<div style="padding:.28rem 0;border-bottom:1px solid var(--line)"><span class="muted mono" style="font-size:.62rem">'+f.d+'</span><br>'+f.t+'</div>').join(''):'<span class="muted">Your wins will be logged here.</span>';
+}
+
+function heistUnlocked(def){
+  if(!def.unlock)return true;
+  if(def.unlock.type==='rank')return S.rankIdx>=def.unlock.rank;
+  if(def.unlock.type==='either')return S.rankIdx>=def.unlock.rank||heistState(def.unlock.heist).mainDone;
+  return true;
+}
+function renderMissions(){
+  const board=$('heistBoard');board.innerHTML='';
+  SEED_HEISTS.forEach(def=>{
+    const st=heistState(def.id);
+    const unlocked=heistUnlocked(def);
+    const title=st.customTitle||def.title;
+    const target=st.customTarget||def.target;
+    const prepsDone=def.preps.every(p=>st.preps[p.id]);
+    let stateChip,stateCls;
+    if(st.mainDone){stateChip='COMPLETE';stateCls='st-done'}
+    else if(!unlocked){stateChip='LOCKED';stateCls='st-lock'}
+    else if(prepsDone){stateChip='MAIN READY';stateCls='st-ready'}
+    else{stateChip='PREP PHASE';stateCls='st-open'}
+    let inner;
+    if(!unlocked){
+      const req=def.unlock.type==='rank'?RANKS[def.unlock.rank].n:RANKS[def.unlock.rank].n+' — or finish '+(heistState(def.unlock.heist).customTitle||heistDef(def.unlock.heist).title);
+      inner='<div class="lockveil"><div class="padlock">🔒</div><div class="heist-target-sil" style="font-weight:800;letter-spacing:.1em">'+title.toUpperCase()+'</div><div class="req">REACH '+req.toUpperCase()+' TO UNLOCK</div></div>';
+    }else{
+      inner='<div class="heist-bd"><p class="muted" style="font-size:.74rem;margin-bottom:.5rem">'+def.desc+'</p>'
+       +'<div class="lbl" style="margin-bottom:.15rem">Prep missions · +100 XP each</div>'
+       +def.preps.map(p=>'<div class="prep-line"><button class="pchk'+(st.preps[p.id]?' done':'')+'" data-heist="'+def.id+'" data-prep="'+p.id+'" '+(st.mainDone?'disabled':'')+'>✓</button><span class="'+(st.preps[p.id]?'done':'')+'">'+p.label+'</span></div>').join('')
+       +'<div class="mainm"><div class="tag">MAIN MISSION'+(def.main.verify!=='manual'?' · ZOHO-VERIFIED':'')+'</div>'
+       +'<div class="t">'+def.main.label.replace('Ashok Iron Works',target||'Ashok Iron Works')+'</div>'
+       +(st.mainDone
+         ?'<div class="sub" style="color:var(--ok)">✔ Completed '+(st.doneAt||'')+' · +'+def.rewardXp+' XP · +'+def.rewardFlux+' ⬧</div>'
+         :(def.main.verify==='manual'
+            ?(prepsDone?'<button class="btn primary sm" style="margin-top:.45rem" data-manualmain="'+def.id+'">MARK COMPLETE</button>':'<div class="sub">Clear all preps to arm the main mission.</div>')
+            :'<div class="sub">'+(prepsDone?'Armed. Verified automatically on next Zoho sync.':'Clear all preps to arm — Zoho confirms the kill.')+'</div>'))
+       +'</div></div>';
+    }
+    board.insertAdjacentHTML('beforeend','<div class="heist cut'+(unlocked?'':' locked')+'">'
+     +'<div class="heist-hd"><div class="heist-ico">'+def.ico+'</div><div class="heist-ttl"><small>'+def.code+'</small>'+(unlocked?title:'CLASSIFIED')+'</div><span class="heist-state '+stateCls+'">'+stateChip+'</span></div>'
+     +inner+'</div>');
+  });
+  const sl=$('sideList');
+  const open=S.sides.filter(s=>!s.done);
+  const recent=S.sides.filter(s=>s.done).slice(-3);
+  sl.innerHTML=(open.length||recent.length)?'':'<span class="muted" style="font-size:.76rem">No live side missions. Sync Zoho or add your own.</span>';
+  open.concat(recent).forEach(s=>{
+    sl.insertAdjacentHTML('beforeend','<div class="m-item">'
+     +'<button class="m-check'+(s.done?' done':'')+'" data-side="'+s.id+'" '+(s.done?'disabled':'')+'>✓</button>'
+     +'<div class="m-body"><div class="m-t'+(s.done?' done':'')+'">'+s.label+'</div><div class="m-sub">'+(s.sub||'')+'</div></div>'
+     +'<div class="m-pay"><b>+'+s.xp+'</b> XP<br>+'+s.flux+' ⬧</div></div>')});
+  $('navMisBdg').dataset.n=String(open.length);
+}
+
+/* ─── RANGE / quiz ─── */
+let activeQ=null;
+function renderRangeCount(){
+  const t=todayStr(); if(S.quiz.date!==t){S.quiz={date:t,count:0};save()}
+  $('quizCount').textContent=S.quiz.count+'/'+DAILY_Q_CAP+' today';
+  document.querySelectorAll('.qcat').forEach(b=>{b.disabled=S.quiz.count>=DAILY_Q_CAP&&b.dataset.kind!=='decision'});
+}
+function askQuestion(kind){
+  const arena=$('qArena');
+  if(kind==='numbers')return askNumbers(arena);
+  if(kind==='decision')return askDecision(arena);
+  if(S.quiz.count>=DAILY_Q_CAP)return toast('Range closed for today — back tomorrow.',true);
+  arena.innerHTML='<div class="qwrap cut"><div class="qbody muted" style="font-size:.8rem">Loading question…</div></div>';
+  fetchAIQuestion(kind).then(q=>{activeQ=q;paintQuestion(arena,q)})
+   .catch(()=>{const pool=BANK.filter(b=>b.kind===kind);const q=pool[Math.floor(Math.random()*pool.length)];
+     activeQ={kind:kind,q:q.q,o:q.o.slice(),c:q.c,coach:q.coach,offline:true};
+     /* shuffle options */
+     const idx=[0,1,2,3].sort(()=>Math.random()-.5);
+     activeQ.o=idx.map(i=>q.o[i]);activeQ.c=idx.indexOf(q.c);
+     paintQuestion(arena,activeQ)});
+}
+async function fetchAIQuestion(kind){
+  if(!SET.backendUrl)throw new Error('no backend');
+  const r=await fetch(SET.backendUrl,{method:'POST',headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify({action:'trivia',kind:kind})});
+  const j=await r.json();
+  if(!j.ok||!j.question)throw new Error(j.error||'bad');
+  return {kind:kind,q:j.question.scenario,o:j.question.options,c:j.question.correct,coach:j.question.coaching,offline:false};
+}
+function paintQuestion(arena,q){
+  const kindName=q.kind==='insert'?'INSERT SELECTION':'TRADE TRIVIA';
+  arena.innerHTML='<div class="qwrap cut"><div class="qhd"><span class="qkind">'+kindName+(q.offline?' · OFFLINE BANK':' · AI')+'</span></div>'
+   +'<div class="qbody"><div class="qtext">'+q.q+'</div>'
+   +q.o.map((o,i)=>'<button class="qopt" data-ans="'+i+'"><span class="k">'+String.fromCharCode(65+i)+'</span>'+o+'</button>').join('')
+   +'<div id="coachBox"></div><div class="qfoot"></div></div></div>';
+}
+function answerQuestion(i){
+  const q=activeQ;if(!q)return;
+  document.querySelectorAll('.qopt').forEach((b,k)=>{b.disabled=true;
+    if(k===q.c)b.classList.add('correct');else if(k===i)b.classList.add('wrong')});
+  const right=i===q.c;
+  S.quiz.count++;save();renderRangeCount();
+  const coach=q.coach?('<div class="coach">'+(right?'<b>Correct.</b> ':'<b>Not this time.</b> ')+q.coach+'</div>'):'';
+  $('coachBox').innerHTML=coach;
+  document.querySelector('.qfoot').innerHTML='<button class="btn sm" onclick="askQuestion(\''+q.kind+'\')">NEXT</button><button class="btn sm ghost" onclick="document.getElementById(\'qArena\').innerHTML=\'\'">DONE</button>';
+  if(right)award(q.kind==='insert'?25:q.kind==='numbers'?15:20,q.kind==='insert'?50:q.kind==='numbers'?25:35,'Range — '+(q.kind==='insert'?'insert selection':q.kind==='numbers'?'know your numbers':'trade trivia'));
+  else{S.flux+=10;pushFeed('+10 ⬧ — lesson learned at the Range');save();renderHeader();toast('+10 ⬧ consolation — read the coaching.',true)}
+  activeQ=null;
+}
+function askNumbers(arena){
+  if(!S.kpi)return arena.innerHTML='<div class="qwrap cut"><div class="qbody muted" style="font-size:.8rem">Know-Your-Numbers needs Zoho data. Sync in SETUP first.</div></div>';
+  if(S.quiz.count>=DAILY_Q_CAP)return toast('Range closed for today.',true);
+  const k=S.kpi,qs=[];
+  const mm=k.months.slice(-2)[0];
+  if(mm){const wrong=[.7,1.3,1.6].map(f=>INR(mm.revenue*f));
+    qs.push({q:'What did you invoice in '+fmtMonth(mm.m)+'?',right:INR(mm.revenue),wrong:wrong})}
+  if(k.receivables&&k.receivables.topOverdue&&k.receivables.topOverdue.length){
+    const top=k.receivables.topOverdue[0];
+    const others=k.receivables.topOverdue.slice(1,4).map(o=>o.customer);
+    while(others.length<3)others.push(['VRL Logistics','Polyhydron','Hyloc Hydrotechnic'][others.length]);
+    qs.push({q:'Who owes you the MOST right now?',right:top.customer,wrong:others})}
+  if(k.receivables){const t=k.receivables.total;qs.push({q:'Total money outstanding in the market right now?',right:INR(t),wrong:[.6,1.4,2].map(f=>INR(t*f))})}
+  if(k.curMonth)qs.push({q:'How many invoices have you raised this month?',right:String(k.curMonth.count),wrong:[Math.max(1,k.curMonth.count-7),k.curMonth.count+6,k.curMonth.count+15].map(String)});
+  const pick=qs[Math.floor(Math.random()*qs.length)];
+  const opts=[pick.right].concat(pick.wrong.slice(0,3));
+  const idx=[0,1,2,3].sort(()=>Math.random()-.5);
+  activeQ={kind:'numbers',q:pick.q,o:idx.map(i=>opts[i]),c:idx.indexOf(0),coach:'Owner-level awareness: the number was <b>'+pick.right+'</b>. If you know your numbers cold, every negotiation starts in your favour.'};
+  paintQuestion(arena,activeQ);
+  document.querySelector('.qkind').textContent='KNOW YOUR NUMBERS · LIVE ZOHO';
+}
+function askDecision(arena){
+  if(S.decisionDate===todayStr())return arena.innerHTML='<div class="qwrap cut"><div class="qbody muted" style="font-size:.8rem">Decision already made today. Execute the mission.</div></div>';
+  const k=S.kpi;
+  const opts=[];
+  if(k&&k.receivables&&k.receivables.topOverdue)k.receivables.topOverdue.slice(0,2).forEach(o=>
+    opts.push({label:'Chase '+o.customer,sub:INR(o.amount)+' overdue '+(o.days?o.days+' days':''),mission:'Call '+o.customer+' — recover '+INR(o.amount)}));
+  if(k&&k.quiet&&k.quiet.length)opts.push({label:'Revive '+k.quiet[0].name,sub:'quiet since '+(k.quiet[0].lastDate||'a while'),mission:'Check-in call to '+k.quiet[0].name+' — they\'ve gone quiet'});
+  if(opts.length<3)opts.push({label:'Hunt a heist prep',sub:'push a vendor-code prep forward',mission:'Advance one vendor-code prep mission today'});
+  if(opts.length<3)opts.push({label:'3 cold calls',sub:'fresh blood for the pipeline',mission:'Make 3 cold calls to new prospects'});
+  arena.innerHTML='<div class="qwrap cut"><div class="qhd"><span class="qkind">DECISION PROMPT · TODAY\'S TARGET</span></div><div class="qbody">'
+   +'<div class="qtext">Commander\'s call. Where does today\'s energy go?</div>'
+   +opts.map((o,i)=>'<button class="qopt" data-decide="'+i+'"><span class="k">'+String.fromCharCode(65+i)+'</span>'+o.label+'<br><small class="muted">'+o.sub+'</small></button>').join('')
+   +'</div></div>';
+  arena.dataset.decisions=JSON.stringify(opts.map(o=>o.mission));
+}
+function decide(i){
+  const missions=JSON.parse($('qArena').dataset.decisions||'[]');
+  const m=missions[i];if(!m)return;
+  S.decisionDate=todayStr();
+  S.sides.push({id:'d'+Date.now(),label:m,sub:'from today\'s decision prompt',src:'decision',xp:30,flux:50,done:false});
+  award(10,15,'Decision made — mission spawned');
+  $('qArena').innerHTML='<div class="qwrap cut"><div class="qbody" style="font-size:.85rem"><b style="color:var(--teal)">Mission spawned:</b> '+m+'<br><span class="muted" style="font-size:.72rem">Find it under MISSIONS → Side missions. +30 XP when done.</span></div></div>';
+  renderMissions();
+}
+function fmtMonth(m){const[y,mo]=m.split('-');return new Date(y,mo-1,1).toLocaleDateString('en-IN',{month:'short',year:'numeric'})}
+
+/* ─── EMPIRE ─── */
+function renderEmpire(){
+  const k=S.kpi;
+  const race=$('raceBox');
+  if(!k){race.innerHTML='<span class="muted" style="font-size:.78rem">Sync Zoho (SETUP) to load the war map.</span>';
+    $('chartBox').innerHTML='';$('recvV').textContent='—';$('newcV').textContent='—';renderRooms();return}
+  const cm=k.curMonth,pct=Math.min(cm.revenue/RECORD.revenue*100,100);
+  const pace=cm.dayOfMonth/cm.daysInMonth*100;
+  race.innerHTML='<div class="race"><div class="racebar"><div class="fill" style="width:'+pct+'%"></div>'
+   +'<div class="pacemark" style="left:'+pace+'%"></div>'
+   +'<span class="lbl2">'+INR(cm.revenue)+'</span></div>'
+   +'<div class="legend"><span><i style="background:linear-gradient(90deg,var(--teal),var(--orange))"></i>this month</span>'
+   +'<span><i style="background:var(--gold)"></i>day-'+cm.dayOfMonth+' pace line</span>'
+   +'<span style="margin-left:auto" class="mono">record '+INR(RECORD.revenue)+'</span></div></div>'
+   +'<p style="font-size:.74rem;margin-top:.4rem" class="'+(pct>=pace?'up':'dn')+'">'
+   +(pct>=pace?'▲ AHEAD of record pace — hold the line.':'▼ Behind record pace by '+INR(RECORD.revenue*(pace-pct)/100)+'. Push.')+'</p>';
+  const months=k.months||[];const max=Math.max(...months.map(m=>m.revenue),1);
+  let bars='';const W=520,BW=Math.floor(W/months.length)-6;
+  months.forEach((m,i)=>{const h=Math.max(m.revenue/max*120,3);
+    const x=i*(BW+6)+4,rec=m.m===RECORD.m;
+    bars+='<rect x="'+x+'" y="'+(132-h)+'" width="'+BW+'" height="'+h+'" fill="'+(rec?'var(--gold)':(i===months.length-1?'var(--orange)':'#2f4568'))+'"/>'
+     +(i%3===0?'<text x="'+(x+BW/2)+'" y="146" font-size="8.5" fill="#5b7291" text-anchor="middle">'+m.m.slice(2).replace('-','/')+'</text>':'')});
+  $('chartBox').innerHTML='<svg viewBox="0 0 '+W+' 150" style="width:100%;height:auto">'+bars+'</svg>';
+  $('chartNote').textContent='gold = record · orange = now';
+  $('recvV').textContent=INR(k.receivables.total);
+  $('recvD').textContent=k.receivables.overdueCount+' invoices overdue';
+  $('newcV').textContent=(k.newCustomers||[]).length;
+  renderRooms();
+}
+function renderRooms(){
+  const k=S.kpi;
+  const intel=$('intelRoom'),war=$('warRoom');
+  if(S.rankIdx>=7){
+    let rows='<span class="muted" style="font-size:.76rem">Sync to load intel.</span>';
+    if(k&&k.receivables&&k.receivables.topOverdue){
+      rows='<table class="tbl"><tr><th>Debtor</th><th class="r">Owes</th><th class="r">Days</th></tr>'
+       +k.receivables.topOverdue.slice(0,6).map(o=>'<tr><td>'+o.customer+'</td><td class="r">'+INR(o.amount)+'</td><td class="r">'+(o.days||'—')+'</td></tr>').join('')+'</table>';
+      if(k.quiet&&k.quiet.length)rows+='<div class="lbl" style="margin:.7rem 0 .3rem">Gone quiet — revive them</div>'
+       +'<table class="tbl">'+k.quiet.slice(0,5).map(q=>'<tr><td>'+q.name+'</td><td class="r muted">'+(q.lastDate||'>6 mo')+'</td></tr>').join('')+'</table>'}
+    intel.innerHTML='<div class="card-hd"><span class="card-ttl">🕵 Intel room</span></div><div class="card-bd">'+rows+'</div>';
+  }else intel.innerHTML='<div class="lockveil"><div class="padlock">🔒</div><div style="font-weight:800;letter-spacing:.16em">INTEL ROOM</div><div class="req">REACH OPERATOR IV TO UNLOCK</div></div>';
+  if(S.rankIdx>=9){
+    let w='<span class="muted" style="font-size:.76rem">Sync to load projections.</span>';
+    if(k&&k.curMonth&&k.curMonth.dayOfMonth>2){
+      const proj=k.curMonth.revenue/k.curMonth.dayOfMonth*k.curMonth.daysInMonth;
+      w='<p style="font-size:.82rem">Straight-line projection this month: <b class="mono" style="color:var(--gold)">'+INR(proj)+'</b><br>'
+       +'<span class="muted" style="font-size:.72rem">vs record '+INR(RECORD.revenue)+' → '+(proj>RECORD.revenue?'<b class="up">RECORD FALLS at this pace 🏆</b>':'need <b>'+INR((RECORD.revenue-k.curMonth.revenue)/Math.max(k.curMonth.daysInMonth-k.curMonth.dayOfMonth,1))+'/day</b> from here to take it')+'</span></p>'}
+    war.innerHTML='<div class="card-hd"><span class="card-ttl">⚔ War room</span></div><div class="card-bd">'+w+'</div>';
+  }else war.innerHTML='<div class="lockveil"><div class="padlock">🔒</div><div style="font-weight:800;letter-spacing:.16em">WAR ROOM</div><div class="req">REACH SPECIALIST II TO UNLOCK</div></div>';
+}
+
+/* ─── SHOP ─── */
+function renderShop(){
+  $('shopFlux').textContent='balance ⬧ '+S.flux.toLocaleString('en-IN');
+  const box=$('shopList');box.innerHTML='';
+  [1,2,3,4].forEach(t=>{
+    const items=S.shop.filter(s=>s.tier===t);if(!items.length)return;
+    box.insertAdjacentHTML('beforeend','<div class="tierhd"><span class="t" style="color:'+(t===4?'var(--gold)':'var(--teal)')+'">'+(t===4?'BOSS TIER':'TIER '+t)+'</span></div>');
+    items.forEach(s=>{
+      const locked=s.lockRank&&S.rankIdx<s.lockRank;
+      box.insertAdjacentHTML('beforeend','<div class="shopitem cut"><div class="n">'+s.n+'<small>'+(locked?'🔒 unlocks at '+RANKS[s.lockRank].n:s.d||'')+'</small></div>'
+       +'<button class="buy" data-buy="'+s.id+'" '+(locked||S.flux<s.cost?'disabled':'')+'>⬧ '+s.cost.toLocaleString('en-IN')+'</button></div>')});
+  });
+  const tier=RANKS[S.rankIdx].tier;
+  $('gearList').innerHTML=GEAR.map(g=>{
+    const un=tier>=g.tier;
+    return '<div class="m-item"><div style="width:30px;text-align:center;font-size:1rem">'+(un?'🟠':'🔒')+'</div>'
+     +'<div class="m-body"><div class="m-t'+(un?'':' done')+'" style="'+(un?'':'text-decoration:none;color:var(--dim)')+'">'+g.n+'</div><div class="m-sub">'+(un?g.d:'Reach '+TIER_NAMES[g.tier]+' tier')+'</div></div></div>'}).join('');
+  $('trophyList').innerHTML=S.trophies.length
+    ?S.trophies.map(t=>'<div class="m-item"><div style="width:30px;text-align:center">🏆</div><div class="m-body"><div class="m-t">'+t.n+'</div><div class="m-sub">'+t.d+' · ⬧ '+t.cost.toLocaleString('en-IN')+'</div></div></div>').join('')
+    :'<span class="muted" style="font-size:.76rem">Nothing claimed yet. Go earn it.</span>';
+}
+
+/* ─── SETUP ─── */
+function renderSetup(){
+  $('backendUrl').value=SET.backendUrl||'';
+  const te=$('targetEdit');te.innerHTML='';
+  ['vc1','vc2','vc3','line'].forEach(id=>{
+    const def=heistDef(id),st=heistState(id);
+    te.insertAdjacentHTML('beforeend','<div class="f"><label class="lbl">'+def.code+'</label>'
+     +'<input data-tedit="'+id+'" value="'+(st.customTitle||def.title).replace(/"/g,'&quot;')+'" placeholder="'+def.title+'"></div>')});
+  const tr=$('treatEdit');tr.innerHTML='';
+  S.shop.forEach(s=>{tr.insertAdjacentHTML('beforeend','<div class="shopitem"><div class="n">'+s.n+'<small>⬧ '+s.cost.toLocaleString('en-IN')+'</small></div>'
+   +'<button class="buy" data-deltreat="'+s.id+'" style="border-color:var(--bad);color:var(--bad)">✕</button></div>')});
+}
+
+/* ═══════════════════════════ GAME FLOW ═══════════════════════════ */
+function newDayCheck(){
+  const t=todayStr();
+  if(S.today.date===t)return;
+  const yesterday=new Date(Date.now()-864e5).toISOString().slice(0,10);
+  if(S.lastPlayed===yesterday)S.streak++;
+  else if(S.lastPlayed!==t)S.streak=1;
+  S.bestStreak=Math.max(S.bestStreak,S.streak);
+  S.lastPlayed=t;
+  S.today={date:t,items:[
+    {id:'checkin',label:'Report for duty',sub:'daily check-in',xp:10,flux:20,done:false},
+    {id:'range',label:'Fire one round at the Range',sub:'any question counts',xp:0,flux:15,done:false},
+    {id:'push',label:'One heist prep OR side mission',sub:'move the board',xp:0,flux:15,done:false}
+  ]};
+  S.decisionDate=S.decisionDate===t?t:null;
+  save();
+}
+function tickToday(id){
+  const it=S.today.items.find(i=>i.id===id);
+  if(!it||it.done)return;
+  it.done=true;save();
+  award(it.xp||8,it.flux,'Daily contract: '+it.label);
+  renderHQ();
+}
+
+/* ─── Zoho sync ─── */
+async function doSync(silent){
+  if(!SET.backendUrl){if(!silent)toast('Set the backend URL first.',true);return}
+  const btn=$('syncBtn');btn.disabled=true;btn.textContent='SYNCING…';
+  try{
+    const targets={};
+    ['vc1','vc2','vc3'].forEach(id=>{const st=heistState(id);targets[id]=st.customTarget||heistDef(id).target});
+    const r=await fetch(SET.backendUrl,{method:'POST',headers:{'Content-Type':'text/plain'},
+      body:JSON.stringify({action:'sync',targets:targets,season:SEASON})});
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.error||'sync failed');
+    S.kpi=j.kpi;S.kpi.syncedAt=new Date().toISOString();
+    applyVerification();
+    S.ratingPrev=S.rating;
+    S.rating=computeRating();
+    if(S.rating!=null)S.ratingHist.push({d:todayStr(),r:S.rating});
+    save();
+    $('offlineStrip').classList.remove('show');
+    $('setupStatus').className='status ok';
+    $('setupStatus').textContent='✔ Synced. Revenue this month '+INR(S.kpi.curMonth.revenue)+' · receivables '+INR(S.kpi.receivables.total);
+    if(!silent)toast('Zoho synced. Rating: '+(S.rating?S.rating.toLocaleString('en-IN'):'—'));
+    renderAll();
+  }catch(err){
+    $('setupStatus').className='status bad';
+    $('setupStatus').textContent='✘ '+err.message;
+    if(!silent)toast('Sync failed: '+err.message,true);
+  }
+  btn.disabled=false;btn.textContent='SYNC ZOHO NOW';
+}
+function applyVerification(){
+  const k=S.kpi;if(!k)return;
+  /* record heist */
+  const rec=heistState('record');
+  if(!rec.mainDone&&k.curMonth.revenue>RECORD.revenue)completeHeist('record');
+  /* target heists */
+  ['vc1','vc2','vc3'].forEach(id=>{
+    const st=heistState(id);
+    if(!st.mainDone&&k.targets&&k.targets[id]&&k.targets[id].matched)completeHeist(id);
+  });
+  /* recovery milestones */
+  if(k.receivables){
+    const recovered=Math.max(RECV_BASELINE-k.receivables.total,0);
+    const steps=Math.floor(recovered/200000);
+    while(S.recvMilestones<steps&&S.recvMilestones<5){
+      S.recvMilestones++;
+      award(200,400,'RECOVERY milestone — '+INR(S.recvMilestones*200000)+' clawed back');
+    }
+    const rv=heistState('recovery');
+    if(!rv.mainDone&&k.receivables.total<200000)completeHeist('recovery');
+  }
+  /* monthly revenue milestones */
+  const mm=monthStr();
+  if(!S.monthAwards[mm])S.monthAwards[mm]=[];
+  [200000,400000,600000,800000,1000000,1200000].forEach(th=>{
+    if(k.curMonth.revenue>=th&&!S.monthAwards[mm].includes(th)){
+      S.monthAwards[mm].push(th);
+      award(100,200,'Month crossed '+INR(th));
+    }
+  });
+  /* auto side missions from data */
+  const autoIds=S.sides.filter(s=>s.src==='auto'&&!s.done).map(s=>s.key);
+  (k.receivables.topOverdue||[]).slice(0,2).forEach(o=>{
+    const key='ovd:'+o.customer;
+    if(!autoIds.includes(key)&&!S.sides.some(s=>s.key===key&&s.done&&s.doneAt>Date.now()-12096e5))
+      S.sides.push({id:'a'+Date.now()+Math.random().toString(36).slice(2,5),key:key,src:'auto',
+        label:'Chase '+o.customer,sub:INR(o.amount)+' overdue'+(o.days?' '+o.days+' days':''),xp:25,flux:40,done:false});
+  });
+  (k.quiet||[]).slice(0,1).forEach(q=>{
+    const key='quiet:'+q.name;
+    if(!autoIds.includes(key)&&!S.sides.some(s=>s.key===key&&s.done&&s.doneAt>Date.now()-12096e5))
+      S.sides.push({id:'a'+Date.now()+Math.random().toString(36).slice(2,5),key:key,src:'auto',
+        label:'Revive '+q.name,sub:'no order since '+(q.lastDate||'months'),xp:25,flux:40,done:false});
+  });
+  S.sides=S.sides.filter(s=>!s.done).concat(S.sides.filter(s=>s.done).slice(-6));
+}
+function completeHeist(id){
+  const def=heistDef(id),st=heistState(id);
+  if(st.mainDone)return;
+  st.mainDone=true;st.doneAt=new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+  const before=rankOf(S.xp);
+  S.xp+=def.rewardXp;S.flux+=def.rewardFlux;
+  S.rankIdx=rankOf(S.xp);
+  pushFeed('🏆 HEIST COMPLETE — '+(st.customTitle||def.title)+' · +'+def.rewardXp+' XP · +'+def.rewardFlux+' ⬧');
+  save();
+  showWin('HEIST COMPLETE',st.customTitle||def.title,def.code,'',def.rewardXp,def.rewardFlux,false);
+}
+
+/* ─── overlays ─── */
+function confetti(){
+  let s='';const cols=['#f5c542','#ff7a1a','#19c3dd','#34d17b'];
+  for(let i=0;i<26;i++){const x=Math.random()*400,y=Math.random()*300,r=4+Math.random()*7,c=cols[i%4];
+    s+='<g transform="translate('+x+' '+y+') rotate('+Math.floor(Math.random()*90)+')"><rect width="'+r+'" height="'+r+'" fill="'+c+'" opacity=".8"/></g>'}
+  return s;
+}
+function showWin(kick,title,sub,big,xp,flux,isRank){
+  $('confettiSvg').innerHTML=confetti();
+  $('winKick').textContent=kick;
+  $('winTitle').textContent=title;
+  $('winSub').textContent=sub||'';
+  const tier=RANKS[rankOf(S.xp)].tier;
+  $('winAgent').innerHTML=isRank?rankBadgeSVG(rankOf(S.xp),120):agentSVG(tier,'win');
+  if(isRank)$('winTitle').textContent=big;
+  $('winPay').innerHTML='+'+xp+' XP&ensp;·&ensp;+'+flux+' ⬧ FLUX';
+  $('winOvl').classList.add('show');
+}
+let toastTimer=null;
+function toast(html,warn){
+  const t=$('toast');t.innerHTML=html;t.className='toast show'+(warn?' warn':'');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3400);
+}
+
+/* ═══════════════════════════ EVENTS ═══════════════════════════ */
+function switchView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+v));
+  document.querySelectorAll('nav.dock button').forEach(b=>b.setAttribute('aria-selected',b.dataset.view===v?'true':'false'));
+  $('gearBtn').setAttribute('aria-selected',v==='setup'?'true':'false');
+  if(v==='hq')renderHQ();if(v==='missions')renderMissions();if(v==='range')renderRangeCount();
+  if(v==='empire')renderEmpire();if(v==='shop')renderShop();if(v==='setup')renderSetup();
+  window.scrollTo(0,0);
+}
+document.querySelector('nav.dock').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-view]');if(b)switchView(b.dataset.view)});
+$('gearBtn').addEventListener('click',()=>switchView('setup'));
+
+document.body.addEventListener('click',e=>{
+  const t=e.target.closest('button');if(!t)return;
+  if(t.dataset.today)return void(tickToday(t.dataset.today));
+  if(t.dataset.heist){/* prep toggle */
+    const st=heistState(t.dataset.heist);
+    if(st.mainDone)return;
+    if(!st.preps[t.dataset.prep]){st.preps[t.dataset.prep]=true;save();
+      award(100,150,'Prep cleared — '+heistDef(t.dataset.heist).code);
+      tickTodayPush();}
+    else{st.preps[t.dataset.prep]=false;save()}
+    renderMissions();return}
+  if(t.dataset.manualmain){const id=t.dataset.manualmain;completeHeist(id);renderMissions();return}
+  if(t.dataset.side){const s=S.sides.find(x=>x.id===t.dataset.side);
+    if(s&&!s.done){s.done=true;s.doneAt=Date.now();save();award(s.xp,s.flux,'Side mission: '+s.label);tickTodayPush();renderMissions()}return}
+  if(t.dataset.buy){const s=S.shop.find(x=>x.id===t.dataset.buy);
+    if(s&&S.flux>=s.cost){if(!confirm('Spend ⬧ '+s.cost.toLocaleString('en-IN')+' on "'+s.n+'"? Then actually DO it — that\'s the rule.'))return;
+      S.flux-=s.cost;S.trophies.unshift({n:s.n,d:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short'}),cost:s.cost});
+      pushFeed('🎁 Treat claimed: '+s.n+' (−'+s.cost+' ⬧)');save();renderHeader();renderShop();
+      toast('Claimed: <b>'+s.n+'</b>. Enjoy it — you paid in results.')}return}
+  if(t.dataset.deltreat){S.shop=S.shop.filter(x=>x.id!==t.dataset.deltreat);save();renderSetup();return}
+  if(t.dataset.ans!==undefined)return void answerQuestion(+t.dataset.ans);
+  if(t.dataset.decide!==undefined)return void decide(+t.dataset.decide);
+  if(t.classList.contains('qcat')){const k=t.dataset.kind;
+    if(k==='numbers'||k==='decision'){askQuestion(k)}else{askQuestion(k)}
+    if(!S.today.items.find(i=>i.id==='range').done)tickToday('range');
+    return}
+});
+function tickTodayPush(){const it=S.today.items.find(i=>i.id==='push');if(it&&!it.done)tickToday('push')}
+
+$('addTaskBtn').addEventListener('click',()=>{
+  const v=$('customTask').value.trim();if(!v)return;
+  S.sides.push({id:'c'+Date.now(),label:v,sub:'your call',src:'custom',xp:15,flux:25,done:false});
+  $('customTask').value='';save();renderMissions()});
+$('winClose').addEventListener('click',()=>{$('winOvl').classList.remove('show');renderAll()});
+
+$('testBtn').addEventListener('click',async()=>{
+  SET.backendUrl=$('backendUrl').value.trim();saveSet();
+  if(!SET.backendUrl)return;
+  $('setupStatus').className='status';$('setupStatus').textContent='Testing…';
+  try{const r=await fetch(SET.backendUrl+'?action=ping');const j=await r.json();
+    $('setupStatus').className='status '+(j.ok?'ok':'bad');
+    $('setupStatus').textContent=j.ok?('✔ Connected. AI key: '+(j.hasKey?'YES':'NO')+' · Zoho: '+(j.hasZoho?'YES':'NO')):'✘ Bad response';
+  }catch(err){$('setupStatus').className='status bad';$('setupStatus').textContent='✘ '+err.message}});
+$('syncBtn').addEventListener('click',()=>{SET.backendUrl=$('backendUrl').value.trim();saveSet();doSync(false)});
+$('backupBtn').addEventListener('click',async()=>{
+  if(!SET.backendUrl)return toast('Set backend URL first.',true);
+  try{const r=await fetch(SET.backendUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'backup',state:S})});
+    const j=await r.json();toast(j.ok?'State backed up to Sheet.':'Backup failed: '+j.error,!j.ok)}catch(e){toast('Backup failed: '+e.message,true)}});
+$('restoreBtn').addEventListener('click',async()=>{
+  if(!SET.backendUrl)return toast('Set backend URL first.',true);
+  if(!confirm('Overwrite this phone\'s game with the last Sheet backup?'))return;
+  try{const r=await fetch(SET.backendUrl+'?action=restore');const j=await r.json();
+    if(j.ok&&j.state){S=j.state;save();renderAll();toast('State restored.')}else toast('No backup found.',true)}catch(e){toast('Restore failed: '+e.message,true)}});
+$('exportBtn').addEventListener('click',()=>{
+  const blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='contract-strike-save.json';a.click()});
+$('resetBtn').addEventListener('click',()=>{
+  if(!confirm('Wipe the entire game? Rank, FLUX, heist progress — all gone.'))return;
+  if(!confirm('Really? This cannot be undone.'))return;
+  localStorage.removeItem(LS_STATE);S=freshState();save();renderAll();toast('Fresh recruit. Welcome back to Apprentice life… wait, no — you kept your history: Operator III.')});
+$('addTreatBtn').addEventListener('click',()=>{
+  const n=$('newTreatName').value.trim(),c=parseInt($('newTreatCost').value,10);
+  if(!n||!c)return;
+  const tier=c<=1000?1:c<=5000?2:c<=15000?3:4;
+  S.shop.push({id:'u'+Date.now(),tier:tier,cost:c,n:n,d:'your reward'});
+  $('newTreatName').value='';$('newTreatCost').value='';save();renderSetup();toast('Treat added to Tier '+tier)});
+$('targetEdit').addEventListener('change',e=>{
+  const inp=e.target.closest('input[data-tedit]');if(!inp)return;
+  const st=heistState(inp.dataset.tedit);
+  st.customTitle=inp.value.trim()||null;
+  st.customTarget=inp.value.trim()?inp.value.trim().split('—').pop().trim():null;
+  save()});
+
+/* ═══════════════════════════ BOOT ═══════════════════════════ */
+function renderAll(){renderHeader();renderHQ();renderMissions();renderRangeCount();renderEmpire();renderShop();renderSetup()}
+load();
+newDayCheck();
+if(!SET.backendUrl)$('offlineStrip').classList.add('show');
+renderAll();
+/* auto-sync at most once per 6h on open */
+if(SET.backendUrl&&(!S.kpi||Date.now()-new Date(S.kpi.syncedAt).getTime()>216e5))doSync(true);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "CONTRACT STRIKE — TOOLFLUX",
+  "short_name": "C·STRIKE",
+  "description": "The TOOLFLUX career game — rank up by growing the business. Zoho-verified.",
+  "start_url": "./contract-strike.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
