@@ -299,6 +299,10 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1.4rem 6rem }
 .log-tbl .ts-cell  { font-family: var(--mono); font-size: .72rem; color: var(--mut); white-space: nowrap }
 .btn-icon-sm { background: none; border: 1px solid var(--rule2); border-radius: 4px; padding: .15rem .4rem; cursor: pointer; color: var(--mut); font-size: .8rem; line-height: 1; }
 .btn-icon-sm:hover { background: var(--off2); color: var(--navy); }
+.btn-sm { min-height: 30px; padding: .3rem .7rem; font-size: .58rem }
+.team-list { display: flex; flex-direction: column; gap: .5rem }
+.team-row { display: flex; align-items: center; gap: .5rem; padding: .5rem .65rem; background: var(--off); border: 1px solid var(--rule); border-radius: var(--r); flex-wrap: wrap }
+.team-name { font-weight: 700; color: var(--navy); font-size: .82rem; flex: 1; min-width: 80px }
 .ops-pipeline { display: flex; align-items: center; background: var(--off); border: 1px solid var(--rule); border-radius: var(--r); padding: .5rem .75rem; margin-top: .85rem; margin-bottom: 0; gap: 0; overflow-x: auto }
 .ops-steps { display: flex; align-items: center; gap: 0; flex: 1; min-width: 0 }
 .op-step { display: flex; flex-direction: column; align-items: center; cursor: pointer; padding: .35rem .65rem; border-radius: 8px; border: 2px solid transparent; transition: background .15s, border-color .15s; min-width: 80px }
@@ -1228,6 +1232,9 @@ const blankDB = () => ({
     trialStartedAt: null,
     license: null,
     rejectionReasons: [...REJECTION_REASONS],
+    deviceRole: null,   // null/'owner' on the owner's device, 'operator' on a joined device
+    shopId: null,       // shared shop identity (owner: = installId; operator: from invite link)
+    operators: [],      // owner's team: [{ id, name, addedAt }]
   },
   history: {
     operators: [],
@@ -1278,6 +1285,10 @@ function loadDB() {
     if (!db.settings.rejectionReasons) db.settings.rejectionReasons = [...REJECTION_REASONS];
     if (!db.settings.trialStartedAt && db.settings.company) db.settings.trialStartedAt = new Date().toISOString();
     if (!db.settings.installId) db.settings.installId = uid(); // permanent per-device ID, never changes
+    if (db.settings.deviceRole === undefined) db.settings.deviceRole = null;
+    if (!Array.isArray(db.settings.operators)) db.settings.operators = [];
+    // Owner's shop identity defaults to their installId (existing owners keep their sync tabs)
+    if (!db.settings.shopId && db.settings.deviceRole !== 'operator') db.settings.shopId = db.settings.installId;
     // v3→v4 migration: wrap flat stations into operations[]
     db.jobs.forEach(job => {
       if (!job.operations) {
@@ -1333,6 +1344,9 @@ function hasSyncPending()   { try { return !!localStorage.getItem(SYNC_PENDING_K
 
 function attemptSync() {
   if (!SYNC_URL) return;
+  // Operator devices must never push a full snapshot — it would overwrite the
+  // owner's shop data. They upload append-only events instead (Phase 2).
+  if (isOperatorDevice()) { clearSyncPending(); return; }
   if (Date.now() - _lastSyncAttempt < 2000) {
     // burst collapse — a snapshot push is already in flight; re-check shortly
     clearTimeout(_syncRetryTimer);
@@ -1572,11 +1586,98 @@ function sha256Hex(msg) {
 function pinHash(pin) { return sha256Hex((db.settings.installId || 'tf') + ':' + String(pin)); }
 function hasOwnerPin() { return !!(db.settings && db.settings.ownerPinHash); }
 
+// ── shop / team (multi-device) ────────────────────────────────────
+// The owner's device IS the shop. Operators join via an invite link and
+// run as append-only clients. Phase 1: identity, invites, join & lock.
+function isOperatorDevice() { return !!(db.settings && db.settings.deviceRole === 'operator'); }
+function getShopId() { return (db.settings && (db.settings.shopId || db.settings.installId)) || ''; }
+
+function buildInviteLink(opName) {
+  const base = location.origin + location.pathname;
+  const q = '?shop=' + encodeURIComponent(getShopId()) + (opName ? '&op=' + encodeURIComponent(opName) : '');
+  return base + q;
+}
+
+function addOperatorToTeam(name) {
+  const n = String(name || '').trim();
+  if (!n) { toast('Enter an operator name', 'bad'); return null; }
+  if (!Array.isArray(db.settings.operators)) db.settings.operators = [];
+  if (db.settings.operators.some(o => o.name.toLowerCase() === n.toLowerCase())) { toast('That operator already exists', 'bad'); return null; }
+  const op = { id: uid(), name: n, addedAt: isoNow() };
+  db.settings.operators.push(op);
+  addHistory('operators', n); // also feed the autocomplete list
+  saveDB();
+  return op;
+}
+
+function removeOperator(id) {
+  if (!confirm('Remove this operator? Their existing link will stop working.')) return;
+  db.settings.operators = (db.settings.operators || []).filter(o => o.id !== id);
+  saveDB();
+  toast('Operator removed');
+  render();
+}
+
+function submitAddOperator(e) {
+  e.preventDefault();
+  if (!requireOwner()) return;
+  const inp = document.getElementById('team-op-name');
+  const op = addOperatorToTeam(inp ? inp.value : '');
+  if (op) { toast(`${op.name} added — send them the link`, 'ok'); render(); }
+}
+
+function copyInvite(opId) {
+  const op = (db.settings.operators || []).find(o => o.id === opId);
+  const link = buildInviteLink(op ? op.name : '');
+  const done = () => toast('Invite link copied — paste in WhatsApp', 'ok');
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done).catch(() => fallbackCopy(link, done));
+  else fallbackCopy(link, done);
+}
+
+function shareInvite(opId) {
+  const op = (db.settings.operators || []).find(o => o.id === opId);
+  const link = buildInviteLink(op ? op.name : '');
+  const msg = `${op ? op.name + ', here' : 'Here'}'s your ${db.settings.company || 'shop'} Machining Log link. Open it on your phone to log production:\n${link}`;
+  if (window.innerWidth <= 860 && navigator.share) {
+    navigator.share({ title: 'TOOLFLUX Machining Log', text: msg }).catch(() => {});
+  } else {
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  }
+}
+
+// Parse an invite link on startup. A blank/unclaimed device that opens
+// ?shop=... becomes an operator client; the owner's own device ignores it.
+function handleJoinFromUrl() {
+  let params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return; }
+  const shop = params.get('shop');
+  if (!shop) return;
+  const opName = params.get('op') ? decodeURIComponent(params.get('op')) : '';
+
+  // Already the operator for this shop → just refresh the operator name.
+  if (isOperatorDevice() && db.settings.shopId === shop) {
+    if (opName && !db.settings.defaultOperator) { db.settings.defaultOperator = opName; saveDB(); }
+    return;
+  }
+  // This device already belongs to an owner (has a shop of its own) → ignore
+  // the link so an owner clicking their own invite isn't demoted to operator.
+  if (db.settings.company && !isOperatorDevice()) return;
+
+  // Fresh device → join as an operator client.
+  db.settings.deviceRole = 'operator';
+  db.settings.shopId = shop;
+  if (opName) db.settings.defaultOperator = opName;
+  db.settings.pinPromptShown = true;   // operators never set a PIN
+  db.settings.tutorialSeen = db.settings.tutorialSeen || false;
+  saveDB();
+}
+
 function ownerSession() {
   try { return JSON.parse(sessionStorage.getItem(OWNER_SESSION_KEY) || 'null'); } catch (e) { return null; }
 }
 
 function isOwner() {
+  if (isOperatorDevice()) return false; // a device joined via invite link is always an operator
   if (!hasOwnerPin()) return true; // no PIN configured — legacy install keeps full access
   const s = ownerSession();
   if (!s || !s.la) return false;
@@ -1732,7 +1833,7 @@ function dismissPinSetup() {
 function syncModeChip() {
   const el = document.getElementById('mode-chip');
   if (!el) return;
-  if (!hasOwnerPin() || ui.view === 'setup') { el.style.display = 'none'; return; }
+  if (isOperatorDevice() || !hasOwnerPin() || ui.view === 'setup') { el.style.display = 'none'; return; }
   el.style.display = '';
   const owner = isOwner();
   el.className = 'mode-chip ' + (owner ? 'owner' : 'operator');
@@ -2719,6 +2820,16 @@ function vJobs() {
         <button class="btn btn-pri" onclick="navigate('newjob')">+ New Job</button>
       </div>` : ''}
     </div>`;
+
+  // Operator device that hasn't received the shop's jobs yet
+  if (isOperatorDevice() && !(db.jobs || []).length) {
+    return hd + `
+      <div class="panel"><div style="text-align:center;padding:3rem 1.2rem;color:var(--mut)">
+        <div style="font-size:1.8rem;margin-bottom:.6rem">&#128225;</div>
+        <div style="font-weight:800;color:var(--navy);margin-bottom:.4rem">Connected to your shop</div>
+        <div style="font-size:.8rem;max-width:340px;margin:0 auto;line-height:1.55">You're set up as an operator${db.settings.defaultOperator ? ', ' + esc(db.settings.defaultOperator) : ''}. Your jobs will appear here once the owner's device syncs them to you.</div>
+      </div></div>`;
+  }
 
   if (filter === 'cpc') {
     return hd + vCPCContent();
@@ -4216,6 +4327,28 @@ function vSettings() {
       </div>
     </div>
     <div class="panel">
+      <div class="panel-hd"><span class="lbl">Operators (Team)</span><div class="hr"></div><span class="lbl muted">${(db.settings.operators||[]).length}</span></div>
+      <div class="panel-bd">
+        <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem;line-height:1.55">Add an operator, then send them their link on WhatsApp. They open it on their phone and it launches straight into the shop-floor screen — locked to Operator Mode, no PIN, no setup.</div>
+        <form onsubmit="submitAddOperator(event)" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem">
+          <input id="team-op-name" placeholder="Operator name (e.g. Ravi)" autocomplete="off" style="flex:1;min-width:160px">
+          <button type="submit" class="btn btn-pri">+ Add Operator</button>
+        </form>
+        ${(db.settings.operators||[]).length ? `
+        <div class="team-list">
+          ${db.settings.operators.map(o => `
+            <div class="team-row">
+              <div class="team-name">${esc(o.name)}</div>
+              <button class="btn btn-teal btn-sm" onclick="copyInvite('${o.id}')">&#128279; Copy Link</button>
+              <button class="btn btn-ghost btn-sm" onclick="shareInvite('${o.id}')">Send</button>
+              <button class="btn-icon-sm" onclick="removeOperator('${o.id}')" title="Remove">&#10005;</button>
+            </div>`).join('')}
+        </div>
+        <div style="font-size:.68rem;color:var(--mut);margin-top:.7rem;line-height:1.5">The operator app is a live window into this shop. Full two-way syncing is rolling out — your device stays the master.</div>
+        ` : ''}
+      </div>
+    </div>
+    <div class="panel">
       <div class="panel-hd"><span class="lbl">Help</span><div class="hr"></div></div>
       <div class="panel-bd">
         <div style="font-size:.75rem;color:var(--mut);margin-bottom:.65rem;line-height:1.55">A short walkthrough of jobs, insert tracking, CPC, the dashboard and shift proof.</div>
@@ -4283,7 +4416,8 @@ function render() {
   let html = '';
   try {
     const licStatus = getLicenseStatus();
-    const showPaywall = ui.view === 'setup' ? false
+    // Operators ride on the owner's subscription — their device never paywalls.
+    const showPaywall = (ui.view === 'setup' || isOperatorDevice()) ? false
       : (licStatus === 'expired' || ui.view === 'paywall');
 
     if (ui.view === 'setup')       html = vSetup();
@@ -4306,7 +4440,7 @@ function render() {
   view.innerHTML = html;
   syncModeChip();
   // One-time migration prompt: existing installs get asked to create their PIN
-  const needsPinPrompt = ui.view !== 'setup' && db.settings.company && !hasOwnerPin() && !db.settings.pinPromptShown;
+  const needsPinPrompt = !isOperatorDevice() && ui.view !== 'setup' && db.settings.company && !hasOwnerPin() && !db.settings.pinPromptShown;
   if (needsPinPrompt && !document.getElementById('pin-modal')) {
     setTimeout(() => openPinSetup(true), 400);
   } else if (ui.view !== 'setup' && db.settings.company && !db.settings.tutorialSeen
@@ -5101,11 +5235,14 @@ Object.assign(window, {
   copyShiftSummary, printShiftProof, whatsappShiftSummary,
   installApp, dismissNudge,
   startTutorial, tutNext, tutPrev, skipTutorial, replayTutorial,
+  submitAddOperator, copyInvite, shareInvite, removeOperator,
 });
 
 // ── init ──────────────────────────────────────────────────────────
 loadDB();
-if (!db.settings.company) ui.view = 'setup';
+handleJoinFromUrl(); // adopt an invite link before the first render
+if (isOperatorDevice()) ui.view = 'jobs';   // operator home — no setup, no paywall
+else if (!db.settings.company) ui.view = 'setup';
 else if (hasOwnerPin() && isOwner()) ui.view = 'dash'; // Owner Home when session still unlocked
 render();
 
