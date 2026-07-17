@@ -1287,6 +1287,8 @@ function loadDB() {
     if (!db.settings.installId) db.settings.installId = uid(); // permanent per-device ID, never changes
     if (db.settings.deviceRole === undefined) db.settings.deviceRole = null;
     if (!Array.isArray(db.settings.operators)) db.settings.operators = [];
+    if (!Array.isArray(db.settings.appliedEvents)) db.settings.appliedEvents = []; // owner: event ids already reconciled
+    if (!Array.isArray(db.outbox)) db.outbox = []; // operator: production events awaiting confirmation
     // Owner's shop identity defaults to their installId (existing owners keep their sync tabs)
     if (!db.settings.shopId && db.settings.deviceRole !== 'operator') db.settings.shopId = db.settings.installId;
     // v3→v4 migration: wrap flat stations into operations[]
@@ -1321,12 +1323,20 @@ function scheduleSyncDebounced() {
 }
 
 function buildSyncPayload() {
-  const cid = db.settings.installId || (db.settings.company || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').slice(0, 30);
+  const cid = getShopId() || db.settings.installId || 'unknown';
   return JSON.stringify({
+    role: 'owner',
     customerId: cid,
+    shopId: cid,
     syncedAt: new Date().toISOString(),
     jobs: db.jobs || [],
-    settings: { company: db.settings.company, defaultMachine: db.settings.defaultMachine },
+    inventory: db.inventory || [],
+    operators: db.settings.operators || [],
+    settings: {
+      company: db.settings.company,
+      defaultMachine: db.settings.defaultMachine,
+      rejectionReasons: db.settings.rejectionReasons || [],
+    },
   });
 }
 
@@ -1385,6 +1395,93 @@ function syncNow() {
 }
 
 function silentSync() { attemptSync(); } // existing scheduled callers preserved
+
+// ── multi-device shop sync (Phase 2) ──────────────────────────────
+// Owner device = authority: it pushes the full shop as the master document
+// and pulls operators' production events, reconciling them in. Operator
+// devices = append-only clients: they push production events and pull the
+// master to see the shop. All applies are idempotent by event id, so the
+// two sides converge without a full-snapshot push ever crossing devices.
+let _opSyncTimer = null;
+
+function operatorEnqueue(jobId, entry) {
+  db.outbox = db.outbox || [];
+  if (!db.outbox.some(o => o.id === entry.id)) {
+    db.outbox.push({ id: entry.id, kind: 'production', jobId, entry });
+    saveDB();
+  }
+}
+
+function operatorSyncSoon() { clearTimeout(_opSyncTimer); _opSyncTimer = setTimeout(operatorSyncTick, 1200); }
+
+function operatorSyncTick() {
+  if (!SYNC_URL || !isOperatorDevice() || navigator.onLine === false) return;
+  // 1) push any unconfirmed production events (fire-and-forget; confirmed via pull)
+  if ((db.outbox || []).length) {
+    try {
+      fetch(SYNC_URL, {
+        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ role: 'operator', shopId: getShopId(), events: db.outbox }),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+  // 2) pull the master document and adopt the shop's current state
+  fetch(SYNC_URL + '?action=pull&shop=' + encodeURIComponent(getShopId()))
+    .then(r => r.ok ? r.json() : null)
+    .then(m => { if (m && !m.empty && Array.isArray(m.jobs)) adoptMaster(m); })
+    .catch(() => {});
+}
+
+// Operator adopts the owner's master: replace shop structure, keep own identity,
+// then re-apply any still-unconfirmed local events so nothing flickers away.
+function adoptMaster(m) {
+  if (ui.logOpen) return; // don't yank the ground out while the operator is typing an entry
+  db.jobs = Array.isArray(m.jobs) ? m.jobs : [];
+  if (Array.isArray(m.inventory)) db.inventory = m.inventory;
+  const s = m.settings || {};
+  if (s.company != null) db.settings.company = s.company;
+  if (Array.isArray(s.rejectionReasons)) db.settings.rejectionReasons = s.rejectionReasons;
+  if (s.defaultMachine) db.settings.defaultMachine = s.defaultMachine;
+  if (Array.isArray(m.operators)) db.settings.operators = m.operators;
+
+  const present = new Set();
+  db.jobs.forEach(j => (j.productionLog || []).forEach(e => present.add(e.id)));
+  db.outbox = (db.outbox || []).filter(o => !present.has(o.id)); // drop confirmed
+  db.outbox.forEach(o => { const job = db.jobs.find(j => j.id === o.jobId); if (job) applyProductionEntry(job, o.entry); }); // keep unconfirmed visible
+
+  try { localStorage.setItem('toolflux.machlog.lastSyncOk', new Date().toISOString()); } catch (e) {}
+  saveDB();
+  render();
+}
+
+// Owner pulls operators' production events and reconciles new ones into the
+// master, then re-pushes so every device converges.
+function ownerReconcileTick() {
+  if (!SYNC_URL || isOperatorDevice() || navigator.onLine === false) return;
+  fetch(SYNC_URL + '?action=events&shop=' + encodeURIComponent(getShopId()))
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data || !Array.isArray(data.events) || !data.events.length) return;
+      const applied = db.settings.appliedEvents = db.settings.appliedEvents || [];
+      const seen = new Set(applied);
+      let changed = false;
+      data.events.forEach(ev => {
+        if (!ev || !ev.id || seen.has(ev.id)) return;
+        if (ev.kind === 'production' && ev.entry) {
+          const job = db.jobs.find(j => j.id === ev.jobId);
+          if (!job) return; // owner doesn't have this job yet — retry next tick, don't mark done
+          if (applyProductionEntry(job, ev.entry)) changed = true;
+          applied.push(ev.id); seen.add(ev.id);
+        } else { applied.push(ev.id); seen.add(ev.id); }
+      });
+      if (applied.length > 3000) applied.splice(0, applied.length - 3000);
+      saveDB();
+      if (changed) { syncNow(); render(); } // push the reconciled master out to operators
+    })
+    .catch(() => {});
+}
+
+function shopSyncTick() { if (isOperatorDevice()) operatorSyncTick(); else ownerReconcileTick(); }
 
 function addHistory(key, val) {
   if (!val || !String(val).trim()) return;
@@ -3737,10 +3834,10 @@ function vStationDetail() {
   return `
     ${statusBanner}
     <div class="st-mobile-acts">
-      ${sc.activeSet && !solid ? `<button class="btn btn-pri" onclick="quickIndexCorner('${job.id}','${st.id}')">&#8635; Index Corner</button>` : ''}
+      ${isOwner() ? `${sc.activeSet && !solid ? `<button class="btn btn-pri" onclick="quickIndexCorner('${job.id}','${st.id}')">&#8635; Index Corner</button>` : ''}
       ${sc.activeSet
         ? `<button class="btn btn-ghost" onclick="loadNewSet('${job.id}','${st.id}')">${solid ? 'Replace Tool' : 'Replace Inserts'}</button>`
-        : `<button class="btn btn-pri" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load Tool' : 'Load Inserts'}</button>`}
+        : `<button class="btn btn-pri" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load Tool' : 'Load Inserts'}</button>`}` : ''}
       <button class="btn btn-teal" onclick="quickLog('${job.id}')">+ Log Production</button>
     </div>
     <div class="panel" style="margin-bottom:.8rem">
@@ -4639,9 +4736,30 @@ function submitLogProduction(e, jobId) {
     if (val && val !== 'none') events.push({ stationId: st.id, eventType: val, timestamp: isoNow() });
   });
 
-  const entry = { id: uid(), timestamp: isoNow(), operationId: opId, operator, machine, cycleTimeMins, qty, qtyGood, rejections, notes, events };
+  const entry = { id: uid(), timestamp: isoNow(), operationId: opId, operator, machine, cycleTimeMins, qty, qtyGood, rejections, notes, events, by: db.settings.defaultOperator || operator };
 
-  // Add qty to active corners of this operation's stations
+  applyProductionEntry(job, entry);
+  addHistory('operators', operator);
+  addHistory('machines', machine);
+  if (operator) db.settings.defaultOperator = operator;
+  if (machine)  db.settings.defaultMachine = machine;
+  saveDB();
+  if (isOperatorDevice()) { operatorEnqueue(jobId, entry); operatorSyncSoon(); }
+  else syncNow(); // owner: audit sync — original numbers reach the sheet immediately
+  ui.logOpen = false;
+  toast(`${qty} pcs logged${rejQty > 0 ? ` (${rejQty} rejected)` : ''}`, rejQty > 0 ? 'warn' : 'ok');
+  render();
+}
+
+// Deterministic, idempotent application of one production entry to a job.
+// Used both when logging locally and when a device reconciles a peer's entry,
+// so every device converges to the same insert state from the same events.
+function applyProductionEntry(job, entry) {
+  if (!job || !entry || !entry.id) return false;
+  job.productionLog = job.productionLog || [];
+  if (job.productionLog.some(e => e.id === entry.id)) return false; // already applied
+  const qty = Number(entry.qty) || 0;
+  const opStations = jobOpStations(job, entry.operationId);
   opStations.forEach(st => {
     const activeSet = (st.insertSets || []).find(s => s.status === 'active');
     if (activeSet) {
@@ -4649,22 +4767,12 @@ function submitLogProduction(e, jobId) {
       if (ac) ac.componentsMade = (ac.componentsMade || 0) + qty;
     }
   });
-
-  events.forEach(ev => {
+  (entry.events || []).forEach(ev => {
     const st = opStations.find(s => s.id === ev.stationId);
     if (st) processStationEvent(st, ev);
   });
-
   job.productionLog.push(entry);
-  addHistory('operators', operator);
-  addHistory('machines', machine);
-  if (operator) db.settings.defaultOperator = operator;
-  if (machine)  db.settings.defaultMachine = machine;
-  saveDB();
-  syncNow(); // audit: original numbers reach the sheet before anyone can alter them
-  ui.logOpen = false;
-  toast(`${qty} pcs logged${rejQty > 0 ? ` (${rejQty} rejected)` : ''}`, rejQty > 0 ? 'warn' : 'ok');
-  render();
+  return true;
 }
 
 function openLogEdit(jobId, entryId) {
@@ -4819,6 +4927,7 @@ function processStationEvent(st, ev) {
 }
 
 function loadFirstSet(jobId, stationId) {
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -4836,6 +4945,7 @@ function loadFirstSet(jobId, stationId) {
 }
 
 function loadNewSet(jobId, stationId) {
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -4861,6 +4971,7 @@ function loadNewSet(jobId, stationId) {
 // One-tap corner index from the station screen — reuses the exact event
 // processing the log-production tooling section uses.
 function quickIndexCorner(jobId, stationId) {
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -5336,8 +5447,13 @@ setTimeout(silentSync, 8000);
 setInterval(silentSync, 15 * 60 * 1000);
 // Retry queued audit sync as soon as connectivity returns, or right away
 // if a previous session ended with an unsynced mutation
-window.addEventListener('online', () => { if (hasSyncPending()) attemptSync(); });
+window.addEventListener('online', () => { if (hasSyncPending()) attemptSync(); shopSyncTick(); });
 if (hasSyncPending()) setTimeout(attemptSync, 3000);
+
+// Multi-device shop sync: operators push events + pull the master; the owner
+// pulls operators' events + reconciles. ~25 s cadence keeps devices in step.
+setTimeout(shopSyncTick, 3500);
+setInterval(shopSyncTick, 25000);
 
 // Logo fallback for file:// with missing SVG
 (function() {
