@@ -300,6 +300,22 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1.4rem 6rem }
 .btn-icon-sm { background: none; border: 1px solid var(--rule2); border-radius: 4px; padding: .15rem .4rem; cursor: pointer; color: var(--mut); font-size: .8rem; line-height: 1; }
 .btn-icon-sm:hover { background: var(--off2); color: var(--navy); }
 .btn-sm { min-height: 30px; padding: .3rem .7rem; font-size: .58rem }
+/* operator connection status pill */
+.op-sync { display: flex; align-items: center; gap: .5rem; padding: .5rem .8rem; border-radius: var(--r); margin-bottom: .7rem; font-size: .76rem; border: 1px solid var(--rule) }
+.op-sync-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0 }
+.op-sync-lbl { font-weight: 700 }
+.op-sync-detail { color: var(--mut); font-size: .7rem }
+.op-sync-refresh { margin-left: auto; background: none; border: 1px solid var(--rule2); border-radius: 4px; min-width: 30px; min-height: 30px; color: var(--mut); cursor: pointer; font-size: .9rem }
+.op-sync-refresh:hover { background: var(--off2); color: var(--navy) }
+.op-sync.ok { background: #eef7f1; border-color: #bfe0cd }
+.op-sync.ok .op-sync-dot { background: #2fae6e } .op-sync.ok .op-sync-lbl { color: #1d6b40 }
+.op-sync.pending { background: #fbf3e6; border-color: #e6d3ad }
+.op-sync.pending .op-sync-dot { background: var(--warn); animation: opblink 1.1s ease-in-out infinite } .op-sync.pending .op-sync-lbl { color: #8a5200 }
+.op-sync.offline { background: var(--off2) }
+.op-sync.offline .op-sync-dot { background: var(--mut) } .op-sync.offline .op-sync-lbl { color: var(--navy) }
+.op-sync.idle { background: var(--teal-tint); border-color: rgba(0,151,178,.35) }
+.op-sync.idle .op-sync-dot { background: var(--teal); animation: opblink 1.1s ease-in-out infinite } .op-sync.idle .op-sync-lbl { color: var(--teal-d) }
+@keyframes opblink { 0%,100%{opacity:1} 50%{opacity:.35} }
 .team-list { display: flex; flex-direction: column; gap: .5rem }
 .team-row { display: flex; align-items: center; gap: .5rem; padding: .5rem .65rem; background: var(--off); border: 1px solid var(--rule); border-radius: var(--r); flex-wrap: wrap }
 .team-name { font-weight: 700; color: var(--navy); font-size: .82rem; flex: 1; min-width: 80px }
@@ -1482,6 +1498,44 @@ function ownerReconcileTick() {
 }
 
 function shopSyncTick() { if (isOperatorDevice()) operatorSyncTick(); else ownerReconcileTick(); }
+
+// Live connection status for the operator's screen.
+function syncStatusInfo() {
+  let lastOk = null;
+  try { lastOk = localStorage.getItem('toolflux.machlog.lastSyncOk'); } catch (e) {}
+  const pending = (db.outbox || []).length;
+  const online = navigator.onLine !== false;
+  if (!online)   return { state: 'offline', label: 'Offline', detail: pending ? `${pending} to send when back online` : 'Will sync when back online' };
+  if (pending)   return { state: 'pending', label: 'Sending…', detail: `${pending} production ${pending === 1 ? 'entry' : 'entries'}` };
+  if (lastOk)    return { state: 'ok', label: 'Synced', detail: 'Updated ' + fmtAgo(lastOk) };
+  return { state: 'idle', label: 'Connecting…', detail: 'Reaching your shop' };
+}
+
+function syncStatusBar() {
+  const s = syncStatusInfo();
+  return `<div id="op-sync" class="op-sync ${s.state}">
+    <span class="op-sync-dot"></span>
+    <span class="op-sync-lbl">${esc(s.label)}</span>
+    <span class="op-sync-detail">${esc(s.detail)}</span>
+    <button class="op-sync-refresh" onclick="manualSync()" aria-label="Sync now">&#8635;</button>
+  </div>`;
+}
+
+function manualSync() {
+  toast('Syncing…');
+  shopSyncTick();
+  setTimeout(patchSyncStatus, 400);
+}
+
+function patchSyncStatus() {
+  const el = document.getElementById('op-sync');
+  if (!el || !isOperatorDevice()) return;
+  const s = syncStatusInfo();
+  el.className = 'op-sync ' + s.state;
+  const l = el.querySelector('.op-sync-lbl'), d = el.querySelector('.op-sync-detail');
+  if (l) l.textContent = s.label;
+  if (d) d.textContent = s.detail;
+}
 
 function addHistory(key, val) {
   if (!val || !String(val).trim()) return;
@@ -2910,6 +2964,7 @@ function vJobs() {
   setBarCrumb('', false);
 
   const hd = `
+    ${isOperatorDevice() ? syncStatusBar() : ''}
     <div class="jobs-hd">
       <h2>Component Jobs</h2>
       ${owner ? `<div style="display:flex;gap:.45rem;flex-wrap:wrap">
@@ -3254,6 +3309,7 @@ function vJobDetail() {
     : `<span class="s-val muted" style="font-size:1rem">—</span>`;
 
   return `
+    ${isOperatorDevice() ? syncStatusBar() : ''}
     <div class="job-hero">
       <div class="hero-top">
         <div class="hero-main">
@@ -5346,7 +5402,7 @@ Object.assign(window, {
   copyShiftSummary, printShiftProof, whatsappShiftSummary,
   installApp, dismissNudge,
   startTutorial, tutNext, tutPrev, skipTutorial, replayTutorial,
-  submitAddOperator, copyInvite, shareInvite, removeOperator,
+  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync,
 });
 
 // ── init ──────────────────────────────────────────────────────────
@@ -5454,6 +5510,11 @@ if (hasSyncPending()) setTimeout(attemptSync, 3000);
 // pulls operators' events + reconciles. ~25 s cadence keeps devices in step.
 setTimeout(shopSyncTick, 3500);
 setInterval(shopSyncTick, 25000);
+// Keep the operator's connection pill fresh (offline/online, "updated X ago")
+// between full renders.
+setInterval(patchSyncStatus, 8000);
+window.addEventListener('online', patchSyncStatus);
+window.addEventListener('offline', patchSyncStatus);
 
 // Logo fallback for file:// with missing SVG
 (function() {
