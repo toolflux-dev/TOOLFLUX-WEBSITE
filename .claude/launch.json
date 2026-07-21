@@ -2,16 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "Static Site — npx serve (port 3000)",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", ".", "-p", "3000", "--no-clipboard"],
-      "port": 3000
+      "name": "TOOLFLUX Site",
+      "runtimeExecutable": "powershell",
+      "runtimeArgs": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ".claude/serve.ps1"],
+      "port": 8321
     },
     {
-      "name": "Static Site — npx http-server (port 8080)",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["http-server", ".", "-p", "8080", "-c-1", "--cors"],
-      "port": 8080
+      "name": "FLUX MONEY",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:\\Users\\rohan\\OneDrive\\Documents\\GitHub\\FLUX-MONEY", "run", "dev"],
+      "port": 3400
     }
   ]
 }

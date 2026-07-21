@@ -163,6 +163,46 @@ function recordPayment(ss, paymentId, email, event) {
 // the Razorpay REST API to confirm the subscription is actually active,
 // preventing sheet-only fraud (e.g. someone edits the sheet directly).
 
+// ─── Self-serve monthly subscription ──────────────────────────────
+// The ₹299/month recurring plan. Razorpay's dashboard can only issue
+// one-subscriber links, so the app asks us to mint a subscription per
+// customer on demand and sends them to its short_url to authorise.
+var RAZORPAY_PLAN_ID = 'plan_T1e4VFqtRs0qPR';
+var SUBSCRIPTION_CYCLES = 120; // ~10 years of monthly billing; cancel anytime
+
+function createRazorpaySubscription(email) {
+  var keyId     = getSecret('RAZORPAY_KEY_ID');
+  var keySecret = getSecret('RAZORPAY_KEY_SECRET');
+  if (!keyId || !keySecret) return { ok: false, message: 'Payments not configured. Please contact TOOLFLUX.' };
+
+  try {
+    var res = UrlFetchApp.fetch('https://api.razorpay.com/v1/subscriptions', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(keyId + ':' + keySecret) },
+      payload: JSON.stringify({
+        plan_id: RAZORPAY_PLAN_ID,
+        total_count: SUBSCRIPTION_CYCLES,
+        customer_notify: 1,
+        // Stamp the email so the webhook can always resolve the customer,
+        // even on events whose payload carries no payment entity.
+        notes: { email: email, product: 'TOOLFLUX Machining Log' },
+      }),
+      muteHttpExceptions: true,
+    });
+    var body = JSON.parse(res.getContentText() || '{}');
+    if (res.getResponseCode() !== 200 && res.getResponseCode() !== 201) {
+      Logger.log('Razorpay subscription create failed: ' + res.getContentText());
+      return { ok: false, message: 'Could not start the subscription. Please try again.' };
+    }
+    if (!body.short_url) return { ok: false, message: 'Subscription created but no payment link returned.' };
+    return { ok: true, url: body.short_url, subscriptionId: body.id };
+  } catch (err) {
+    Logger.log('createRazorpaySubscription error: ' + err.message);
+    return { ok: false, message: 'Could not reach the payment provider. Please try again.' };
+  }
+}
+
 function fetchRazorpaySubStatus(subId) {
   var keyId     = getSecret('RAZORPAY_KEY_ID');
   var keySecret = getSecret('RAZORPAY_KEY_SECRET');
@@ -186,6 +226,11 @@ function doGet(e) {
     var email  = (e.parameter.email  || '').toLowerCase().trim();
     var ss     = SpreadsheetApp.openById(SPREADSHEET_ID);
 
+    if (action === 'subscribe') { // mint a monthly subscription link for this customer
+      if (!isValidEmail(email)) return jsonOk({ ok: false, message: 'Enter a valid email address.' });
+      if (!checkRateLimit(ss, email)) return jsonOk({ ok: false, message: 'Too many attempts. Try again in 15 minutes.' });
+      return jsonOk(createRazorpaySubscription(email));
+    }
     if (action === 'activate') return jsonOk(handleActivation(ss, email));
     if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || ''));
 
@@ -341,6 +386,9 @@ function handleRazorpayWebhook(ss, data) {
   var paymentId = '';
 
   try { email     = (data.payload.payment.entity.email || '').toLowerCase().trim(); } catch(_) {}
+  // Fallback: subscriptions we mint carry the customer's email in notes, so
+  // events that arrive without a payment entity still resolve to a customer.
+  if (!email) { try { email = (data.payload.subscription.entity.notes.email || '').toLowerCase().trim(); } catch(_) {} }
   try { subId     = data.payload.subscription.entity.id || ''; } catch(_) {}
   try { planId    = data.payload.subscription.entity.plan_id || ''; } catch(_) {}
   try { paymentId = data.payload.payment.entity.id || ''; } catch(_) {}

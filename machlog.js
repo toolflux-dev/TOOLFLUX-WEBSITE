@@ -14,7 +14,6 @@ let _syncTimer = null;
 
 // ── license / paywall ────────────────────────────────────────────
 const TRIAL_DAYS = 14;
-const RAZORPAY_PLAN_LINK = 'https://rzp.io/rzp/NQIKAc0';
 
 const OP_TYPES = [
   ['turning',         'Turning',          'op-turn'],
@@ -2987,14 +2986,17 @@ function vPaywall() {
           <div class="sub-benefit">Auto sync to Google Sheets</div>
           <div class="sub-benefit">Works fully offline, no cloud lock-in</div>
         </div>
-        <button class="btn btn-pri paywall-sub-btn" onclick="window.open('${RAZORPAY_PLAN_LINK}','_blank')">
+        <div style="margin-top:1.3rem;text-align:left">
+          <label class="paywall-activate-label" for="pw-email">Your email — used for billing and to unlock the app</label>
+          <input id="pw-email" type="email" placeholder="you@workshop.com" style="width:100%;margin-top:.4rem" autocomplete="email" value="${esc(db.settings.email||'')}">
+        </div>
+        <button id="pw-sub-btn" class="btn btn-pri paywall-sub-btn" onclick="startSubscription()">
           Subscribe — ₹299 / month
         </button>
         <div class="paywall-activate">
-          <div class="paywall-activate-label">Already subscribed? Enter your email to activate</div>
-          <div style="display:flex;gap:.5rem;margin-top:.5rem">
-            <input id="pw-email" type="email" placeholder="Email used during payment" style="flex:1" autocomplete="email" value="${esc(db.settings.email||'')}">
-            <button id="pw-activate-btn" class="btn btn-ghost" onclick="activateLicense()">Activate</button>
+          <div class="paywall-activate-label">Already paid? Unlock this device with the same email</div>
+          <div style="margin-top:.5rem">
+            <button id="pw-activate-btn" class="btn btn-ghost" style="width:100%" onclick="activateLicense()">Activate My Subscription</button>
           </div>
         </div>
         ${!expired ? `<div style="margin-top:1.2rem;text-align:center"><button class="btn btn-ghost" style="font-size:.75rem" onclick="navigate('jobs')">&#8592; Back to App</button></div>` : ''}
@@ -4206,6 +4208,42 @@ function verifyLicenseIfNeeded(force) {
     .catch(() => {}); // offline — no action, grace period continues
 }
 
+// ── monthly subscription ──────────────────────────────────────────
+// Razorpay issues one link per subscriber, so the server mints a
+// subscription for this customer's email and returns their payment link.
+// Never gated by requireActive() — a lapsed shop must always be able to
+// resubscribe.
+async function startSubscription() {
+  if (!requireOwner()) return;
+  const emailEl = $('#pw-email');
+  const email = ((emailEl || {}).value || '').trim().toLowerCase();
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    toast('Enter a valid email address', 'bad');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+  const btn = $('#pw-sub-btn');
+  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = 'Subscribe — ₹299 / month'; } };
+  if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
+
+  try {
+    const res = await fetch(SYNC_URL + '?action=subscribe&email=' + encodeURIComponent(email));
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    const data = await res.json();
+    if (data.ok && data.url) {
+      db.settings.email = email;
+      saveDB();
+      window.open(data.url, '_blank');
+      toast('Complete the payment, then tap Activate', 'ok', 6000);
+    } else {
+      toast(data.message || 'Could not start the subscription.', 'bad');
+    }
+  } catch (err) {
+    toast('Could not reach the server. Check your connection and try again.', 'bad');
+  }
+  restore();
+}
+
 // ── license activation ────────────────────────────────────────────
 async function activateLicense() {
   if (!requireOwner()) return;
@@ -4260,7 +4298,7 @@ Object.assign(window, {
   copyShiftSummary, printShiftProof, whatsappShiftSummary,
   installApp, dismissNudge,
   startTutorial, tutNext, tutPrev, skipTutorial, replayTutorial,
-  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync,
+  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync, startSubscription,
 });
 
 // ── init ──────────────────────────────────────────────────────────

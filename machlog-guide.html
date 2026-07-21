@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOOLFLUX Machining Log — Instruction Manual</title>
+<meta name="description" content="Complete guide to the TOOLFLUX Machining Log: insert tracking, CPC, production logging, dashboard, shift proof and more.">
+<style>
+:root {
+  --teal: #0097B2; --teal-d: #00748a; --navy: #012B42; --ink: #08141a;
+  --T: #0d1e26; --mut: #5a7282; --W: #FEFFFE; --off: #f2f5f7; --off2: #e4eaed;
+  --rule: #ccd4d8; --rule2: #a8b6bc; --teal-tint: #e5f4f7; --warn: #b06000; --bad: #a62d1e;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --r: 2px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box }
+body { background: var(--off); color: var(--T); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 16px; line-height: 1.6 }
+.lbl { font-size: .6rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut) }
+.mono { font-family: var(--mono) }
+
+/* header */
+.hero {
+  background: #0e2531; color: #e8eef1;
+  padding: 3.5rem 1.5rem 3rem;
+}
+.hero-in { max-width: 880px; margin: 0 auto }
+.hero .wordmark { font-family: var(--mono); font-size: 1.6rem; font-weight: 800; letter-spacing: .18em; color: #fff }
+.hero .tag { font-size: .62rem; font-weight: 700; letter-spacing: .3em; color: var(--teal); text-transform: uppercase; margin-top: .2rem }
+.hero h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); font-weight: 800; margin: 1.4rem 0 .6rem; letter-spacing: -.01em; color: #fff }
+.hero p { color: #9fb4bf; max-width: 60ch; font-size: 1.02rem }
+.hero .cta { display: inline-block; margin-top: 1.5rem; background: var(--teal); color: #fff; text-decoration: none; font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; padding: .85rem 1.5rem; border-radius: var(--r) }
+.hero .cta:hover { background: #00b5d4 }
+
+/* toc */
+.toc { max-width: 880px; margin: -1.6rem auto 0; padding: 0 1.5rem }
+.toc-card { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); padding: 1.2rem 1.4rem; box-shadow: 0 2px 24px rgba(0,0,0,.06) }
+.toc-card .lbl { display: block; margin-bottom: .6rem }
+.toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .15rem 1.4rem }
+.toc-grid a { color: var(--T); text-decoration: none; font-size: .85rem; padding: .28rem 0; display: flex; gap: .5rem; align-items: baseline; border-bottom: 1px solid transparent }
+.toc-grid a:hover { color: var(--teal) }
+.toc-grid .n { font-family: var(--mono); font-size: .68rem; color: var(--teal); font-weight: 700; min-width: 1.4rem }
+
+/* sections */
+main { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem }
+section { margin-bottom: 3.2rem }
+.sec-hd { display: flex; align-items: baseline; gap: .8rem; border-bottom: 2px solid var(--navy); padding-bottom: .5rem; margin-bottom: 1.1rem }
+.sec-hd .num { font-family: var(--mono); font-size: 1rem; font-weight: 800; color: var(--teal) }
+.sec-hd h2 { font-size: 1.3rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em }
+section p { max-width: 72ch; margin-bottom: .85rem; font-size: .95rem }
+section li { max-width: 70ch; margin-bottom: .4rem; font-size: .93rem }
+section ul, section ol { padding-left: 1.4rem; margin-bottom: 1rem }
+strong { color: var(--navy) }
+.step { display: flex; gap: .9rem; margin-bottom: .9rem; align-items: flex-start }
+.step .sn { font-family: var(--mono); font-size: .78rem; font-weight: 800; color: var(--W); background: var(--navy); min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: .1rem }
+.step div { flex: 1; font-size: .95rem }
+.callout { background: var(--teal-tint); border: 1px solid var(--teal); border-radius: var(--r); padding: .8rem 1rem; font-size: .88rem; margin: 1rem 0; max-width: 72ch }
+.callout b { color: var(--teal-d) }
+.callout.warn { background: #faf3e6; border-color: var(--warn) }
+.callout.warn b { color: var(--warn) }
+
+/* screen mockups */
+.shot { background: var(--off2); border: 1px solid var(--rule); border-radius: 6px; padding: 1.2rem; margin: 1.2rem 0 }
+.shot-cap { font-size: .72rem; color: var(--mut); text-align: center; margin-top: .8rem; font-style: italic }
+.scr { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); max-width: 460px; margin: 0 auto; overflow: hidden; box-shadow: 0 3px 18px rgba(1,43,66,.1); font-size: .82rem }
+.scr-bar { background: var(--W); border-bottom: 2px solid var(--navy); padding: .5rem .8rem; display: flex; align-items: center; gap: .6rem }
+.scr-bar .lg { font-family: var(--mono); font-size: .68rem; font-weight: 800; letter-spacing: .1em; color: var(--navy) }
+.scr-bar .chip { margin-left: auto; font-size: .5rem; font-weight: 800; letter-spacing: .12em; padding: .25rem .5rem; border: 1px solid var(--rule2); border-radius: 2px; color: var(--mut) }
+.scr-bar .chip.owner { border-color: var(--teal); color: var(--teal); background: var(--teal-tint) }
+.scr-bd { padding: .8rem }
+.f-lbl { font-size: .55rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--mut); margin: .6rem 0 .2rem }
+.f-inp { border: 1px solid var(--rule2); border-radius: 2px; padding: .45rem .55rem; font-size: .8rem; color: var(--T); background: var(--W) }
+.f-inp.ghost { color: var(--rule2) }
+.btn-m { display: inline-block; border-radius: 2px; padding: .55rem 1rem; font-size: .6rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; border: 1px solid transparent }
+.btn-m.pri { background: var(--navy); color: #fff }
+.btn-m.teal { background: var(--teal); color: #fff }
+.btn-m.ghost { border-color: var(--rule2); color: var(--mut); background: none }
+.qty-big { font-family: var(--mono); font-size: 1.9rem; font-weight: 800; color: var(--navy); border: 2px solid var(--navy); border-radius: 2px; text-align: center; padding: .3rem; width: 110px }
+.qadj { border: 1px solid var(--rule2); border-radius: 2px; font-size: .62rem; font-weight: 700; color: var(--navy); padding: .3rem .5rem; background: var(--W) }
+
+/* pipeline mockup */
+.pipe { display: flex; align-items: center; background: var(--off); border: 1px solid var(--rule); border-radius: 2px; padding: .5rem .6rem; gap: .3rem }
+.pipe .stp { text-align: center; padding: .35rem .6rem; border: 2px solid transparent; border-radius: 6px }
+.pipe .stp.on { background: var(--W); border-color: var(--teal) }
+.pipe .stp .nm { font-size: .72rem; font-weight: 700; color: var(--navy) }
+.pipe .stp .st { font-size: .62rem; color: var(--mut) }
+.pipe .arr { color: var(--mut) }
+.pipe .wip { font-size: .58rem; color: var(--warn); font-weight: 700 }
+
+/* proof mockup */
+.pr { border: 2px solid var(--navy); border-radius: 2px; background: var(--W); padding: .9rem; max-width: 400px; margin: 0 auto; font-size: .78rem }
+.pr-hd { display: flex; justify-content: space-between; border-bottom: 2px solid var(--navy); padding-bottom: .5rem; margin-bottom: .5rem; gap: .5rem }
+.pr-co { font-size: .6rem; font-weight: 800; letter-spacing: .1em; color: var(--navy); text-transform: uppercase }
+.pr-t { font-family: var(--mono); font-size: .9rem; font-weight: 800; color: var(--navy) }
+.pr-sync { font-size: .52rem; font-weight: 800; letter-spacing: .1em; padding: .2rem .45rem; border-radius: 2px; background: #e3f2e9; color: #1d6b40; border: 1px solid #1d6b40; white-space: nowrap; height: fit-content }
+.pr-job { border-bottom: 1px solid var(--rule); padding: .45rem 0 }
+.pr-code { font-family: var(--mono); font-weight: 800; color: var(--navy) }
+.pr-good { font-family: var(--mono); font-size: 1.2rem; font-weight: 800; color: var(--navy) }
+.pr-rej { font-family: var(--mono); font-weight: 800; color: var(--bad) }
+.pr-tot { display: flex; text-align: center; margin-top: .2rem; border-bottom: 1px solid var(--rule) }
+.pr-tot div { flex: 1; padding: .45rem .1rem; border-right: 1px solid var(--rule) }
+.pr-tot div:last-child { border-right: 0 }
+.pr-tn { font-family: var(--mono); font-size: 1.05rem; font-weight: 800; color: var(--navy) }
+.pr-tl { font-size: .45rem; font-weight: 700; letter-spacing: .1em; color: var(--mut) }
+
+/* dashboard rows mockup */
+.att { display: flex; gap: .5rem; align-items: center; padding: .45rem .7rem; border-bottom: 1px solid var(--off2); font-size: .75rem }
+.att .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0 }
+.att.bad .dot { background: var(--bad) } .att.warn .dot { background: var(--warn) } .att.info .dot { background: var(--teal) }
+.att .go { margin-left: auto; color: var(--mut) }
+
+/* tables */
+table.man { width: 100%; border-collapse: collapse; font-size: .84rem; margin: 1rem 0; background: var(--W); border: 1px solid var(--rule) }
+table.man th { text-align: left; font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--W); background: var(--navy); padding: .5rem .7rem }
+table.man td { padding: .5rem .7rem; border-bottom: 1px solid var(--off2); vertical-align: top }
+table.man tr:last-child td { border-bottom: 0 }
+.yes { color: #1d6b40; font-weight: 700 } .no { color: var(--bad); font-weight: 700 }
+
+/* cpc example */
+.cpc-box { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); padding: 1rem 1.2rem; margin: 1rem 0; max-width: 520px }
+.cpc-line { display: flex; justify-content: space-between; font-size: .85rem; padding: .3rem 0; border-bottom: 1px dashed var(--off2) }
+.cpc-line:last-child { border: 0; font-weight: 800; color: var(--navy) }
+.cpc-line .mono { font-variant-numeric: tabular-nums }
+
+footer { background: var(--ink); color: #8aa2ae; padding: 2.5rem 1.5rem; text-align: center; font-size: .85rem }
+footer a { color: var(--teal); text-decoration: none }
+footer .wm { font-family: var(--mono); font-weight: 800; letter-spacing: .16em; color: #fff; margin-bottom: .4rem }
+
+@media (max-width: 640px) {
+  .hero { padding: 2.5rem 1rem 2.4rem }
+  main { padding: 2rem 1rem 3rem }
+  .toc { padding: 0 1rem }
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <div class="wordmark">TOOLFLUX</div>
+    <div class="tag">Machining Log — Instruction Manual</div>
+    <h1>Know your real tooling cost. Every insert. Every corner. Every piece.</h1>
+    <p>The Machining Log replaces the handwritten sheet taped to your machine. It tracks carbide insert life edge by edge, logs every shift's production, and tells you exactly what tooling costs per component — even when the internet doesn't work.</p>
+    <a class="cta" href="https://toolflux-dev.github.io/machlog-app/" target="_blank">Open the App &#8594;</a>
+  </div>
+</div>
+
+<div class="toc">
+  <div class="toc-card">
+    <span class="lbl">Contents</span>
+    <div class="toc-grid">
+      <a href="#s1"><span class="n">01</span> Getting started</a>
+      <a href="#s2"><span class="n">02</span> Owner &amp; Operator modes</a>
+      <a href="#s3"><span class="n">03</span> Creating a job</a>
+      <a href="#s4"><span class="n">04</span> Tooling stations</a>
+      <a href="#s5"><span class="n">05</span> Logging production</a>
+      <a href="#s6"><span class="n">06</span> Insert life &amp; corners</a>
+      <a href="#s7"><span class="n">07</span> Multi-operation jobs</a>
+      <a href="#s8"><span class="n">08</span> CPC — cost per component</a>
+      <a href="#s9"><span class="n">09</span> Owner dashboard</a>
+      <a href="#s10"><span class="n">10</span> Shift proof</a>
+      <a href="#s11"><span class="n">11</span> Inventory</a>
+      <a href="#s12"><span class="n">12</span> Reports &amp; export</a>
+      <a href="#s13"><span class="n">13</span> Sync &amp; offline</a>
+      <a href="#s14"><span class="n">14</span> Subscription</a>
+      <a href="#s15"><span class="n">15</span> FAQ</a>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- 01 -->
+<section id="s1">
+  <div class="sec-hd"><span class="num">01</span><h2>Getting started</h2></div>
+  <div class="step"><span class="sn">1</span><div>Open <a href="https://toolflux-dev.github.io/machlog-app/">toolflux-dev.github.io/machlog-app</a> on your computer or phone. Chrome works best. Bookmark it — this is your app.</div></div>
+  <div class="step"><span class="sn">2</span><div>Enter your <strong>workshop name</strong> (e.g. <em>Sharma Engineering Works</em>), your name, your main machine, and your email.</div></div>
+  <div class="step"><span class="sn">3</span><div>Create your <strong>Owner PIN</strong> (4–8 digits). Remember it — this PIN separates what you see from what your operators see.</div></div>
+  <div class="step"><span class="sn">4</span><div>Tap <strong>START TRACKING</strong>. Your 14-day free trial begins. No card required.</div></div>
+
+  <div class="shot">
+    <div class="scr">
+      <div class="scr-bd" style="padding:1rem">
+        <div style="font-weight:800;color:var(--navy);font-size:.95rem;margin-bottom:.1rem">Set up your workshop</div>
+        <div style="font-size:.7rem;color:var(--mut)">Takes 30 seconds. Works offline from day one.</div>
+        <div class="f-lbl">Workshop / Company Name *</div>
+        <div class="f-inp">Sharma Engineering Works</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+          <div><div class="f-lbl">Owner PIN *</div><div class="f-inp">&#9679;&#9679;&#9679;&#9679;</div></div>
+          <div><div class="f-lbl">Confirm PIN *</div><div class="f-inp">&#9679;&#9679;&#9679;&#9679;</div></div>
+        </div>
+        <div style="margin-top:.8rem"><span class="btn-m pri" style="display:block;text-align:center">Start Tracking &#8594;</span></div>
+      </div>
+    </div>
+    <div class="shot-cap">The first-run setup. The PIN you create here unlocks Owner Mode.</div>
+  </div>
+
+  <div class="callout"><b>Works offline.</b> Once the page has loaded, the app runs entirely on your device. Machine hall has no signal? Doesn't matter. Data syncs to the cloud automatically whenever internet returns.</div>
+</section>
+
+<!-- 02 -->
+<section id="s2">
+  <div class="sec-hd"><span class="num">02</span><h2>Owner &amp; Operator modes</h2></div>
+  <p>The app opens in <strong>Operator Mode</strong> — safe to leave open on the shop-floor PC or a shared phone. Your operators can log production and manage inserts, but they can never see your costs or change past records.</p>
+  <p>Tap the <strong>OPERATOR</strong> chip in the top bar and enter your PIN to unlock <strong>Owner Mode</strong>. It locks itself again after 15 minutes of inactivity, or when the browser closes, or when you tap the chip.</p>
+
+  <div class="shot">
+    <div class="scr" style="max-width:380px">
+      <div class="scr-bar"><span class="lg">TOOLFLUX</span><span class="chip">&#128274; OPERATOR</span></div>
+      <div style="border-top:1px solid var(--off2)"></div>
+      <div class="scr-bar"><span class="lg">TOOLFLUX</span><span class="chip owner">OWNER MODE</span></div>
+    </div>
+    <div class="shot-cap">The mode chip — tap to unlock with your PIN, tap again to lock.</div>
+  </div>
+
+  <table class="man">
+    <tr><th>Action</th><th>Operator</th><th>Owner</th></tr>
+    <tr><td>Log production, record rejections</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+    <tr><td>Index corners, replace inserts</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+    <tr><td>View tool life &amp; stock counts</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+    <tr><td>Shift proof screenshot</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
+    <tr><td>See prices, CPC, spend (any &#8377;)</td><td class="no">No</td><td class="yes">Yes</td></tr>
+    <tr><td>Edit or delete past entries</td><td class="no">No</td><td class="yes">Yes</td></tr>
+    <tr><td>Create jobs, add stations</td><td class="no">No</td><td class="yes">Yes</td></tr>
+    <tr><td>Dashboard, reports, inventory, settings</td><td class="no">No</td><td class="yes">Yes</td></tr>
+  </table>
+
+  <div class="callout"><b>Why this matters.</b> Production numbers reach your cloud audit sheet within seconds of being logged. Even if someone later edits the device, your sheet holds the original.</div>
+</section>
+
+<!-- 03 -->
+<section id="s3">
+  <div class="sec-hd"><span class="num">03</span><h2>Creating a job</h2></div>
+  <p>A <strong>job</strong> is one component you manufacture. Example: <span class="mono">HSG-4020</span>, a pump housing for Acme Auto, batch of 500 pieces.</p>
+  <div class="step"><span class="sn">1</span><div>Unlock Owner Mode &#8594; <strong>Jobs</strong> &#8594; <strong>+ New Job</strong>.</div></div>
+  <div class="step"><span class="sn">2</span><div>Enter the component code, description, customer, and batch quantity.</div></div>
+  <div class="step"><span class="sn">3</span><div>Save. The job card now tracks everything: pieces made, tooling health, cost per piece.</div></div>
+</section>
+
+<!-- 04 -->
+<section id="s4">
+  <div class="sec-hd"><span class="num">04</span><h2>Tooling stations</h2></div>
+  <p>Each cutting tool on the job gets a <strong>station</strong>. A typical turned part might have three: <em>OD Turning</em> (CNMG insert), <em>Grooving</em> (MGMN insert), <em>Drilling</em> (solid carbide drill).</p>
+  <p>For each station you tell the app once:</p>
+  <ul>
+    <li><strong>Insert designation</strong> — e.g. <span class="mono">CNMG 12 04 08</span>, or pick it straight from your Inventory</li>
+    <li><strong>Corners per insert</strong> — e.g. 4 cutting edges on a CNMG</li>
+    <li><strong>Cost per insert</strong> — e.g. &#8377;400 (auto-filled if picked from Inventory)</li>
+    <li>For milling: <strong>inserts in the cutter</strong> — e.g. 5 inserts in a face mill</li>
+  </ul>
+  <div class="callout"><b>Tip:</b> if the item is linked to Inventory, every insert change automatically reduces your stock count — and warns you before you run out.</div>
+</section>
+
+<!-- 05 -->
+<section id="s5">
+  <div class="sec-hd"><span class="num">05</span><h2>Logging production — the daily ritual</h2></div>
+  <p>This is the screen your operator uses every shift. Three taps, done:</p>
+  <div class="step"><span class="sn">1</span><div>Tap <strong>LOG SHIFT</strong> on the job. The quantity pad opens with the keyboard ready.</div></div>
+  <div class="step"><span class="sn">2</span><div>Type the pieces made. Operator and machine are already filled from last time.</div></div>
+  <div class="step"><span class="sn">3</span><div>Tap <strong>LOG PRODUCTION</strong>. The entry is saved and synced.</div></div>
+
+  <div class="shot">
+    <div class="scr">
+      <div style="background:var(--navy);color:#fff;padding:.55rem .8rem"><span style="font-size:.55rem;letter-spacing:.2em;opacity:.65">LOG PRODUCTION</span><div style="font-size:.8rem;font-weight:700">End of shift — record pieces made</div></div>
+      <div class="scr-bd">
+        <div class="f-lbl">Qty Produced *</div>
+        <div style="display:flex;gap:.4rem;align-items:flex-start">
+          <div class="qty-big">120</div>
+          <div style="display:flex;flex-direction:column;gap:.25rem"><span class="qadj">+5</span><span class="qadj">+10</span></div>
+          <div style="display:flex;flex-direction:column;gap:.25rem"><span class="qadj">+25</span><span class="qadj">+100</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+          <div><div class="f-lbl">Operator</div><div class="f-inp">Ravi</div></div>
+          <div><div class="f-lbl">Machine</div><div class="f-inp">CNC-01</div></div>
+        </div>
+        <div style="background:var(--off);border:1px solid var(--rule);border-radius:2px;padding:.5rem .6rem;margin-top:.7rem;font-size:.72rem;font-weight:600;color:var(--navy)">&#9745; Any rejections / scrap? &nbsp;<span style="color:var(--mut);font-weight:400">2 pcs — Burr</span></div>
+        <div style="background:var(--off);border:1px solid var(--rule);border-radius:2px;padding:.5rem .6rem;margin-top:.4rem;font-size:.72rem;font-weight:600;color:var(--navy)">&#9744; Any tooling change this shift?</div>
+        <div style="margin-top:.8rem"><span class="btn-m teal">Log Production</span> <span class="btn-m ghost">Cancel</span></div>
+      </div>
+    </div>
+    <div class="shot-cap">The log form. Rejections and tooling changes stay folded away until needed.</div>
+  </div>
+
+  <p><strong>Rejections:</strong> tick the box, enter how many and pick a reason (Dimensional, Burr, Surface finish, Tool mark…). You can add your own reasons in Settings. The app tracks your rejection rate per operation automatically.</p>
+  <p><strong>Tooling changes:</strong> if an insert was indexed or replaced during the shift, tick the tooling box and mark it per station — this is how corner life gets measured.</p>
+</section>
+
+<!-- 06 -->
+<section id="s6">
+  <div class="sec-hd"><span class="num">06</span><h2>Insert life &amp; corners</h2></div>
+  <p>Open any station to see its full insert history: every set loaded, every corner used, how many pieces each corner made, and who loaded what, when.</p>
+  <p>On the phone, the station screen gives you three big buttons:</p>
+  <ul>
+    <li><strong>&#8635; INDEX CORNER</strong> — rotated the insert to a fresh edge? One tap records it.</li>
+    <li><strong>REPLACE INSERTS</strong> — old set finished. Stock is deducted if linked to Inventory.</li>
+    <li><strong>+ LOG PRODUCTION</strong> — jumps straight to the log form.</li>
+  </ul>
+  <p>The app learns your average corner life and warns when the current edge is past due — and it flags <strong>anomalies</strong>: a corner that died at 35 pieces when your average is 105 usually means a material problem, a speed/feed problem, or a bad insert batch. You'll see it flagged the same day, not at month end.</p>
+  <div class="callout warn"><b>Anomaly example:</b> "HSG-4020 · OD Turning — corner broke at 35 pcs (avg 105)". That's the app catching &#8377;400 worth of insert dying at one-third of its life — and telling you before it happens ten more times.</div>
+</section>
+
+<!-- 07 -->
+<section id="s7">
+  <div class="sec-hd"><span class="num">07</span><h2>Multi-operation jobs</h2></div>
+  <p>Many components need several setups: Op-1 turning, Op-2 second side, Op-3 milling. The pipeline bar on the job page shows the flow, the good pieces cleared through each op, the rejection rate, and the <strong>WIP</strong> — pieces waiting between operations.</p>
+  <div class="shot">
+    <div class="pipe" style="max-width:430px;margin:0 auto">
+      <div class="stp on"><div class="nm">Op-1</div><div class="st">18 good &middot; 10% rej</div><div class="wip">3 WIP &#8594;</div></div>
+      <span class="arr">&#8594;</span>
+      <div class="stp"><div class="nm">Op-2</div><div class="st">15 good</div></div>
+      <span class="arr">&#8594;</span>
+      <div class="stp"><div class="nm">Op-3</div><div class="st">No log</div></div>
+    </div>
+    <div class="shot-cap">The operations pipeline. Tap an op to see and manage its stations.</div>
+  </div>
+  <p>Each operation has its own tooling stations, so a drill used in Op-2 never mixes its cost into Op-1. Production is logged against the operation the operator actually ran.</p>
+</section>
+
+<!-- 08 -->
+<section id="s8">
+  <div class="sec-hd"><span class="num">08</span><h2>CPC — your real cost per component</h2></div>
+  <p><strong>CPC = insert money spent &divide; pieces produced.</strong> Not an estimate — calculated from the actual sets you loaded and the actual pieces logged. Owner-only; operators never see it.</p>
+  <div class="cpc-box">
+    <div class="lbl" style="margin-bottom:.5rem">Worked example — OD Turning station</div>
+    <div class="cpc-line"><span>Insert: CNMG 12 04 08, 4 corners</span><span class="mono">&#8377;400 / insert</span></div>
+    <div class="cpc-line"><span>Set fully used (all 4 corners)</span><span class="mono">&#8377;400 spent</span></div>
+    <div class="cpc-line"><span>Pieces made on that set</span><span class="mono">420 pcs</span></div>
+    <div class="cpc-line"><span>Confirmed CPC</span><span class="mono">&#8377;400 &divide; 420 = &#8377;0.95 / pc</span></div>
+  </div>
+  <p>Two figures are shown: <strong>Confirmed CPC</strong> (only fully-spent sets — your bankable number) and <strong>Running CPC</strong> (includes the live set, proportional to corners used). For multi-op jobs, the total CPC divides all operations' tooling cost by the good pieces that cleared the <em>final</em> operation.</p>
+  <p>The <strong>CPC Compare</strong> tab ranks every insert you've ever run, cheapest per piece first — the honest way to compare a &#8377;280 insert against a &#8377;400 one.</p>
+</section>
+
+<!-- 09 -->
+<section id="s9">
+  <div class="sec-hd"><span class="num">09</span><h2>The owner dashboard</h2></div>
+  <p>Unlock Owner Mode and you land on the dashboard — the whole business in ten seconds. <strong>Attention Required</strong> sits on top and is generated automatically:</p>
+  <div class="shot">
+    <div class="scr" style="max-width:430px">
+      <div style="padding:.45rem .7rem;border-bottom:1px solid var(--off2)"><span class="lbl">Attention Required</span></div>
+      <div class="att bad"><span class="dot"></span>HSG-4020 &middot; OD Turning — abnormal insert failure<span class="go">&#8594;</span></div>
+      <div class="att bad"><span class="dot"></span>Out of stock: CNMG120408-PM<span class="go">&#8594;</span></div>
+      <div class="att warn"><span class="dot"></span>FLG-210 is paused<span class="go">&#8594;</span></div>
+      <div class="att warn"><span class="dot"></span>PIN-88 — no production logged today<span class="go">&#8594;</span></div>
+    </div>
+    <div class="shot-cap">Every alert is one tap from its fix.</div>
+  </div>
+  <p>Below it: business totals (good pieces, rejection %, today and this week), every active job sorted by priority with progress bars, insert health, inventory alerts, cloud-backup status, and a 7-day production chart with rejects marked in red.</p>
+</section>
+
+<!-- 10 -->
+<section id="s10">
+  <div class="sec-hd"><span class="num">10</span><h2>Shift proof — one screenshot on WhatsApp</h2></div>
+  <p>End of shift, the operator opens <strong>Shift Proof</strong>, takes one screenshot, and sends it. You immediately see who worked, what was produced, on which machine, and whether the data already reached your cloud sheet.</p>
+  <div class="shot">
+    <div class="pr">
+      <div class="pr-hd">
+        <div><div class="pr-co">TOOLFLUX — Sharma Engineering</div><div class="pr-t">PROOF OF PRODUCTION</div></div>
+        <div style="text-align:right"><div class="mono" style="font-size:.68rem;font-weight:700;color:var(--navy)">Sat, 04 Jul 2026</div><span class="pr-sync">&#10003; SYNCED</span></div>
+      </div>
+      <div style="font-size:.68rem;color:var(--mut);padding-bottom:.4rem;border-bottom:1px solid var(--rule)"><b style="color:var(--navy)">Shift</b> 06:12–14:30 &nbsp; <b style="color:var(--navy)">Operator</b> Ravi &nbsp; <b style="color:var(--navy)">Machine</b> CNC-01</div>
+      <div class="pr-job">
+        <div style="display:flex;justify-content:space-between"><span class="pr-code">HSG-4020</span><span style="font-size:.6rem;color:var(--mut)">Op-1</span></div>
+        <div><span class="pr-good">113</span> <small style="color:var(--mut)">good</small> &nbsp; <span class="pr-rej">2</span> <small style="color:var(--mut)">rejected</small></div>
+        <div style="font-size:.62rem;color:var(--bad)">Rejection: Burr &times;2</div>
+        <div class="mono" style="font-size:.62rem;color:var(--T)">OD Turning — C2/4 &middot; 25 pcs on edge</div>
+      </div>
+      <div class="pr-tot">
+        <div><div class="pr-tn">113</div><div class="pr-tl">GOOD PCS</div></div>
+        <div><div class="pr-tn" style="color:var(--bad)">2</div><div class="pr-tl">REJECTED</div></div>
+        <div><div class="pr-tn">2</div><div class="pr-tl">ENTRIES</div></div>
+        <div><div class="pr-tn">1</div><div class="pr-tl">INDEXES</div></div>
+      </div>
+      <div style="font-size:.55rem;color:var(--mut);padding-top:.4rem">Generated 14:32 &middot; 1 station</div>
+    </div>
+    <div class="shot-cap">The proof card — sized to fit one phone screenshot, readable in a WhatsApp preview.</div>
+  </div>
+  <p>Prefer text? <strong>Copy Summary</strong> puts a WhatsApp-formatted message on the clipboard. <strong>Print / PDF</strong> uses the browser's print dialog.</p>
+</section>
+
+<!-- 11 -->
+<section id="s11">
+  <div class="sec-hd"><span class="num">11</span><h2>Inventory</h2></div>
+  <p>Track every insert, drill, end mill, holder and adaptor you own — designation, brand, grade, purchase price, quantity in stock.</p>
+  <ul>
+    <li><strong>Add items</strong> one by one, or <strong>paste a whole table from Excel</strong> — the app recognises columns like Product, Brand, Price, Qty automatically.</li>
+    <li><strong>Link stations to inventory</strong> — picking an insert from stock auto-fills its designation and price, and every insert change deducts stock.</li>
+    <li><strong>Low-stock warnings</strong> appear before a load would empty the drawer, and on the owner dashboard.</li>
+  </ul>
+</section>
+
+<!-- 12 -->
+<section id="s12">
+  <div class="sec-hd"><span class="num">12</span><h2>Reports &amp; export</h2></div>
+  <ul>
+    <li><strong>Owner Report</strong> — a printable A4 machining-efficiency report per job: stations, sets used, corner life, CPC, anomalies, recent log. Print it, sign it, file it.</li>
+    <li><strong>Excel export</strong> — one click downloads your entire data as a spreadsheet that opens in Excel or LibreOffice.</li>
+    <li><strong>JSON backup / restore</strong> — full data backup you can keep on a pen drive.</li>
+  </ul>
+</section>
+
+<!-- 13 -->
+<section id="s13">
+  <div class="sec-hd"><span class="num">13</span><h2>Sync &amp; offline behaviour</h2></div>
+  <p>All data lives on your device first — the app never needs internet to work. When a connection exists:</p>
+  <ul>
+    <li>Every production entry, insert change, edit and delete is pushed to your cloud sheet <strong>within seconds</strong>.</li>
+    <li>If offline, changes queue and retry automatically — including after the browser restarts.</li>
+    <li>The dashboard's <strong>Cloud Backup</strong> panel and the Shift Proof chip always show the current state: <em>Backed up / Waiting / Offline — queued</em>.</li>
+  </ul>
+</section>
+
+<!-- 14 -->
+<section id="s14">
+  <div class="sec-hd"><span class="num">14</span><h2>Trial &amp; subscription</h2></div>
+  <p>The first <strong>14 days are free</strong> with every feature enabled. After that the app costs <strong>&#8377;299 per month</strong> — pay by UPI through Razorpay, then activate with the email you used to pay. Your data never leaves your device during activation, and nothing is lost if the trial ends before you subscribe: subscribing unlocks everything exactly as you left it.</p>
+</section>
+
+<!-- 15 -->
+<section id="s15">
+  <div class="sec-hd"><span class="num">15</span><h2>FAQ</h2></div>
+  <p><strong>I forgot my Owner PIN.</strong> Contact TOOLFLUX on WhatsApp — we'll walk you through a reset. Your data is safe.</p>
+  <p><strong>Can two machines share one app?</strong> Yes — log entries record which machine ran the parts. For fully separate data per PC, just open the link on each PC; each keeps its own records.</p>
+  <p><strong>My operator logged a wrong quantity.</strong> Unlock Owner Mode, open the job's production log, tap the pencil on the entry, correct it.</p>
+  <p><strong>Does clearing browser history delete my data?</strong> Clearing <em>site data</em> does. Take an Excel export or JSON backup periodically — and remember the cloud sheet holds everything that synced.</p>
+  <p><strong>Will I get updates?</strong> Yes, automatically — refresh the page and you're on the latest version.</p>
+</section>
+
+</main>
+
+<footer>
+  <div class="wm">TOOLFLUX</div>
+  <div>Engineering Precision. Every Cut.</div>
+  <div style="margin-top:.7rem">Questions? WhatsApp <a href="https://wa.me/918660234766">86602 34766</a> &middot; <a href="https://toolflux-dev.github.io/machlog-app/">Open the app</a></div>
+</footer>
+
+</body>
+</html>
