@@ -9,3 +9,15 @@ SETUP-GUIDE.md
 machlog-share-*.html
 .superpowers/
 .claude/serve.ps1
+
+# NANDI Med is a SEPARATE app with its own repo (toolflux-dev.github.io/nandimed).
+# It must never be published from the TOOLFLUX machining site again.
+nandimed*
+NANDIMED-*
+
+# Internal tooling / per-customer builds / local agent state
+build-share.ps1
+SETUP-GUIDE.md
+machlog-share-*.html
+.superpowers/
+.claude/serve.ps1
