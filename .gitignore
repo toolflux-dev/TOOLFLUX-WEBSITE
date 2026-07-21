@@ -1,0 +1,11 @@
+
+# NANDI Med is a separate, private app — never publish it from the TOOLFLUX site
+nandimed*
+NANDIMED-*
+
+# Internal tooling / per-customer builds / local agent state
+build-share.ps1
+SETUP-GUIDE.md
+machlog-share-*.html
+.superpowers/
+.claude/serve.ps1
