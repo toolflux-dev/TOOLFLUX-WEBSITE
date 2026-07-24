@@ -1,0 +1,14 @@
+{
+  "name": "TOOLFLUX FLUX — Pitch Partner",
+  "short_name": "FLUX",
+  "start_url": "./pitch.html",
+  "scope": "./pitch.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#121013",
+  "theme_color": "#121013",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
