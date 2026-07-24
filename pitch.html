@@ -191,15 +191,17 @@ a{ color:var(--teal); }
   <div class="meta">TOOLFLUX · FLUX</div>
   <div class="h1">Setup</div>
   <p class="sub">One-time on this device. Your key stays in this browser only.</p>
-  <div class="field"><label>Gemini API key</label><input type="password" id="setKey" placeholder="AIza…" autocomplete="off"></div>
+  <div class="field"><label>Voice engine</label>
+    <select id="setProvider">
+      <option value="gemini">Google Gemini Live — best Kannada, proactive listening</option>
+      <option value="openai">OpenAI Realtime — fastest responses, best voices</option>
+    </select>
+  </div>
+  <div class="field" id="fieldGemKey"><label>Gemini API key</label><input type="password" id="setKey" placeholder="AIza…" autocomplete="off"></div>
+  <div class="field" id="fieldOaiKey"><label>OpenAI API key</label><input type="password" id="setOaiKey" placeholder="sk-…" autocomplete="off"></div>
   <div class="field"><label>Your name (what Flux calls you)</label><input type="text" id="setOwner" placeholder="Rohan"></div>
   <div class="field"><label>Flux voice</label>
-    <select id="setVoice">
-      <option value="Fenrir" selected>Fenrir — energetic male (recommended)</option>
-      <option value="Puck">Puck — upbeat male</option>
-      <option value="Charon">Charon — deep male</option>
-      <option value="Orus">Orus — firm male</option>
-    </select>
+    <select id="setVoice"></select>
   </div>
   <div class="row">
     <button class="btn small" id="btnTestConn">Test connection</button>
@@ -211,9 +213,10 @@ a{ color:var(--teal); }
   <div class="hr"></div>
   <details>
     <summary class="meta" style="cursor:pointer">Advanced (models)</summary>
-    <div class="field"><label>Live model</label><input type="text" id="setLiveModel"></div>
-    <div class="field"><label>Live API version</label><input type="text" id="setApiVer"></div>
-    <div class="field"><label>Summary model</label><input type="text" id="setTextModel"></div>
+    <div class="field"><label>Gemini live model</label><input type="text" id="setLiveModel"></div>
+    <div class="field"><label>Gemini live API version</label><input type="text" id="setApiVer"></div>
+    <div class="field"><label>Gemini summary model</label><input type="text" id="setTextModel"></div>
+    <div class="field"><label>OpenAI realtime model</label><input type="text" id="setOaiModel"></div>
   </details>
   <div class="hr"></div>
   <div class="row"><button class="btn primary" id="btnSaveSetup">Save & continue</button></div>
@@ -356,7 +359,17 @@ function loadScript(src){ return new Promise((res, rej) => { const s = document.
 let settings = null;
 function loadSettings(){ try { settings = JSON.parse(localStorage.getItem('flux_settings')) || {}; } catch { settings = {}; }
   settings = Object.assign({ apiKey:'', ownerName:'Rohan', voice:'Fenrir', mode:'balanced',
+    provider:'gemini', openaiKey:'', openaiVoice:'cedar', openaiModel:'gpt-realtime',
     liveModel: GEMINI_DEFAULTS.liveModel, apiVersion: GEMINI_DEFAULTS.apiVersion, textModel: GEMINI_DEFAULTS.textModel }, settings); }
+const GEMINI_VOICES = [['Fenrir','Fenrir — energetic male (recommended)'],['Puck','Puck — upbeat male'],['Charon','Charon — deep male'],['Orus','Orus — firm male']];
+const OPENAI_VOICES = [['cedar','Cedar — natural male (recommended)'],['echo','Echo — warm male'],['ash','Ash — confident male'],['verse','Verse — expressive male']];
+function activeKey(){ return settings.provider === 'openai' ? settings.openaiKey : settings.apiKey; }
+
+/* used greetings/jokes — never repeat across meetings */
+function getUsedLines(){ try { return JSON.parse(localStorage.getItem('flux_used_lines')) || []; } catch { return []; } }
+function addUsedLines(lines){ const merged = [...getUsedLines(), ...lines]
+  .map(l => l.trim()).filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).slice(-60);
+  localStorage.setItem('flux_used_lines', JSON.stringify(merged)); }
 function saveSettings(){ localStorage.setItem('flux_settings', JSON.stringify(settings)); }
 
 /* ---------- router ---------- */
@@ -518,8 +531,8 @@ const AudioEngine = {
   playQueue: [], nextPlayTime: 0, activeSources: new Set(),
   micLevel: 0, fluxLevel: 0, onFrame: null, meetingId: null, seq: 0, wakeLock: null, muted: false,
 
-  async start(meetingId){
-    this.meetingId = meetingId; this.seq = 0;
+  async start(meetingId, targetRate){
+    this.meetingId = meetingId; this.seq = 0; this.targetRate = targetRate || 16000;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     await this.ctx.resume();
     this.micStream = await navigator.mediaDevices.getUserMedia({ audio: {
@@ -535,9 +548,10 @@ const AudioEngine = {
     this.workletNode = new AudioWorkletNode(this.ctx, 'flux-cap');
     src.connect(this.workletNode);
 
-    /* resample to 16k PCM16, batch ~100ms */
+    /* resample to target rate PCM16, batch ~50ms for low latency */
     const inRate = this.ctx.sampleRate; let acc = new Float32Array(0); let outAcc = [];
-    let ratio = inRate / 16000;
+    let ratio = inRate / this.targetRate;
+    const batchSamples = Math.round(this.targetRate / 20); // 50 ms
     this.workletNode.port.onmessage = ev => {
       const f = ev.data;
       /* mic level (RMS, smoothed) */
@@ -551,7 +565,7 @@ const AudioEngine = {
       acc = acc.subarray(Math.floor(outLen * ratio));
       outAcc.push(out);
       const total = outAcc.reduce((n, a) => n + a.length, 0);
-      if (total >= 1600) { // 100 ms @16k
+      if (total >= batchSamples) {
         const merged = new Int16Array(total); let o = 0;
         outAcc.forEach(a => { merged.set(a, o); o += a.length; }); outAcc = [];
         if (this.onFrame) this.onFrame(b64FromInt16(merged));
@@ -636,6 +650,10 @@ class LiveClient {
         systemInstruction: { parts: [{ text: this.systemPrompt }] },
         inputAudioTranscription: {}, outputAudioTranscription: {},
         proactivity: { proactiveAudio: true },
+        realtimeInputConfig: { automaticActivityDetection: {
+          startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+          endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+          prefixPaddingMs: 60, silenceDurationMs: 500 } },
         contextWindowCompression: { slidingWindow: {} },
         sessionResumption: this.resumeHandle ? { handle: this.resumeHandle } : {}
       };
@@ -678,13 +696,99 @@ class LiveClient {
 
   sendAudio(b64){ if (this.ws && this.ws.readyState === 1 && this.state === 'live')
     this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } } })); }
-  sendText(text, role){ if (this.ws && this.ws.readyState === 1)
-    this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: role || 'user', parts: [{ text }] }], turnComplete: true } })); }
+  sendText(text /* , wantResponse — Gemini decides itself, param ignored */){ if (this.ws && this.ws.readyState === 1)
+    this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true } })); }
   sendToolResponse(responses){ if (this.ws && this.ws.readyState === 1)
     this.ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } })); }
   close(){ this.closing = true; try { this.ws && this.ws.close(); } catch {} }
   _setState(s){ this.state = s; this.onState(s); }
   _fail(e){ this._setState('error'); console.error(e); }
+}
+
+/* ================================================================
+   OPENAI REALTIME CLIENT (same callback interface as LiveClient)
+   ================================================================ */
+function toJsonSchema(s){ /* Gemini UPPERCASE schema → standard JSON schema */
+  if (!s || typeof s !== 'object') return s;
+  const out = Array.isArray(s) ? [] : {};
+  for (const k of Object.keys(s)) out[k] = toJsonSchema(s[k]);
+  if (typeof out.type === 'string') out.type = out.type.toLowerCase();
+  return out;
+}
+class OpenAIClient {
+  constructor(opts){ Object.assign(this, { ws:null, state:'idle', backoff:1000, closing:false,
+    onState:()=>{}, onAudio:()=>{}, onInTranscript:()=>{}, onOutTranscript:()=>{},
+    onToolCall:()=>{}, onInterrupted:()=>{}, onTurnComplete:()=>{},
+    systemPrompt:'', tools:[], _inDeltaItems:new Set(), _responding:false }, opts); }
+
+  connect(){
+    this.closing = false; this._setState('connecting');
+    let ws;
+    try {
+      ws = new WebSocket('wss://api.openai.com/v1/realtime?model=' + encodeURIComponent(settings.openaiModel),
+        ['realtime', 'openai-insecure-api-key.' + settings.openaiKey, 'openai-beta.realtime-v1']);
+    } catch (e) { this._setState('error'); return; }
+    this.ws = ws;
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type:'session.update', session:{
+        modalities:['audio','text'],
+        instructions: this.systemPrompt,
+        voice: settings.openaiVoice,
+        input_audio_format:'pcm16', output_audio_format:'pcm16',
+        input_audio_transcription:{ model:'gpt-4o-mini-transcribe' },
+        turn_detection:{ type:'server_vad', threshold:0.5, prefix_padding_ms:200, silence_duration_ms:400 },
+        tools: this.tools.map(t => ({ type:'function', name:t.name, description:t.description,
+          parameters: toJsonSchema(t.parameters || { type:'OBJECT', properties:{} }) })),
+        tool_choice:'auto'
+      }}));
+    };
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; } this._handle(m); };
+    ws.onclose = () => {
+      if (this.closing) { this._setState('closed'); return; }
+      this._setState('reconnecting');
+      const wait = Math.min(this.backoff, 10000); this.backoff = Math.min(this.backoff * 1.8, 10000);
+      setTimeout(() => { if (!this.closing) this.connect(); }, wait);
+    };
+  }
+
+  _handle(m){
+    const t = m.type || '';
+    if (t === 'session.updated') { this.backoff = 1000; this._setState('live'); return; }
+    if (t === 'response.created') { this._responding = true; return; }
+    if (t === 'response.audio.delta' || t === 'response.output_audio.delta') { this.onAudio(m.delta); return; }
+    if (t === 'response.audio_transcript.delta' || t === 'response.output_audio_transcript.delta') { this.onOutTranscript(m.delta); return; }
+    if (t === 'conversation.item.input_audio_transcription.delta') {
+      if (m.delta) { this._inDeltaItems.add(m.item_id); this.onInTranscript(m.delta); } return; }
+    if (t === 'conversation.item.input_audio_transcription.completed') {
+      if (!this._inDeltaItems.has(m.item_id) && m.transcript) this.onInTranscript(m.transcript);
+      this._inDeltaItems.delete(m.item_id); return; }
+    if (t === 'input_audio_buffer.speech_started') {
+      this.onInterrupted();
+      if (this._responding) { this._send({ type:'response.cancel' }); this._responding = false; }
+      return; }
+    if (t === 'response.function_call_arguments.done') {
+      let args = {}; try { args = JSON.parse(m.arguments || '{}'); } catch {}
+      this.onToolCall([{ id: m.call_id, name: m.name, args }]); return; }
+    if (t === 'response.done') { this._responding = false; this.onTurnComplete(); return; }
+    if (t === 'error') { console.warn('openai error', m.error);
+      if (m.error && /invalid|auth|key/i.test(m.error.message || '')) { this.closing = true; this._setState('error'); try { this.ws.close(); } catch {} }
+      return; }
+  }
+
+  _send(o){ if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); }
+  sendAudio(b64){ if (this.state === 'live') this._send({ type:'input_audio_buffer.append', audio:b64 }); }
+  sendText(text, wantResponse){
+    this._send({ type:'conversation.item.create', item:{ type:'message', role:'user', content:[{ type:'input_text', text }] } });
+    if (wantResponse) this._send({ type:'response.create' });
+  }
+  sendToolResponse(responses){
+    let silent = false;
+    responses.forEach(r => { if (r.name === 'stay_silent') silent = true;
+      this._send({ type:'conversation.item.create', item:{ type:'function_call_output', call_id:r.id, output: JSON.stringify(r.response) } }); });
+    if (!silent) this._send({ type:'response.create' });
+  }
+  close(){ this.closing = true; try { this.ws && this.ws.close(); } catch {} }
+  _setState(s){ this.state = s; this.onState(s); }
 }
 
 /* ---------- tool declarations ---------- */
@@ -701,6 +805,10 @@ const TOOL_DECLS = [
   { name:'capture_contact', description:'Record customer contact details the moment they are shared aloud. Partial is fine.',
     parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, phone:{type:'STRING'}, email:{type:'STRING'}, company:{type:'STRING'} } } }
 ];
+const STAY_SILENT_DECL = { name:'stay_silent',
+  description:'Call this INSTEAD of speaking whenever the room does not need you: the owner or customer is mid-flow, or you have nothing genuinely valuable to add. This is your default on most turns.',
+  parameters:{ type:'OBJECT', properties:{} } };
+function providerTools(){ return settings.provider === 'openai' ? TOOL_DECLS.concat([STAY_SILENT_DECL]) : TOOL_DECLS; }
 
 /* ---------- system prompt ---------- */
 function buildSystemPrompt(meeting, customerName){
@@ -736,7 +844,14 @@ Use show_asset the moment you start talking about a specific product/grade (the 
 ${catalog || '(none loaded)'}
 
 ### Media (id ("spoken names") — caption)
-${mediaList || '(none loaded)'}`;
+${mediaList || '(none loaded)'}
+
+## FRESHNESS (hard rule)
+Variety seed for this meeting: ${Math.random().toString(36).slice(2, 8)}. Invent a NEW greeting, NEW day-question, NEW witty identity answer and NEW jokes every single meeting — never a line you have used before. These exact lines are BANNED (used in earlier meetings — do not repeat them or lightly rephrase them):
+${getUsedLines().map(l => '- "' + l + '"').join('\n') || '(none yet — everything is fresh)'}
+${settings.provider === 'openai' ? `
+## SILENCE DISCIPLINE (critical)
+The audio system prompts you after every pause in speech. You have a stay_silent tool: call it INSTEAD of speaking whenever ${settings.ownerName} or the customer is mid-flow, or you have nothing genuinely valuable to add. MOST turns should be stay_silent — a good colleague listens far more than he talks. Never speak just because the system lets you. When you do speak, keep it short and land it.` : ''}`;
 }
 
 /* ================================================================
@@ -754,7 +869,7 @@ const Meeting = {
       startedAt: Date.now(), endedAt: null, rehearsal: !!rehearsal, pushIds, signals: [], contacts: [],
       transcript: [], summary: null, audioMime: '', status: 'live' };
     this.active = m; this.transcript = m.transcript; this.signals = m.signals; this.contacts = m.contacts;
-    this.curLine = null; this.quiet = false; this.degraded = false; this.assetOpen = false; this.plateCount = 0;
+    this.curLine = null; this.quiet = false; this.degraded = false; this.assetOpen = false; this.plateCount = 0; this._wasLive = false;
     await dbPut('meetings', m);
 
     $('#meetTag').textContent = `TOOLFLUX · ${rehearsal ? 'REHEARSAL' : 'MEETING ' + String(m.number).padStart(2,'0')} · ${customer.name.toUpperCase()}`;
@@ -763,15 +878,17 @@ const Meeting = {
     $('#btnMute').className = 'ctl mute'; $('#btnMute').textContent = 'MUTE FLUX';
     show('meeting');
 
-    try { m.audioMime = await AudioEngine.start(id); await dbPut('meetings', m); }
+    const rate = settings.provider === 'openai' ? 24000 : 16000;
+    try { m.audioMime = await AudioEngine.start(id, rate); await dbPut('meetings', m); }
     catch (e) { toast('Microphone blocked — allow mic access and retry.', 'err'); show('home'); return; }
 
     this.startTs = Date.now();
     this.timerIv = setInterval(() => { $('#recTime').textContent = fmtTime(Date.now() - this.startTs); }, 500);
     this.saveIv = setInterval(() => this.persist(), 3000);
 
-    this.client = new LiveClient({
-      systemPrompt: buildSystemPrompt(m, customer.name), tools: TOOL_DECLS,
+    const Client = settings.provider === 'openai' ? OpenAIClient : LiveClient;
+    this.client = new Client({
+      systemPrompt: buildSystemPrompt(m, customer.name), tools: providerTools(),
       onState: s => this.onClientState(s),
       onAudio: b64 => AudioEngine.playChunk(b64),
       onInterrupted: () => AudioEngine.bargeIn(),
@@ -787,7 +904,13 @@ const Meeting = {
 
   onClientState(s){
     const tag = $('#stateTag'); tag.className = '';
-    if (s === 'live') { tag.textContent = 'flux live'; this.hideBanner(); this.degraded = false; }
+    if (s === 'live') { tag.textContent = 'flux live'; this.hideBanner(); this.degraded = false;
+      /* OpenAI reconnects start a fresh session — silently restore recent context */
+      if (this._wasLive && settings.provider === 'openai' && this.client && this.transcript.length) {
+        const recap = this.transcript.slice(-15).map(l => (l.who === 'flux' ? 'YOU said' : 'ROOM said') + ': ' + l.text.trim().slice(0, 160)).join('\n');
+        this.client.sendText('[OWNER NOTE] The connection dropped and reconnected — same meeting, do not greet anyone again. Recent conversation recap:\n' + recap);
+      }
+      this._wasLive = true; }
     else if (s === 'connecting') { tag.textContent = 'connecting'; }
     else if (s === 'reconnecting') { tag.textContent = 'reconnecting'; tag.className = 'warn';
       this.showBanner('Connection dropped — reconnecting. Recording continues.', false);
@@ -837,6 +960,7 @@ const Meeting = {
           this.signals.push({ t: Date.now(), kind: c.args.kind, note: c.args.note }); this.renderIntel(); result = 'noted';
         } else if (c.name === 'capture_contact') {
           this.contacts.push(Object.assign({ t: Date.now() }, c.args)); result = 'saved';
+        } else if (c.name === 'stay_silent') { result = 'ok';
         } else result = 'unknown tool';
       } catch (e) { result = 'error: ' + e.message; }
       responses.push({ id: c.id, name: c.name, response: { result } });
@@ -892,6 +1016,9 @@ const Meeting = {
     await AudioEngine.stop();
     m.endedAt = Date.now(); m.status = 'done';
     await this.persist(); this.active = null;
+    /* harvest short Flux lines (greetings / quips) so they are never reused */
+    addUsedLines(this.transcript.filter(l => l.who === 'flux' && l.text.trim().length < 170)
+      .slice(0, 10).map(l => l.text.trim()));
     const cust = await dbGet('customers', m.customerId);
     if (cust) { cust.lastMeetingAt = Date.now(); await dbPut('customers', cust); }
     openSummary(m.id, true);
@@ -1026,13 +1153,19 @@ Produce JSON per the schema. Rules:
 - If the transcript is thin, keep it honest and short — never fabricate.`;
 
   try {
-    const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models/${settings.textModel}:generateContent?key=${encodeURIComponent(settings.apiKey)}`, {
-      method:'POST', headers:{ 'Content-Type':'application/json' },
-      body: JSON.stringify({ contents:[{ role:'user', parts:[{ text: prompt }] }],
-        generationConfig:{ responseMimeType:'application/json', responseSchema: schema, temperature:.3 } }) });
-    if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
-    const j = await r.json();
-    const txt = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(p => p.text || '').join('');
+    let txt;
+    if (settings.apiKey) { /* prefer Gemini REST when a Gemini key exists */
+      const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models/${settings.textModel}:generateContent?key=${encodeURIComponent(settings.apiKey)}`, {
+        method:'POST', headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({ contents:[{ role:'user', parts:[{ text: prompt }] }],
+          generationConfig:{ responseMimeType:'application/json', responseSchema: schema, temperature:.3 } }) });
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
+      const j = await r.json();
+      txt = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(p => p.text || '').join('');
+    } else if (settings.openaiKey) { /* OpenAI-only: REST blocks browser CORS — use a text-mode Realtime session */
+      txt = await openaiGenerateJSON(prompt + '\n\nReturn ONLY a JSON object exactly matching this schema (no markdown fences):\n' + JSON.stringify(toJsonSchema(schema)));
+    } else throw new Error('no API key configured');
+    txt = txt.trim().replace(/^```(json)?/i, '').replace(/```$/, '').trim();
     m.summary = JSON.parse(txt);
     if (!m.summary.contacts || !m.summary.contacts.length) m.summary.contacts = m.contacts;
     await dbPut('meetings', m);
@@ -1041,6 +1174,33 @@ Produce JSON per the schema. Rules:
     st.textContent = 'Could not generate minutes: ' + e.message + ' — tap Regenerate to retry.';
     toast('Summary failed — ' + e.message, 'err');
   }
+}
+
+/* text-only generation over an OpenAI Realtime WS (no CORS restriction) */
+function openaiGenerateJSON(prompt){
+  return new Promise((resolve, reject) => {
+    let out = ''; let settled = false;
+    const done = (err, val) => { if (settled) return; settled = true; try { ws.close(); } catch {}
+      err ? reject(err) : resolve(val); };
+    let ws;
+    try { ws = new WebSocket('wss://api.openai.com/v1/realtime?model=' + encodeURIComponent(settings.openaiModel),
+      ['realtime', 'openai-insecure-api-key.' + settings.openaiKey, 'openai-beta.realtime-v1']); }
+    catch (e) { return reject(e); }
+    ws.onopen = () => ws.send(JSON.stringify({ type:'session.update', session:{
+      modalities:['text'], instructions:'You are a precise assistant that outputs only valid JSON. No prose, no markdown.',
+      turn_detection: null } }));
+    ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === 'session.updated') {
+        ws.send(JSON.stringify({ type:'conversation.item.create', item:{ type:'message', role:'user', content:[{ type:'input_text', text: prompt }] } }));
+        ws.send(JSON.stringify({ type:'response.create', response:{ modalities:['text'] } }));
+      }
+      if (m.type === 'response.text.delta' || m.type === 'response.output_text.delta') out += m.delta || '';
+      if (m.type === 'response.done') done(null, out);
+      if (m.type === 'error') done(new Error(m.error && m.error.message || 'openai error'));
+    };
+    ws.onerror = () => done(new Error('OpenAI websocket failed'));
+    setTimeout(() => done(new Error('summary timed out')), 90000);
+  });
 }
 
 async function stitchAudio(meetingId, mime){
@@ -1092,7 +1252,7 @@ $('#custInput').addEventListener('input', () => { homeSel.customer = null; updat
 $('#rehearsalChk').addEventListener('change', updateStartBtn);
 
 $('#btnStart').onclick = async () => {
-  if (!settings.apiKey) { toast('Add your Gemini key in Setup first.', 'err'); return; }
+  if (!activeKey()) { toast('Add your API key in Setup first.', 'err'); return; }
   if (!Registry.loaded) await loadRegistry();
   const rehearsal = $('#rehearsalChk').checked;
   let customer;
@@ -1207,32 +1367,57 @@ async function clearCustomer(customerId){
 
 /* setup */
 $('#btnGoSetup').onclick = () => { fillSetup(); show('setup'); };
-function fillSetup(){
-  $('#setKey').value = settings.apiKey; $('#setOwner').value = settings.ownerName; $('#setVoice').value = settings.voice;
-  $('#setLiveModel').value = settings.liveModel; $('#setApiVer').value = settings.apiVersion; $('#setTextModel').value = settings.textModel;
+function renderVoiceOptions(){
+  const list = $('#setProvider').value === 'openai' ? OPENAI_VOICES : GEMINI_VOICES;
+  const cur = $('#setProvider').value === 'openai' ? settings.openaiVoice : settings.voice;
+  $('#setVoice').innerHTML = list.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${l}</option>`).join('');
+  $('#fieldGemKey').style.opacity = $('#setProvider').value === 'gemini' ? '1' : '.55';
+  $('#fieldOaiKey').style.opacity = $('#setProvider').value === 'openai' ? '1' : '.55';
 }
-$('#btnSaveSetup').onclick = async () => {
-  settings.apiKey = $('#setKey').value.trim(); settings.ownerName = $('#setOwner').value.trim() || 'Rohan';
-  settings.voice = $('#setVoice').value;
+$('#setProvider').addEventListener('change', renderVoiceOptions);
+function fillSetup(){
+  $('#setProvider').value = settings.provider;
+  $('#setKey').value = settings.apiKey; $('#setOaiKey').value = settings.openaiKey;
+  $('#setOwner').value = settings.ownerName;
+  $('#setLiveModel').value = settings.liveModel; $('#setApiVer').value = settings.apiVersion;
+  $('#setTextModel').value = settings.textModel; $('#setOaiModel').value = settings.openaiModel;
+  renderVoiceOptions();
+}
+function readSetupForm(){
+  settings.provider = $('#setProvider').value;
+  settings.apiKey = $('#setKey').value.trim(); settings.openaiKey = $('#setOaiKey').value.trim();
+  settings.ownerName = $('#setOwner').value.trim() || 'Rohan';
+  if (settings.provider === 'openai') settings.openaiVoice = $('#setVoice').value; else settings.voice = $('#setVoice').value;
   settings.liveModel = $('#setLiveModel').value.trim() || GEMINI_DEFAULTS.liveModel;
   settings.apiVersion = $('#setApiVer').value.trim() || GEMINI_DEFAULTS.apiVersion;
   settings.textModel = $('#setTextModel').value.trim() || GEMINI_DEFAULTS.textModel;
-  saveSettings();
-  if (!settings.apiKey) { toast('Key missing — you can add it later, Flux stays offline till then.'); }
+  settings.openaiModel = $('#setOaiModel').value.trim() || 'gpt-realtime';
+}
+$('#btnSaveSetup').onclick = async () => {
+  readSetupForm(); saveSettings();
+  if (!activeKey()) { toast('Key missing for the chosen engine — Flux stays offline till you add it.'); }
   await loadRegistry(); renderHome(); show('home');
 };
 $('#btnTestConn').onclick = async () => {
-  const key = $('#setKey').value.trim(); if (!key) { toast('Paste a key first.', 'err'); return; }
-  try { const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    toast('Connected — key works.', 'ok');
-  } catch (e) { toast('Connection failed: ' + e.message, 'err'); }
+  readSetupForm(); saveSettings();
+  if (!activeKey()) { toast('Paste a key first.', 'err'); return; }
+  if (settings.provider === 'gemini') {
+    try { const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models?key=${encodeURIComponent(settings.apiKey)}&pageSize=1`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      toast('Gemini connected — key works.', 'ok');
+    } catch (e) { toast('Connection failed: ' + e.message, 'err'); }
+  } else {
+    /* OpenAI REST blocks browser CORS — do a real Realtime WS handshake instead */
+    toast('Testing OpenAI Realtime…');
+    const cl = new OpenAIClient({ systemPrompt:'ping', tools:[],
+      onState: s => { if (s === 'live') { toast('OpenAI Realtime connected — key works.', 'ok'); cl.close(); }
+        if (s === 'error') toast('OpenAI connection failed — check the key.', 'err'); } });
+    cl.connect(); setTimeout(() => cl.close(), 15000);
+  }
 };
 $('#btnVoiceSample').onclick = async () => {
-  const key = $('#setKey').value.trim(); if (!key) { toast('Paste a key first.', 'err'); return; }
-  settings.apiKey = key; settings.voice = $('#setVoice').value;
-  settings.liveModel = $('#setLiveModel').value.trim() || settings.liveModel;
-  settings.apiVersion = $('#setApiVer').value.trim() || settings.apiVersion;
+  readSetupForm(); saveSettings();
+  if (!activeKey()) { toast('Paste a key first.', 'err'); return; }
   toast('Fetching a sample…');
   const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
   let nextT = 0; const play = b64 => { const i16 = int16FromB64(b64); const f = new Float32Array(i16.length);
@@ -1240,9 +1425,11 @@ $('#btnVoiceSample').onclick = async () => {
     const b = ctx.createBuffer(1, f.length, 24000); b.copyToChannel(f, 0);
     const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination);
     const t = Math.max(ctx.currentTime + .05, nextT); s.start(t); nextT = t + b.duration; };
-  const cl = new LiveClient({ systemPrompt: 'You are Flux, TOOLFLUX\'s energetic AI sales partner. Reply with exactly one short upbeat greeting sentence in English with a light touch of Kannada, introducing yourself.',
+  const Client = settings.provider === 'openai' ? OpenAIClient : LiveClient;
+  const cl = new Client({ systemPrompt: 'You are Flux, TOOLFLUX\'s energetic AI sales partner. Reply with exactly one short upbeat greeting sentence in English with a light touch of Kannada, introducing yourself.',
+    tools: [],
     onAudio: play, onTurnComplete: () => setTimeout(() => { cl.close(); ctx.close(); }, 4000),
-    onState: s => { if (s === 'live') cl.sendText('Introduce yourself in one sentence.'); } });
+    onState: s => { if (s === 'live') cl.sendText('Introduce yourself in one sentence.', true); } });
   cl.connect();
   setTimeout(() => { try { cl.close(); ctx.close(); } catch {} }, 20000);
 };

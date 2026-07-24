@@ -102,6 +102,12 @@ Vendored libraries inside `pitch.html` or `pitch-assets/`: SheetJS (read `librar
 - **Rehearsal mode**: identical experience, tagged practice, excluded from customer history.
 - Test plan before first real pitch: mixed-language conversation test; asset/video cueing by name; interruption + mute behaviour; WiFi-kill mid-sentence (reconnect + resumption); phone install (PWA), wake-lock, tab-switch survival; storage meter and download-and-clear; MoM generation quality on a rehearsal transcript.
 
+## 9b. Revision 2026-07-25 (post-first-test, owner feedback)
+
+- **Latency**: Gemini VAD tuned (high start/end sensitivity, 500 ms end-of-speech), mic frames 100 ms → 50 ms.
+- **Second voice engine**: OpenAI Realtime API as a selectable provider (Setup → Voice engine). Browser WS with key-in-subprotocol, zero backend, 24 kHz PCM both ways, server VAD at 400 ms. Since OpenAI answers after every pause, it gets a `stay_silent` tool + "silence discipline" prompt to preserve balanced co-pilot behaviour. Voices: cedar (default), echo, ash, verse. OpenAI-only setups generate minutes over a text-mode Realtime WS (REST blocks browser CORS); reconnects inject a silent transcript recap (no session resume on OpenAI).
+- **Freshness**: short Flux lines are harvested after each meeting into `flux_used_lines` (last 60) and injected as a banned-lines list with a per-meeting variety seed — greetings, jokes and identity answers must never repeat.
+
 ## 10. Out of scope (explicitly)
 
 - No cloud sync, no email sending, no CRM integration (can be added later; storage layer keeps meetings exportable as JSON to leave the door open).
