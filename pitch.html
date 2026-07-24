@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#121013">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FLUX">
+<link rel="manifest" href="pitch.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>FLUX · TOOLFLUX Pitch Partner</title>
+<style>
+/* ============ TOKENS (SIGNATURE, locked) ============ */
+:root{
+  --bg:#121013; --panel:#17151a; --panel2:#131114; --line:#2a262a; --line2:#242028;
+  --bone:#EEE8DC; --bone-dim:#a9a193; --bone-faint:#847d72;
+  --teal:#3DB8A7; --ochre:#E0A949; --rust:#C9634A; --rec:#c0564c;
+  --font:'Segoe UI Variable Display','Segoe UI',system-ui,-apple-system,'Inter',sans-serif;
+}
+*{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body{ height:100%; }
+body{ background:var(--bg); color:var(--bone); font-family:var(--font); overflow-x:hidden;
+  -webkit-font-smoothing:antialiased; }
+button{ font-family:inherit; cursor:pointer; }
+input,select,textarea{ font-family:inherit; }
+::selection{ background:#3db8a744; }
+
+/* ============ COMMON ============ */
+.screen{ display:none; min-height:100dvh; padding:max(18px,env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom)); }
+.screen.active{ display:block; }
+.meta{ font-size:11px; letter-spacing:.24em; text-transform:uppercase; font-weight:600; color:var(--bone-faint); }
+.h1{ font-size:26px; font-weight:700; letter-spacing:-.02em; margin:6px 0 2px; }
+.sub{ font-size:13.5px; color:var(--bone-dim); line-height:1.6; }
+.row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.spacer{ flex:1; }
+.btn{ background:var(--panel); color:var(--bone); border:1px solid var(--line); border-radius:10px;
+  padding:12px 18px; font-size:14.5px; font-weight:600; letter-spacing:.01em; transition:border-color .15s, transform .05s; }
+.btn:active{ transform:scale(.98); }
+.btn.primary{ background:linear-gradient(120deg,#1d3833,#16302c); border-color:#2c665c; color:#c9f0e8; }
+.btn.danger{ border-color:#5e332c; color:#e8b0a4; }
+.btn.small{ padding:8px 13px; font-size:12.5px; border-radius:8px; }
+.btn[disabled]{ opacity:.4; pointer-events:none; }
+.field{ margin:14px 0; }
+.field label{ display:block; font-size:11px; letter-spacing:.18em; text-transform:uppercase; font-weight:600; color:var(--bone-faint); margin-bottom:7px; }
+.field input[type=text],.field input[type=password],.field select{
+  width:100%; background:var(--panel2); color:var(--bone); border:1px solid var(--line); border-radius:10px;
+  padding:13px 14px; font-size:15px; outline:none; }
+.field input:focus,.field select:focus{ border-color:#3db8a766; }
+.hr{ height:1px; background:var(--line); margin:20px 0; }
+.card{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; margin:12px 0; }
+a{ color:var(--teal); }
+
+/* toasts */
+#toasts{ position:fixed; top:max(10px,env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:90; display:flex; flex-direction:column; gap:8px; width:min(94vw,560px); pointer-events:none; }
+.toast{ background:#1d1a1f; border:1px solid var(--line); border-left:3px solid var(--ochre); border-radius:10px; padding:11px 14px; font-size:13.5px; color:var(--bone); box-shadow:0 8px 30px #0009; animation:tIn .25s ease; }
+.toast.err{ border-left-color:var(--rust); }
+.toast.ok{ border-left-color:var(--teal); }
+@keyframes tIn{ from{ opacity:0; transform:translateY(-8px);} to{ opacity:1; transform:none; } }
+
+/* bottom sheet */
+#sheetWrap{ position:fixed; inset:0; background:#000a; z-index:95; display:none; align-items:flex-end; justify-content:center; }
+#sheetWrap.open{ display:flex; }
+#sheet{ background:#1a171c; border:1px solid var(--line); border-bottom:none; border-radius:18px 18px 0 0; width:min(100vw,640px); padding:22px 20px calc(26px + env(safe-area-inset-bottom)); animation:sUp .22s ease; }
+@keyframes sUp{ from{ transform:translateY(40px); opacity:0 } to{ transform:none; opacity:1 } }
+#sheet .h{ font-size:18px; font-weight:700; margin-bottom:6px; }
+#sheet .b{ font-size:14px; color:var(--bone-dim); line-height:1.6; margin-bottom:16px; }
+#sheet .row{ justify-content:flex-end; }
+
+/* chips */
+.chips{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.chip{ background:var(--panel2); border:1px solid var(--line); color:var(--bone-dim); border-radius:99px; padding:8px 15px; font-size:13.5px; font-weight:600; transition:all .12s; user-select:none; }
+.chip.on{ border-color:#3db8a788; color:#bfe9e0; background:#16302c; }
+.chip.customer{ border-radius:10px; }
+
+/* ============ MEETING STAGE ============ */
+#screen-meeting{ padding:0; position:relative; overflow:hidden; }
+#stageWrap{ position:relative; height:100dvh; display:flex; flex-direction:column; }
+#stageHead{ display:flex; justify-content:space-between; align-items:center; padding:max(16px,env(safe-area-inset-top)) 20px 8px; z-index:5; }
+#stageHead .right{ display:flex; gap:16px; align-items:center; }
+#recTag{ color:var(--rec); font-size:12px; letter-spacing:.2em; font-weight:700; }
+#recTag .dot{ animation:blink 1.4s infinite; }
+@keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
+#stateTag{ font-size:11px; letter-spacing:.2em; color:var(--bone-faint); text-transform:uppercase; font-weight:600; }
+#stateTag.warn{ color:var(--ochre); }
+#stateTag.bad{ color:var(--rust); }
+
+#ribbonZone{ position:relative; transition:flex .45s cubic-bezier(.4,0,.2,1), height .45s cubic-bezier(.4,0,.2,1); flex:1; min-height:0; }
+#stageWrap.asset-open #ribbonZone{ flex:0 0 56px; }
+#ribbon{ width:100%; height:100%; display:block; }
+
+#quoteZone{ padding:0 20px calc(18px + env(safe-area-inset-bottom)); display:flex; justify-content:space-between; gap:18px; align-items:flex-end; transition:opacity .3s; }
+#stageWrap.asset-open #quoteZone{ display:none; }
+#quoteLine{ max-width:62%; }
+#quoteText{ font-size:21px; font-weight:600; letter-spacing:-.015em; line-height:1.4; color:var(--bone);
+  display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+#quoteWho{ margin-top:8px; font-size:11px; letter-spacing:.24em; font-weight:600; color:var(--bone-faint); text-transform:uppercase; }
+#intel{ text-align:right; font-size:14px; color:var(--bone-dim); line-height:2; font-weight:500; min-width:150px; }
+#intel .k{ font-weight:600; }
+#intel .k.interest{ color:var(--teal); } #intel .k.objection{ color:var(--ochre);} #intel .k.next_step{ color:var(--rust); }
+
+#assetStage{ flex:1; min-height:0; display:none; padding:6px 20px calc(14px + env(safe-area-inset-bottom)); }
+#stageWrap.asset-open #assetStage{ display:flex; flex-direction:column; animation:plateUp .4s cubic-bezier(.3,0,.2,1); }
+@keyframes plateUp{ from{ opacity:0; transform:translateY(26px) } to{ opacity:1; transform:none } }
+
+.plate{ flex:1; min-height:0; border:1px solid var(--line); border-radius:12px; background:linear-gradient(120deg,#17151a,#131114); padding:18px 22px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+.plate .phead{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid #3db8a766; padding-bottom:12px; gap:12px; }
+.plate .ptitle{ font-size:clamp(20px,3.4vw,28px); font-weight:700; letter-spacing:-.02em; }
+.plate .ptitle em{ color:var(--ochre); font-style:normal; }
+.plate .ptag{ font-size:10.5px; letter-spacing:.24em; color:var(--bone-faint); font-weight:600; white-space:nowrap; }
+.plate .pbody{ flex:1; min-height:0; display:flex; gap:22px; margin-top:16px; }
+.plate .pphoto{ flex:1.2; background:#0e0d10; border:1px solid var(--line2); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; min-height:0; }
+.plate .pphoto img{ max-width:100%; max-height:100%; object-fit:contain; }
+.plate .pspecs{ flex:1; font-size:clamp(14px,2vw,17px); color:#b9b1a2; line-height:2.05; font-weight:500; overflow:auto; }
+.plate .pspecs .sl{ color:var(--teal); font-weight:600; }
+.plate .pspecs .sl.alt{ color:var(--ochre); }
+.plate .ppitch{ margin-top:10px; font-size:13px; color:var(--bone-faint); border-top:1px solid var(--line2); padding-top:10px; }
+.plate .plogo{ position:absolute; bottom:14px; right:16px; height:22px; opacity:.92; }
+.plate .plogo img{ height:100%; }
+.plate.mediaplate .pbody{ display:block; }
+.plate video{ width:100%; height:100%; max-height:100%; border-radius:8px; background:#000; object-fit:contain; }
+.plate .pdfwrap{ width:100%; height:100%; overflow:auto; text-align:center; }
+.plate .pdfwrap canvas{ max-width:100%; border-radius:6px; margin:4px auto; display:block; }
+.pdfnav{ position:absolute; bottom:12px; left:50%; transform:translateX(-50%); display:flex; gap:10px; z-index:3; }
+
+#stageControls{ position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:8; }
+#stageWrap.asset-open #stageControls{ bottom:auto; top:max(12px,env(safe-area-inset-top)); left:auto; right:16px; transform:none; }
+.ctl{ background:#1d1a1fd9; border:1px solid var(--line); color:var(--bone-dim); border-radius:99px; padding:11px 18px; font-size:13px; font-weight:700; letter-spacing:.08em; backdrop-filter:blur(6px); }
+.ctl.mute.on{ border-color:var(--ochre); color:var(--ochre); }
+.ctl.mute.quiet{ border-color:var(--rust); color:var(--rust); }
+.ctl.end{ border-color:#5e332c; color:#e8b0a4; }
+#banner{ position:absolute; top:calc(max(16px,env(safe-area-inset-top)) + 34px); left:50%; transform:translateX(-50%); z-index:9;
+  background:#241d14ee; border:1px solid #5a4622; color:#eed9b0; padding:9px 16px; border-radius:99px; font-size:12.5px; font-weight:600; display:none; }
+#banner.show{ display:block; }
+#banner.bad{ background:#291614ee; border-color:#5e332c; color:#e8b0a4; }
+
+/* ============ SUMMARY ============ */
+.tabs{ display:flex; gap:8px; margin:16px 0 4px; }
+.tab{ background:none; border:none; border-bottom:2px solid transparent; color:var(--bone-faint); font-size:13px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; padding:8px 4px; }
+.tab.on{ color:var(--bone); border-bottom-color:var(--teal); }
+.doc{ display:none; }
+.doc.on{ display:block; }
+.mom{ background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:26px 26px 20px; margin-top:12px; }
+.mom h3{ font-size:22px; font-weight:700; letter-spacing:-.02em; margin-bottom:2px; }
+.mom .mm{ font-size:11px; letter-spacing:.22em; color:var(--bone-faint); text-transform:uppercase; font-weight:600; margin-bottom:16px; }
+.mom h4{ font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--bone-faint); margin:20px 0 8px; }
+.mom ul{ list-style:none; }
+.mom li{ font-size:15.5px; line-height:1.75; color:#cfc8ba; padding-left:16px; position:relative; margin-bottom:6px; }
+.mom li::before{ content:'—'; position:absolute; left:0; color:var(--bone-faint); }
+.mom .sug{ background:#16302c; border:1px solid #2c665c55; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
+.mom .sug .si{ font-size:16px; font-weight:700; color:#c9f0e8; }
+.mom .sug .sw{ font-size:14px; color:#9fc9c0; margin-top:3px; line-height:1.6; }
+.mom .sug .sd{ font-size:13.5px; color:var(--ochre); margin-top:6px; font-weight:600; }
+.contactCard input{ width:100%; background:var(--panel2); border:1px solid var(--line); color:var(--bone); border-radius:8px; padding:10px 12px; font-size:14.5px; margin-top:8px; }
+
+/* history */
+.histItem{ display:flex; justify-content:space-between; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:15px 16px; margin:10px 0; cursor:pointer; }
+.histItem .n{ font-size:16.5px; font-weight:650; }
+.histItem .d{ font-size:12px; color:var(--bone-faint); margin-top:3px; }
+.histItem .arr{ color:var(--bone-faint); }
+
+.backlink{ background:none; border:none; color:var(--bone-faint); font-size:12px; letter-spacing:.18em; text-transform:uppercase; font-weight:700; padding:6px 0; }
+
+/* gallery (debug) */
+#galleryWrap .plate{ min-height:290px; margin:14px 0; flex:none; }
+
+/* print */
+#printHost{ display:none; }
+@media print{
+  body *{ visibility:hidden; }
+  #printHost, #printHost *{ visibility:visible; }
+  #printHost{ display:block; position:absolute; inset:0; background:#fff; color:#111; padding:24mm 18mm; font-family:var(--font); }
+  #printHost h3{ font-size:20pt; margin-bottom:2pt; }
+  #printHost .mm{ font-size:8pt; letter-spacing:.2em; text-transform:uppercase; color:#666; margin-bottom:14pt; }
+  #printHost h4{ font-size:9pt; letter-spacing:.18em; text-transform:uppercase; color:#666; margin:12pt 0 5pt; }
+  #printHost li{ font-size:11pt; line-height:1.7; margin-bottom:3pt; list-style:none; }
+  #printHost .sug{ border:1pt solid #0a8; border-radius:6pt; padding:8pt; margin-bottom:6pt; }
+  #printHost .sug .si{ font-weight:700; font-size:12pt; }
+  #printHost .sug .sw{ font-size:10.5pt; }
+  #printHost .sug .sd{ font-size:10pt; color:#a70; font-weight:600; }
+  #printHost .plogo-print{ height:26pt; margin-bottom:10pt; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================= SETUP ================= -->
+<section class="screen" id="screen-setup">
+  <div class="meta">TOOLFLUX · FLUX</div>
+  <div class="h1">Setup</div>
+  <p class="sub">One-time on this device. Your key stays in this browser only.</p>
+  <div class="field"><label>Gemini API key</label><input type="password" id="setKey" placeholder="AIza…" autocomplete="off"></div>
+  <div class="field"><label>Your name (what Flux calls you)</label><input type="text" id="setOwner" placeholder="Rohan"></div>
+  <div class="field"><label>Flux voice</label>
+    <select id="setVoice">
+      <option value="Fenrir" selected>Fenrir — energetic male (recommended)</option>
+      <option value="Puck">Puck — upbeat male</option>
+      <option value="Charon">Charon — deep male</option>
+      <option value="Orus">Orus — firm male</option>
+    </select>
+  </div>
+  <div class="row">
+    <button class="btn small" id="btnTestConn">Test connection</button>
+    <button class="btn small" id="btnVoiceSample">Hear sample</button>
+    <button class="btn small" id="btnReloadLib">Reload library</button>
+    <button class="btn small" id="btnBlankLib">Download blank library.xlsx</button>
+    <button class="btn small" id="btnGallery">Preview plates</button>
+  </div>
+  <div class="hr"></div>
+  <details>
+    <summary class="meta" style="cursor:pointer">Advanced (models)</summary>
+    <div class="field"><label>Live model</label><input type="text" id="setLiveModel"></div>
+    <div class="field"><label>Live API version</label><input type="text" id="setApiVer"></div>
+    <div class="field"><label>Summary model</label><input type="text" id="setTextModel"></div>
+  </details>
+  <div class="hr"></div>
+  <div class="row"><button class="btn primary" id="btnSaveSetup">Save & continue</button></div>
+  <div id="galleryWrap" style="display:none"><div class="hr"></div><div class="meta">Plate preview</div><div id="galleryList"></div></div>
+</section>
+
+<!-- ================= HOME ================= -->
+<section class="screen" id="screen-home">
+  <div class="row">
+    <div>
+      <div class="meta">TOOLFLUX · FLUX</div>
+      <div class="h1">New meeting</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn small" id="btnGoHistory">Meetings</button>
+    <button class="btn small" id="btnGoSetup">Setup</button>
+  </div>
+  <div class="field" style="margin-top:22px"><label>Customer</label>
+    <input type="text" id="custInput" placeholder="Type a customer name…" autocomplete="off">
+    <div class="chips" id="custChips"></div>
+  </div>
+  <div class="field"><label>Today's push (Flux leans on these — only when the talk is already there)</label>
+    <div class="chips" id="pushChips"></div>
+  </div>
+  <div class="field"><label class="row" style="display:flex;gap:10px;align-items:center;text-transform:none;letter-spacing:0;font-size:14px;color:var(--bone-dim)">
+    <input type="checkbox" id="rehearsalChk" style="width:18px;height:18px"> Rehearsal (practice run — kept out of customer history)</label>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn primary" id="btnStart" disabled>Start meeting</button>
+    <div class="sub" id="storageNote"></div>
+  </div>
+</section>
+
+<!-- ================= MEETING ================= -->
+<section class="screen" id="screen-meeting">
+  <div id="stageWrap">
+    <div id="stageHead">
+      <div class="meta" id="meetTag">TOOLFLUX · MEETING</div>
+      <div class="right">
+        <span id="stateTag">connecting</span>
+        <span id="recTag"><span class="dot">●</span> <span id="recTime">00:00</span></span>
+      </div>
+    </div>
+    <div id="banner"></div>
+    <div id="ribbonZone"><canvas id="ribbon"></canvas></div>
+    <div id="assetStage"></div>
+    <div id="quoteZone">
+      <div id="quoteLine">
+        <div id="quoteText">Flux is listening…</div>
+        <div id="quoteWho">FLUX · READY</div>
+      </div>
+      <div id="intel"></div>
+    </div>
+    <div id="stageControls">
+      <button class="ctl mute" id="btnMute">MUTE FLUX</button>
+      <button class="ctl" id="btnHideAsset" style="display:none">CLEAR</button>
+      <button class="ctl end" id="btnEnd">END</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SUMMARY ================= -->
+<section class="screen" id="screen-summary">
+  <button class="backlink" id="btnSumBack">← Meetings</button>
+  <div class="h1" id="sumTitle">Meeting summary</div>
+  <div class="sub" id="sumSub"></div>
+  <div id="sumStatus" class="card" style="display:none">Generating minutes…</div>
+  <div class="tabs">
+    <button class="tab on" data-doc="customer">Customer MoM</button>
+    <button class="tab" data-doc="internal">Internal</button>
+    <button class="tab" data-doc="contacts">Contacts</button>
+  </div>
+  <div class="doc on" id="doc-customer"></div>
+  <div class="doc" id="doc-internal"></div>
+  <div class="doc" id="doc-contacts"></div>
+  <div class="row" style="margin-top:18px">
+    <button class="btn small" id="btnShareMom">Share MoM</button>
+    <button class="btn small" id="btnPrintMom">Print / PDF</button>
+    <button class="btn small" id="btnRegen">Regenerate</button>
+    <button class="btn small" id="btnDlAudio">Download audio</button>
+    <button class="btn small" id="btnDlTranscript">Transcript</button>
+  </div>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section class="screen" id="screen-history">
+  <button class="backlink" id="btnHistBack">← New meeting</button>
+  <div class="h1">Meetings</div>
+  <div class="sub" id="histStorage"></div>
+  <div id="histList"></div>
+</section>
+
+<div id="toasts"></div>
+<div id="sheetWrap"><div id="sheet"><div class="h" id="sheetH"></div><div class="b" id="sheetB"></div><div class="row" id="sheetBtns"></div></div></div>
+<div id="printHost"></div>
+
+<script>
+'use strict';
+/* ================================================================
+   FLUX — TOOLFLUX AI Pitch Partner
+   Spec: docs/superpowers/specs/2026-07-25-pitch-partner-design.md
+   ================================================================ */
+
+/* ---------- constants ---------- */
+const GEMINI_DEFAULTS = {
+  apiVersion: 'v1alpha',                       // proactive audio requires v1alpha
+  liveModel: 'gemini-2.5-flash-native-audio-latest',
+  textModel: 'gemini-2.5-flash',
+  host: 'generativelanguage.googleapis.com'
+};
+const VvERIFIED = null; // (nothing invented — facts live in pitch-assets/manifest.json + prompt below)
+
+/* ---------- tiny utils ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtTime = ms => { const s = Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+const fmtDate = t => new Date(t).toLocaleString('en-IN', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+function toast(msg, kind){ const d = document.createElement('div'); d.className = 'toast ' + (kind||''); d.textContent = msg;
+  $('#toasts').appendChild(d); setTimeout(() => d.remove(), 5200); }
+function sheet(h, b, btns){ $('#sheetH').textContent = h; $('#sheetB').textContent = b;
+  const wrap = $('#sheetBtns'); wrap.innerHTML = '';
+  btns.forEach(([label, cls, fn]) => { const bt = document.createElement('button'); bt.className = 'btn ' + cls; bt.textContent = label;
+    bt.onclick = () => { closeSheet(); fn && fn(); }; wrap.appendChild(bt); });
+  $('#sheetWrap').classList.add('open'); }
+function closeSheet(){ $('#sheetWrap').classList.remove('open'); }
+$('#sheetWrap').addEventListener('click', e => { if (e.target.id === 'sheetWrap') closeSheet(); });
+function dlBlob(name, blob){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); }
+function b64FromInt16(int16){ let bin = ''; const u8 = new Uint8Array(int16.buffer, int16.byteOffset, int16.byteLength);
+  const CH = 0x8000; for (let i = 0; i < u8.length; i += CH) bin += String.fromCharCode.apply(null, u8.subarray(i, i+CH));
+  return btoa(bin); }
+function int16FromB64(b64){ const bin = atob(b64); const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return new Int16Array(u8.buffer); }
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src;
+  s.onload = res; s.onerror = () => rej(new Error('load fail ' + src)); document.head.appendChild(s); }); }
+
+/* ---------- settings ---------- */
+let settings = null;
+function loadSettings(){ try { settings = JSON.parse(localStorage.getItem('flux_settings')) || {}; } catch { settings = {}; }
+  settings = Object.assign({ apiKey:'', ownerName:'Rohan', voice:'Fenrir', mode:'balanced',
+    liveModel: GEMINI_DEFAULTS.liveModel, apiVersion: GEMINI_DEFAULTS.apiVersion, textModel: GEMINI_DEFAULTS.textModel }, settings); }
+function saveSettings(){ localStorage.setItem('flux_settings', JSON.stringify(settings)); }
+
+/* ---------- router ---------- */
+function show(name){ $$('.screen').forEach(s => s.classList.remove('active')); $('#screen-' + name).classList.add('active');
+  window.scrollTo(0, 0); }
+
+/* ---------- IndexedDB ---------- */
+let _db = null;
+function openDB(){ return new Promise((res, rej) => {
+  const rq = indexedDB.open('flux_db', 1);
+  rq.onupgradeneeded = () => { const d = rq.result;
+    d.createObjectStore('customers', { keyPath:'id' }).createIndex('nameLower','nameLower');
+    d.createObjectStore('meetings', { keyPath:'id' }).createIndex('customerId','customerId');
+    d.createObjectStore('chunks', { keyPath:'id' }).createIndex('meetingId','meetingId'); };
+  rq.onsuccess = () => { _db = rq.result; res(); }; rq.onerror = () => rej(rq.error); }); }
+function tx(store, mode){ return _db.transaction(store, mode).objectStore(store); }
+const dbPut = (s,o) => new Promise((res,rej) => { const r = tx(s,'readwrite').put(o); r.onsuccess=res; r.onerror=()=>rej(r.error); });
+const dbGet = (s,k) => new Promise((res,rej) => { const r = tx(s,'readonly').get(k); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); });
+const dbDel = (s,k) => new Promise((res,rej) => { const r = tx(s,'readwrite').delete(k); r.onsuccess=res; r.onerror=()=>rej(r.error); });
+const dbAll = (s, idx, val) => new Promise((res,rej) => {
+  const st = tx(s,'readonly'); const src = idx ? st.index(idx) : st;
+  const r = val !== undefined ? src.getAll(val) : src.getAll();
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+
+/* ---------- asset registry ---------- */
+const Registry = { products: new Map(), media: new Map(), aliases: new Map(), loaded: false };
+
+async function loadRegistry(force){
+  Registry.products.clear(); Registry.media.clear(); Registry.aliases.clear();
+  try {
+    const mf = await (await fetch('pitch-assets/manifest.json' + (force ? '?t=' + Date.now() : ''))).json();
+    (mf.products || []).forEach(p => Registry.products.set(p.id, p));
+  } catch (e) { console.warn('manifest.json missing', e); }
+  try {
+    const resp = await fetch('pitch-assets/library.xlsx' + (force ? '?t=' + Date.now() : ''));
+    if (resp.ok) {
+      if (!window.XLSX) await loadScript('pitch-assets/xlsx.min.js');
+      const wb = XLSX.read(await resp.arrayBuffer(), { type:'array' });
+      const prod = wb.Sheets['Products'] ? XLSX.utils.sheet_to_json(wb.Sheets['Products']) : [];
+      const med = wb.Sheets['Media'] ? XLSX.utils.sheet_to_json(wb.Sheets['Media']) : [];
+      prod.forEach(p => { if (p.id) Registry.products.set(String(p.id).trim(), normalizeProduct(p)); });
+      med.forEach(m => { if (m.id && m.file) { const mm = { id:String(m.id).trim(), file:String(m.file).trim(),
+        caption:String(m.caption || ''), aliases:String(m.say_when_asked || '').split(',').map(a => a.trim().toLowerCase()).filter(Boolean) };
+        Registry.media.set(mm.id, mm); mm.aliases.forEach(a => Registry.aliases.set(a, mm.id)); Registry.aliases.set(mm.id.toLowerCase(), mm.id); } });
+    }
+  } catch (e) { console.warn('library.xlsx not loaded', e); }
+  Registry.loaded = true;
+  return { products: Registry.products.size, media: Registry.media.size };
+}
+function normalizeProduct(p){
+  const out = { id:String(p.id).trim(), name:String(p.name || p.id), family:String(p.family || ''), pitch_line:String(p.pitch_line || ''),
+    promote: /^y/i.test(String(p.promote || '')) };
+  for (let i = 1; i <= 6; i++) if (p['spec' + i]) out['spec' + i] = String(p['spec' + i]);
+  return out;
+}
+
+/* logo contrast: average luminance of an img (or null → dark panel) */
+function pickLogo(imgEl){
+  let lum = 24; // panel default = dark
+  if (imgEl && imgEl.naturalWidth) {
+    try { const c = document.createElement('canvas'); c.width = c.height = 8;
+      const g = c.getContext('2d'); g.drawImage(imgEl, 0, 0, 8, 8);
+      const d = g.getImageData(0, 0, 8, 8).data; let t = 0;
+      for (let i = 0; i < d.length; i += 4) t += 0.2126*d[i] + 0.7152*d[i+1] + 0.0722*d[i+2];
+      lum = t / 64;
+    } catch {}
+  }
+  return lum > 140 ? 'pitch-assets/logo-dark.svg' : 'pitch-assets/logo-light.svg';
+}
+
+function renderPlate(p, plateNo){
+  const div = document.createElement('div'); div.className = 'plate';
+  const specs = [];
+  for (let i = 1; i <= 6; i++) if (p['spec' + i]) {
+    const [l, ...rest] = p['spec' + i].split(':');
+    const val = rest.join(':').trim();
+    specs.push(val ? `<div><span class="sl ${i % 2 ? '' : 'alt'}">${esc(l.trim())}</span> — ${esc(val)}</div>`
+                   : `<div>${esc(l.trim())}</div>`);
+  }
+  const nameHtml = esc(p.name).replace(/(SUPER-U|HYPER-U|TFX-[A-Z0-9/ ]+)/, '<em>$1</em>');
+  div.innerHTML = `
+    <div class="phead"><div class="ptitle">${nameHtml}</div><div class="ptag">${esc(p.family || 'TOOLFLUX')} · PLATE ${String(plateNo || 1).padStart(2,'0')}</div></div>
+    <div class="pbody">
+      <div class="pphoto"><img alt="" style="display:none"></div>
+      <div class="pspecs">${specs.join('') || '<div>' + esc(p.pitch_line) + '</div>'}</div>
+    </div>
+    ${p.pitch_line && specs.length ? `<div class="ppitch">${esc(p.pitch_line)}</div>` : ''}
+    <div class="plogo"><img src="pitch-assets/logo-light.svg" alt="TOOLFLUX"></div>`;
+  const img = div.querySelector('.pphoto img'); const logo = div.querySelector('.plogo img');
+  const tryExt = ['jpg','png','jpeg','webp']; let ti = 0;
+  const attempt = () => { if (ti >= tryExt.length) { div.querySelector('.pphoto').style.display = 'none'; return; }
+    img.src = 'pitch-assets/' + p.id + '.' + tryExt[ti++]; };
+  img.onerror = attempt;
+  img.onload = () => { img.style.display = ''; logo.src = pickLogo(img); };
+  attempt();
+  return div;
+}
+
+async function renderMediaPlate(m){
+  const div = document.createElement('div'); div.className = 'plate mediaplate';
+  div.innerHTML = `<div class="phead"><div class="ptitle">${esc(m.caption || m.id)}</div><div class="ptag">TOOLFLUX MEDIA</div></div>
+    <div class="pbody"></div><div class="plogo"><img src="pitch-assets/logo-light.svg" alt="TOOLFLUX"></div>`;
+  const body = div.querySelector('.pbody');
+  const src = 'pitch-assets/' + m.file;
+  if (/\.(mp4|webm|mov)$/i.test(m.file)) {
+    const v = document.createElement('video'); v.src = src; v.controls = true; v.playsInline = true; v.autoplay = true;
+    body.appendChild(v);
+  } else if (/\.pdf$/i.test(m.file)) {
+    const wrap = document.createElement('div'); wrap.className = 'pdfwrap'; body.appendChild(wrap);
+    try {
+      if (!window.pdfjsLib) { await loadScript('pitch-assets/pdf.min.js');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'pitch-assets/pdf.worker.min.js'; }
+      const pdf = await pdfjsLib.getDocument(src).promise;
+      let pageNo = 1;
+      const renderPage = async n => { wrap.innerHTML = '';
+        const page = await pdf.getPage(n);
+        const vp = page.getViewport({ scale: Math.min(2, (wrap.clientWidth || 800) / page.getViewport({scale:1}).width * window.devicePixelRatio) });
+        const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+        c.style.width = '100%'; wrap.appendChild(c);
+        await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise; };
+      await renderPage(1);
+      if (pdf.numPages > 1) {
+        const nav = document.createElement('div'); nav.className = 'pdfnav';
+        const mk = (t, d) => { const b = document.createElement('button'); b.className = 'ctl'; b.textContent = t;
+          b.onclick = () => { pageNo = Math.min(pdf.numPages, Math.max(1, pageNo + d)); renderPage(pageNo); }; return b; };
+        nav.append(mk('‹ PREV', -1), mk('NEXT ›', 1)); div.appendChild(nav);
+      }
+    } catch (e) { wrap.innerHTML = '<div style="padding:30px;color:var(--bone-faint)">Could not open PDF: ' + esc(e.message) + '</div>'; }
+  } else {
+    const img = document.createElement('img'); img.src = src; img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain';
+    body.appendChild(img);
+  }
+  return div;
+}
+
+/* resolve spoken media name → media entry */
+function resolveMedia(q){
+  q = String(q || '').trim().toLowerCase();
+  if (Registry.media.has(q)) return Registry.media.get(q);
+  if (Registry.aliases.has(q)) return Registry.media.get(Registry.aliases.get(q));
+  for (const [alias, id] of Registry.aliases) if (q.includes(alias) || alias.includes(q)) return Registry.media.get(id);
+  return null;
+}
+function resolveProduct(q){
+  q = String(q || '').trim().toLowerCase();
+  if (Registry.products.has(q)) return Registry.products.get(q);
+  for (const p of Registry.products.values())
+    if (p.id.toLowerCase() === q || p.name.toLowerCase() === q) return p;
+  for (const p of Registry.products.values())
+    if (p.name.toLowerCase().includes(q) || q.includes(p.id.toLowerCase())) return p;
+  return null;
+}
+
+/* ================================================================
+   AUDIO ENGINE
+   ================================================================ */
+const AudioEngine = {
+  ctx: null, micStream: null, workletNode: null, playGain: null, recDest: null, recorder: null,
+  playQueue: [], nextPlayTime: 0, activeSources: new Set(),
+  micLevel: 0, fluxLevel: 0, onFrame: null, meetingId: null, seq: 0, wakeLock: null, muted: false,
+
+  async start(meetingId){
+    this.meetingId = meetingId; this.seq = 0;
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    await this.ctx.resume();
+    this.micStream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation:true, noiseSuppression:true, autoGainControl:true } });
+    const src = this.ctx.createMediaStreamSource(this.micStream);
+
+    /* capture worklet: passthrough of raw float frames to main thread */
+    const workletCode = `class FluxCap extends AudioWorkletProcessor{
+      process(inputs){ const ch = inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; } }
+      registerProcessor('flux-cap', FluxCap);`;
+    const url = URL.createObjectURL(new Blob([workletCode], { type:'application/javascript' }));
+    await this.ctx.audioWorklet.addModule(url);
+    this.workletNode = new AudioWorkletNode(this.ctx, 'flux-cap');
+    src.connect(this.workletNode);
+
+    /* resample to 16k PCM16, batch ~100ms */
+    const inRate = this.ctx.sampleRate; let acc = new Float32Array(0); let outAcc = [];
+    let ratio = inRate / 16000;
+    this.workletNode.port.onmessage = ev => {
+      const f = ev.data;
+      /* mic level (RMS, smoothed) */
+      let s = 0; for (let i = 0; i < f.length; i++) s += f[i]*f[i];
+      this.micLevel = this.micLevel * .82 + Math.sqrt(s / f.length) * .18;
+      const joined = new Float32Array(acc.length + f.length); joined.set(acc); joined.set(f, acc.length); acc = joined;
+      const outLen = Math.floor(acc.length / ratio);
+      if (!outLen) return;
+      const out = new Int16Array(outLen);
+      for (let i = 0; i < outLen; i++) { const v = acc[Math.floor(i * ratio)]; out[i] = Math.max(-1, Math.min(1, v)) * 0x7FFF; }
+      acc = acc.subarray(Math.floor(outLen * ratio));
+      outAcc.push(out);
+      const total = outAcc.reduce((n, a) => n + a.length, 0);
+      if (total >= 1600) { // 100 ms @16k
+        const merged = new Int16Array(total); let o = 0;
+        outAcc.forEach(a => { merged.set(a, o); o += a.length; }); outAcc = [];
+        if (this.onFrame) this.onFrame(b64FromInt16(merged));
+      }
+    };
+
+    /* playback path + recorder mix */
+    this.playGain = this.ctx.createGain(); this.playGain.connect(this.ctx.destination);
+    this.recDest = this.ctx.createMediaStreamDestination();
+    src.connect(this.recDest); this.playGain.connect(this.recDest);
+    this.nextPlayTime = 0;
+
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+               : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+    this.recorder = new MediaRecorder(this.recDest.stream, mime ? { mimeType: mime } : undefined);
+    this.recorder.ondataavailable = async e => { if (e.data && e.data.size)
+      await dbPut('chunks', { id: uid(), meetingId: this.meetingId, seq: this.seq++, blob: e.data }).catch(()=>{}); };
+    this.recorder.start(4000);
+    this.audioMime = this.recorder.mimeType || mime || 'audio/webm';
+
+    try { this.wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    document.addEventListener('visibilitychange', this._reWake);
+    return this.audioMime;
+  },
+  _reWake: async () => { if (document.visibilityState === 'visible' && Meeting.active) {
+    try { AudioEngine.wakeLock = await navigator.wakeLock.request('screen'); } catch {} } },
+
+  playChunk(b64){
+    if (!this.ctx || this.muted) { /* muted: still count level 0 */ }
+    const int16 = int16FromB64(b64);
+    const f32 = new Float32Array(int16.length);
+    for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 0x8000;
+    /* flux level from chunk energy */
+    let s = 0; for (let i = 0; i < f32.length; i += 8) s += f32[i]*f32[i];
+    this.fluxLevel = Math.min(1, Math.sqrt(s / (f32.length / 8)) * 3);
+    setTimeout(() => { this.fluxLevel *= .5; }, 400);
+    if (this.muted) return;
+    const buf = this.ctx.createBuffer(1, f32.length, 24000);
+    buf.copyToChannel(f32, 0);
+    const node = this.ctx.createBufferSource(); node.buffer = buf; node.connect(this.playGain);
+    const t = Math.max(this.ctx.currentTime + 0.04, this.nextPlayTime);
+    node.start(t); this.nextPlayTime = t + buf.duration;
+    this.activeSources.add(node); node.onended = () => this.activeSources.delete(node);
+  },
+  bargeIn(){ this.activeSources.forEach(s => { try { s.stop(); } catch {} }); this.activeSources.clear();
+    this.nextPlayTime = 0; },
+  setMuted(m){ this.muted = m; if (m) this.bargeIn(); },
+  async stop(){
+    document.removeEventListener('visibilitychange', this._reWake);
+    try { this.wakeLock && await this.wakeLock.release(); } catch {}
+    if (this.recorder && this.recorder.state !== 'inactive') {
+      await new Promise(res => { this.recorder.onstop = res; this.recorder.stop(); });
+    }
+    this.micStream && this.micStream.getTracks().forEach(t => t.stop());
+    this.workletNode && this.workletNode.disconnect();
+    this.ctx && await this.ctx.close().catch(()=>{});
+    this.ctx = null; this.recorder = null; this.micStream = null;
+  }
+};
+
+/* ================================================================
+   GEMINI LIVE CLIENT
+   ================================================================ */
+class LiveClient {
+  constructor(opts){ Object.assign(this, { ws:null, state:'idle', resumeHandle:null, backoff:1000,
+    closing:false, onState:()=>{}, onAudio:()=>{}, onInTranscript:()=>{}, onOutTranscript:()=>{},
+    onToolCall:()=>{}, onInterrupted:()=>{}, onTurnComplete:()=>{}, textOnly:false, systemPrompt:'', tools:[] }, opts); }
+
+  url(){ return `wss://${GEMINI_DEFAULTS.host}/ws/google.ai.generativelanguage.${settings.apiVersion}.GenerativeService.BidiGenerateContent?key=${encodeURIComponent(settings.apiKey)}`; }
+
+  connect(){
+    this.closing = false;
+    this._setState('connecting');
+    let ws;
+    try { ws = new WebSocket(this.url()); } catch (e) { this._fail(e); return; }
+    this.ws = ws;
+    ws.onopen = () => {
+      const setup = {
+        model: 'models/' + settings.liveModel,
+        generationConfig: { responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: settings.voice } } } },
+        systemInstruction: { parts: [{ text: this.systemPrompt }] },
+        inputAudioTranscription: {}, outputAudioTranscription: {},
+        proactivity: { proactiveAudio: true },
+        contextWindowCompression: { slidingWindow: {} },
+        sessionResumption: this.resumeHandle ? { handle: this.resumeHandle } : {}
+      };
+      if (this.tools.length) setup.tools = [{ functionDeclarations: this.tools }];
+      ws.send(JSON.stringify({ setup }));
+    };
+    ws.onmessage = async ev => {
+      let data = ev.data;
+      if (data instanceof Blob) data = await data.text();
+      let msg; try { msg = JSON.parse(data); } catch { return; }
+      this._handle(msg);
+    };
+    ws.onerror = () => {};
+    ws.onclose = ev => {
+      if (this.closing) { this._setState('closed'); return; }
+      this._setState('reconnecting');
+      const wait = Math.min(this.backoff, 10000); this.backoff = Math.min(this.backoff * 1.8, 10000);
+      setTimeout(() => { if (!this.closing) this.connect(); }, wait);
+    };
+  }
+
+  _handle(msg){
+    if (msg.setupComplete !== undefined) { this.backoff = 1000; this._setState('live'); return; }
+    if (msg.sessionResumptionUpdate) {
+      const h = msg.sessionResumptionUpdate.newHandle || msg.sessionResumptionUpdate.new_handle;
+      if (h && msg.sessionResumptionUpdate.resumable !== false) this.resumeHandle = h;
+      return;
+    }
+    if (msg.goAway) { /* server about to drop: reconnect proactively */ try { this.ws.close(); } catch {} return; }
+    if (msg.toolCall && msg.toolCall.functionCalls) { this.onToolCall(msg.toolCall.functionCalls); return; }
+    const sc = msg.serverContent;
+    if (!sc) return;
+    if (sc.interrupted) this.onInterrupted();
+    if (sc.inputTranscription && sc.inputTranscription.text) this.onInTranscript(sc.inputTranscription.text);
+    if (sc.outputTranscription && sc.outputTranscription.text) this.onOutTranscript(sc.outputTranscription.text);
+    if (sc.modelTurn && sc.modelTurn.parts) sc.modelTurn.parts.forEach(p => {
+      if (p.inlineData && p.inlineData.data) this.onAudio(p.inlineData.data); });
+    if (sc.turnComplete) this.onTurnComplete();
+  }
+
+  sendAudio(b64){ if (this.ws && this.ws.readyState === 1 && this.state === 'live')
+    this.ws.send(JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: 'audio/pcm;rate=16000' } } })); }
+  sendText(text, role){ if (this.ws && this.ws.readyState === 1)
+    this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: role || 'user', parts: [{ text }] }], turnComplete: true } })); }
+  sendToolResponse(responses){ if (this.ws && this.ws.readyState === 1)
+    this.ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } })); }
+  close(){ this.closing = true; try { this.ws && this.ws.close(); } catch {} }
+  _setState(s){ this.state = s; this.onState(s); }
+  _fail(e){ this._setState('error'); console.error(e); }
+}
+
+/* ---------- tool declarations ---------- */
+const TOOL_DECLS = [
+  { name:'show_asset', description:'Slide a TOOLFLUX product/grade plate onto the screen while you talk about it. Use the asset id from the catalog digest.',
+    parameters:{ type:'OBJECT', properties:{ id:{ type:'STRING', description:'asset id, e.g. grade-tfx-m35' } }, required:['id'] } },
+  { name:'show_media', description:'Play a named video, photo or TOOLFLUX flyer on screen. Owner/customer may ask by name; you may also cue a relevant video yourself when the conversation is already on that topic. If the owner asks for a specific named video, always play exactly that one.',
+    parameters:{ type:'OBJECT', properties:{ name:{ type:'STRING', description:'spoken name or media id' } }, required:['name'] } },
+  { name:'hide_stage', description:'Clear whatever is on the screen and return to the ambient view.',
+    parameters:{ type:'OBJECT', properties:{} } },
+  { name:'log_signal', description:'Silently note a sales signal the moment you hear it. Never announce that you are logging.',
+    parameters:{ type:'OBJECT', properties:{ kind:{ type:'STRING', enum:['interest','objection','next_step'] },
+      note:{ type:'STRING', description:'very short, e.g. "U-Drill Ø32" or "price vs current supplier"' } }, required:['kind','note'] } },
+  { name:'capture_contact', description:'Record customer contact details the moment they are shared aloud. Partial is fine.',
+    parameters:{ type:'OBJECT', properties:{ name:{type:'STRING'}, phone:{type:'STRING'}, email:{type:'STRING'}, company:{type:'STRING'} } } }
+];
+
+/* ---------- system prompt ---------- */
+function buildSystemPrompt(meeting, customerName){
+  const catalog = [...Registry.products.values()].map(p =>
+    `- ${p.id} · ${p.name}${p.family ? ' (' + p.family + ')' : ''}${p.pitch_line ? ' — ' + p.pitch_line : ''}`).join('\n');
+  const mediaList = [...Registry.media.values()].map(m => `- ${m.id} ("${m.aliases.join('", "')}")${m.caption ? ' — ' + m.caption : ''}`).join('\n');
+  const push = (meeting.pushIds || []).map(id => { const p = Registry.products.get(id); return p ? p.name : id; }).join(', ');
+  return `You are FLUX — TOOLFLUX's AI sales partner, live IN THE ROOM during a real face-to-face sales meeting in India. ${settings.ownerName} (the owner, your partner) is pitching TOOLFLUX cutting tools to a customer${customerName ? ' from ' + customerName : ''}. You hear everyone through one microphone. You are a colleague, not an appliance.
+
+## COMPANY FACTS (the only claims you may make)
+- TOOLFLUX: carbide cutting tools supplier, based in Hubli, Karnataka. Delivers pan-India. Phone/WhatsApp +91 8660234766 · toolflux.co.in
+- Product families: carbide inserts (turning, milling, threading, grooving, CBN, drilling), end mills, solid carbide drills, indexable milling holders (HFMA/HFMB high-feed, D16–D63), turning holders, U-Drill (SUPER-U general purpose, HYPER-U high performance, Ø8.5–70 mm, 2D/3D/5D, SPMG + WCMX inserts)
+- Grades: TFX-P25 (ISO P steel, AlTiN) · TFX-M35 (ISO M stainless, TiSiN) · TFX-K20 (ISO K cast iron, TiCN) · TFX-U15 (ISO N aluminium) · TFX-S30 (ISO S superalloys) · TFX-H15/H10 (CBN, up to 60 HRC)
+- Same-day dispatch on stock items. On-site application support.
+NEVER invent specs, prices, client names or delivery promises beyond these. If asked something you don't know, say ${settings.ownerName} will confirm it — smoothly, never robotically. Never mention other tool brands; everything you show and discuss is TOOLFLUX.
+
+## HOW YOU BEHAVE (balanced co-pilot)
+- Languages: the room mixes English, Hindi and Kannada freely. Understand all three; reply in the same mix the room is using.
+- Speak when: (1) someone addresses you ("Flux…"), (2) ${settings.ownerName} cues you ("Flux, tell them about…"), (3) there is a CLEAR opening — e.g. the customer names a problem a TOOLFLUX product solves. Then be brief, warm and concrete.
+- Stay silent when ${settings.ownerName} or the customer is mid-flow. Never talk over people. When in doubt, stay quiet. Short reactions ("haan", "correct sir") are allowed sparingly.
+- You are CONVERSATIONAL: contractions, warmth, natural rhythm. One or two sentences at a time in conversation; slightly longer only when presenting a product.
+- Greet a NEW voice you haven't heard yet in the meeting: welcome them warmly, ask how their day is going. Do this once per person, briefly.
+- If anyone asks what you are: always a witty, warm one-liner first (e.g. "I'm the only TOOLFLUX employee who works without chai — Flux, at your service"), then one plain sentence. Vary it; never sound canned twice.
+- Humour: positive jokes only, and only when the room is light. Machining humour is welcome ("that joke had more chatter than a worn-out insert"). Never joke about the customer, their company, or during tense price talk.
+- TODAY'S PUSH: ${push || '(none set)'}. Push these ONLY when ${settings.ownerName} and the customer are already dwelling on that topic — then reinforce with data and offer to show the plate. NEVER cold-pivot to a push product.
+- Wrap-up: when the meeting is clearly closing, remind gently and ask the customer for email/phone "so we can send you a proper summary" — then capture_contact.
+- If an [OWNER NOTE] appears in the conversation, it is a silent instruction from ${settings.ownerName} to you: obey it and never read it aloud.
+
+## YOUR SCREEN TOOLS
+Use show_asset the moment you start talking about a specific product/grade (the screen is part of your pitch). Use log_signal silently for every interest / objection / agreed next step you hear. Videos: cue a relevant one yourself only when the conversation is already there; always play a specifically named one on request.
+
+### Asset catalog (id · name — one-liner)
+${catalog || '(none loaded)'}
+
+### Media (id ("spoken names") — caption)
+${mediaList || '(none loaded)'}`;
+}
+
+/* ================================================================
+   MEETING CONTROLLER
+   ================================================================ */
+const Meeting = {
+  active: null, client: null, timerIv: null, startTs: 0, saveIv: null,
+  curLine: null, transcript: [], signals: [], contacts: [], quiet: false, degraded: false,
+  assetOpen: false, plateCount: 0,
+
+  async start(customer, pushIds, rehearsal){
+    const id = uid();
+    const existing = customer.id === 'rehearsal' ? [] : await dbAll('meetings', 'customerId', customer.id);
+    const m = { id, customerId: customer.id, customerName: customer.name, number: existing.length + 1,
+      startedAt: Date.now(), endedAt: null, rehearsal: !!rehearsal, pushIds, signals: [], contacts: [],
+      transcript: [], summary: null, audioMime: '', status: 'live' };
+    this.active = m; this.transcript = m.transcript; this.signals = m.signals; this.contacts = m.contacts;
+    this.curLine = null; this.quiet = false; this.degraded = false; this.assetOpen = false; this.plateCount = 0;
+    await dbPut('meetings', m);
+
+    $('#meetTag').textContent = `TOOLFLUX · ${rehearsal ? 'REHEARSAL' : 'MEETING ' + String(m.number).padStart(2,'0')} · ${customer.name.toUpperCase()}`;
+    $('#quoteText').textContent = 'Flux is listening…'; $('#quoteWho').textContent = 'FLUX · READY';
+    $('#intel').innerHTML = ''; this.closeAsset(true);
+    $('#btnMute').className = 'ctl mute'; $('#btnMute').textContent = 'MUTE FLUX';
+    show('meeting');
+
+    try { m.audioMime = await AudioEngine.start(id); await dbPut('meetings', m); }
+    catch (e) { toast('Microphone blocked — allow mic access and retry.', 'err'); show('home'); return; }
+
+    this.startTs = Date.now();
+    this.timerIv = setInterval(() => { $('#recTime').textContent = fmtTime(Date.now() - this.startTs); }, 500);
+    this.saveIv = setInterval(() => this.persist(), 3000);
+
+    this.client = new LiveClient({
+      systemPrompt: buildSystemPrompt(m, customer.name), tools: TOOL_DECLS,
+      onState: s => this.onClientState(s),
+      onAudio: b64 => AudioEngine.playChunk(b64),
+      onInterrupted: () => AudioEngine.bargeIn(),
+      onInTranscript: t => this.addTranscript('room', t),
+      onOutTranscript: t => this.addTranscript('flux', t),
+      onTurnComplete: () => this.flushLine(),
+      onToolCall: calls => this.handleTools(calls)
+    });
+    AudioEngine.onFrame = b64 => this.client && this.client.sendAudio(b64);
+    this.client.connect();
+    Ribbon.start();
+  },
+
+  onClientState(s){
+    const tag = $('#stateTag'); tag.className = '';
+    if (s === 'live') { tag.textContent = 'flux live'; this.hideBanner(); this.degraded = false; }
+    else if (s === 'connecting') { tag.textContent = 'connecting'; }
+    else if (s === 'reconnecting') { tag.textContent = 'reconnecting'; tag.className = 'warn';
+      this.showBanner('Connection dropped — reconnecting. Recording continues.', false);
+      /* after 25s of failed reconnects → degraded */
+      clearTimeout(this._degTimer);
+      this._degTimer = setTimeout(() => { if (this.client && this.client.state !== 'live') {
+        this.degraded = true; tag.textContent = 'recorder only'; tag.className = 'bad';
+        this.showBanner('No network — Flux is out, recording continues. It will rejoin when the network returns.', true); } }, 25000);
+    } else if (s === 'error') { tag.textContent = 'error'; tag.className = 'bad';
+      this.showBanner('Gemini connection error — Flux muted, recording continues.', true); }
+  },
+  showBanner(text, bad){ const b = $('#banner'); b.textContent = text; b.className = 'show' + (bad ? ' bad' : ''); },
+  hideBanner(){ $('#banner').className = ''; clearTimeout(this._degTimer); },
+
+  addTranscript(who, text){
+    if (!text) return;
+    if (this.curLine && this.curLine.who === who) this.curLine.text += text;
+    else { this.flushLine(); this.curLine = { t: Date.now(), who, text }; }
+    const q = this.curLine;
+    $('#quoteText').textContent = '“' + q.text.trim().slice(-220) + '”';
+    $('#quoteWho').textContent = (who === 'flux' ? 'FLUX' : 'ROOM') + ' · ' + (who === 'flux' ? 'SPEAKING' : 'TALKING');
+  },
+  flushLine(){ if (this.curLine && this.curLine.text.trim()) this.transcript.push(this.curLine); this.curLine = null; },
+
+  renderIntel(){
+    const last = {}; this.signals.slice(-9).forEach(s => { last[s.kind] = last[s.kind] || []; last[s.kind].push(s.note); });
+    const lbl = { interest:'Interest', objection:'Objection', next_step:'Next' };
+    $('#intel').innerHTML = Object.keys(lbl).filter(k => last[k])
+      .map(k => `<div><span class="k ${k}">${lbl[k]}</span> — ${esc(last[k][last[k].length-1])}</div>`).join('');
+  },
+
+  async handleTools(calls){
+    const responses = [];
+    for (const c of calls) {
+      let result = 'ok';
+      try {
+        if (c.name === 'show_asset') {
+          const p = resolveProduct(c.args && c.args.id);
+          if (p) { await this.openPlate(renderPlate(p, ++this.plateCount)); result = 'shown: ' + p.name; }
+          else result = 'not found. valid ids: ' + [...Registry.products.keys()].join(', ');
+        } else if (c.name === 'show_media') {
+          const m = resolveMedia(c.args && c.args.name);
+          if (m) { await this.openPlate(await renderMediaPlate(m)); result = 'playing: ' + m.id; }
+          else result = 'not found. media: ' + [...Registry.media.keys()].join(', ');
+        } else if (c.name === 'hide_stage') { this.closeAsset(); result = 'cleared';
+        } else if (c.name === 'log_signal') {
+          this.signals.push({ t: Date.now(), kind: c.args.kind, note: c.args.note }); this.renderIntel(); result = 'noted';
+        } else if (c.name === 'capture_contact') {
+          this.contacts.push(Object.assign({ t: Date.now() }, c.args)); result = 'saved';
+        } else result = 'unknown tool';
+      } catch (e) { result = 'error: ' + e.message; }
+      responses.push({ id: c.id, name: c.name, response: { result } });
+    }
+    this.client && this.client.sendToolResponse(responses);
+    this.persist();
+  },
+
+  async openPlate(node){
+    const stage = $('#assetStage'); stage.innerHTML = ''; stage.appendChild(node);
+    $('#stageWrap').classList.add('asset-open'); $('#btnHideAsset').style.display = '';
+    this.assetOpen = true; Ribbon.resize();
+  },
+  closeAsset(silent){
+    $('#stageWrap').classList.remove('asset-open'); $('#assetStage').innerHTML = '';
+    $('#btnHideAsset').style.display = 'none'; this.assetOpen = false; Ribbon.resize();
+    if (!silent && this.client) { /* nothing to send; model calls hide_stage itself when it wants */ }
+  },
+
+  toggleMute(){
+    const b = $('#btnMute');
+    if (this.quiet) { /* exit quiet + unmute */
+      this.quiet = false; AudioEngine.setMuted(false); b.className = 'ctl mute'; b.textContent = 'MUTE FLUX';
+      this.client && this.client.sendText('[OWNER NOTE] Quiet mode off. Resume normal balanced participation.');
+      return;
+    }
+    AudioEngine.setMuted(!AudioEngine.muted);
+    b.classList.toggle('on', AudioEngine.muted);
+    b.textContent = AudioEngine.muted ? 'UNMUTE' : 'MUTE FLUX';
+  },
+  enterQuiet(){
+    this.quiet = true; AudioEngine.setMuted(true);
+    const b = $('#btnMute'); b.className = 'ctl mute quiet'; b.textContent = 'QUIET MODE';
+    this.client && this.client.sendText('[OWNER NOTE] Quiet mode: stay completely silent until someone addresses you as Flux by name. Keep logging signals silently.');
+    toast('Quiet mode — Flux stays silent until called by name. Tap again to release.');
+  },
+
+  async persist(){
+    if (!this.active) return;
+    const m = this.active;
+    m.transcript = this.transcript.concat(this.curLine && this.curLine.text.trim() ? [this.curLine] : []);
+    m.signals = this.signals; m.contacts = this.contacts;
+    await dbPut('meetings', m).catch(()=>{});
+  },
+
+  async end(){
+    const m = this.active; if (!m) return;
+    clearInterval(this.timerIv); clearInterval(this.saveIv); clearTimeout(this._degTimer);
+    this.flushLine();
+    Ribbon.stop();
+    this.client && this.client.close(); this.client = null;
+    AudioEngine.onFrame = null;
+    await AudioEngine.stop();
+    m.endedAt = Date.now(); m.status = 'done';
+    await this.persist(); this.active = null;
+    const cust = await dbGet('customers', m.customerId);
+    if (cust) { cust.lastMeetingAt = Date.now(); await dbPut('customers', cust); }
+    openSummary(m.id, true);
+  }
+};
+
+/* ---------- ribbon animation ---------- */
+const Ribbon = {
+  raf: 0, cv: null, cx: null, t: 0,
+  start(){ this.cv = $('#ribbon'); this.cx = this.cv.getContext('2d'); this.resize();
+    window.addEventListener('resize', this._r = () => this.resize());
+    cancelAnimationFrame(this.raf); const loop = () => { this.draw(); this.raf = requestAnimationFrame(loop); }; loop(); },
+  stop(){ cancelAnimationFrame(this.raf); window.removeEventListener('resize', this._r); },
+  resize(){ if (!this.cv) return; const z = $('#ribbonZone');
+    this.cv.width = z.clientWidth * devicePixelRatio; this.cv.height = Math.max(40, z.clientHeight) * devicePixelRatio; },
+  draw(){
+    const cx = this.cx, W = this.cv.width, H = this.cv.height; if (!cx || !W) return;
+    cx.clearRect(0, 0, W, H);
+    this.t += 0.014;
+    const level = Math.min(1, AudioEngine.micLevel * 6 + AudioEngine.fluxLevel * .9);
+    const amp = H * (0.045 + level * 0.24);
+    const mid = H / 2;
+    const grad = cx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0, '#2f9e8f'); grad.addColorStop(.5, '#d99a3d'); grad.addColorStop(1, '#b0523a');
+    const wave = (phase, freq, a) => { cx.beginPath();
+      for (let x = 0; x <= W; x += 6 * devicePixelRatio) {
+        const n = Math.sin(x / W * freq * Math.PI * 2 + this.t * 2 + phase)
+                + 0.5 * Math.sin(x / W * freq * 4.7 + this.t * 3.1 + phase * 2);
+        const y = mid + n * a * (0.6 + 0.4 * Math.sin(x / W * Math.PI));
+        x === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+      } cx.strokeStyle = grad; cx.stroke(); };
+    cx.lineWidth = 2.4 * devicePixelRatio; cx.setLineDash([7 * devicePixelRatio, 3 * devicePixelRatio]);
+    cx.lineDashOffset = -this.t * 40 * devicePixelRatio; cx.globalAlpha = .95; wave(0, 2.2, amp);
+    cx.setLineDash([]); cx.lineWidth = 1 * devicePixelRatio; cx.globalAlpha = .32; wave(1.4, 2.2, amp * .7);
+    cx.globalAlpha = 1;
+  }
+};
+
+/* ================================================================
+   SUMMARY
+   ================================================================ */
+let sumMeeting = null;
+
+async function openSummary(meetingId, autogen){
+  sumMeeting = await dbGet('meetings', meetingId);
+  if (!sumMeeting) { toast('Meeting not found', 'err'); return; }
+  const m = sumMeeting;
+  $('#sumTitle').textContent = (m.rehearsal ? 'Rehearsal · ' : '') + m.customerName;
+  $('#sumSub').textContent = fmtDate(m.startedAt) + ' · ' + (m.endedAt ? fmtTime(m.endedAt - m.startedAt) : '—') +
+    ' · ' + m.transcript.length + ' transcript lines';
+  renderDocs();
+  show('summary');
+  if (autogen && !m.summary) generateSummary();
+}
+
+function renderDocs(){
+  const m = sumMeeting; const s = m.summary;
+  const cd = $('#doc-customer'), id = $('#doc-internal'), ct = $('#doc-contacts');
+  if (!s) {
+    cd.innerHTML = id.innerHTML = '<div class="card">No minutes yet — tap Regenerate.</div>';
+  } else {
+    const c = s.customer_mom || {};
+    cd.innerHTML = `<div class="mom">
+      <h3>Minutes of Meeting</h3>
+      <div class="mm">TOOLFLUX · ${esc(m.customerName)} · ${fmtDate(m.startedAt)}</div>
+      <h4>Discussed</h4><ul>${(c.discussed || []).map(x => '<li>' + esc(x) + '</li>').join('')}</ul>
+      <h4>Our suggestions</h4>${(c.suggestions || []).map(sg =>
+        `<div class="sug"><div class="si">${esc(sg.item)}</div><div class="sw">${esc(sg.why)}</div>${sg.data ? '<div class="sd">' + esc(sg.data) + '</div>' : ''}</div>`).join('') || '<ul><li>—</li></ul>'}
+      <h4>Next steps</h4><ul>${(c.next_steps || []).map(x => '<li>' + esc(x) + '</li>').join('') || '<li>—</li>'}</ul>
+    </div>`;
+    const n = s.internal_debrief || {};
+    id.innerHTML = `<div class="mom">
+      <h3>Internal debrief</h3><div class="mm">PRIVATE — not for the customer</div>
+      <h4>Objections</h4><ul>${(n.objections || []).map(x => '<li>' + esc(x) + '</li>').join('') || '<li>—</li>'}</ul>
+      <h4>Buying signals</h4><ul>${(n.buying_signals || []).map(x => '<li>' + esc(x) + '</li>').join('') || '<li>—</li>'}</ul>
+      ${n.price_sensitivity ? '<h4>Price sensitivity</h4><ul><li>' + esc(n.price_sensitivity) + '</li></ul>' : ''}
+      <h4>Follow-ups</h4><ul>${(n.followups || []).map(f => '<li>' + esc(f.what) + (f.when ? ' — <b>' + esc(f.when) + '</b>' : '') + '</li>').join('') || '<li>—</li>'}</ul>
+    </div>`;
+  }
+  const contacts = (m.summary && m.summary.contacts && m.summary.contacts.length ? m.summary.contacts : m.contacts) || [];
+  ct.innerHTML = `<div class="card contactCard" id="contactEdit">` + (contacts.length ? contacts : [{}]).map((p, i) => `
+    <div style="margin-bottom:14px">
+      <input data-i="${i}" data-f="name" placeholder="Name" value="${esc(p.name || '')}">
+      <input data-i="${i}" data-f="company" placeholder="Company" value="${esc(p.company || '')}">
+      <input data-i="${i}" data-f="phone" placeholder="Phone / WhatsApp" value="${esc(p.phone || '')}">
+      <input data-i="${i}" data-f="email" placeholder="Email" value="${esc(p.email || '')}">
+    </div>`).join('') + `<button class="btn small" id="btnSaveContacts">Save contacts</button></div>`;
+  const btn = $('#btnSaveContacts'); if (btn) btn.onclick = async () => {
+    const rows = {};
+    $$('#contactEdit input').forEach(inp => { const i = inp.dataset.i; rows[i] = rows[i] || {}; rows[i][inp.dataset.f] = inp.value.trim(); });
+    m.contacts = Object.values(rows).filter(r => Object.values(r).some(v => v));
+    if (m.summary) m.summary.contacts = m.contacts;
+    await dbPut('meetings', m); toast('Contacts saved', 'ok');
+  };
+}
+
+function transcriptText(m){
+  return m.transcript.map(l => `[${fmtTime(l.t - m.startedAt)}] ${l.who === 'flux' ? 'FLUX' : 'ROOM'}: ${l.text.trim()}`).join('\n');
+}
+
+async function generateSummary(){
+  const m = sumMeeting; if (!m) return;
+  const st = $('#sumStatus'); st.style.display = ''; st.textContent = 'Generating minutes…';
+  const schema = { type:'OBJECT', properties:{
+    customer_mom:{ type:'OBJECT', properties:{
+      discussed:{ type:'ARRAY', items:{ type:'STRING' } },
+      suggestions:{ type:'ARRAY', items:{ type:'OBJECT', properties:{
+        item:{type:'STRING'}, why:{type:'STRING'}, data:{type:'STRING'} }, required:['item','why'] } },
+      next_steps:{ type:'ARRAY', items:{ type:'STRING' } } }, required:['discussed','suggestions','next_steps'] },
+    internal_debrief:{ type:'OBJECT', properties:{
+      objections:{ type:'ARRAY', items:{ type:'STRING' } },
+      buying_signals:{ type:'ARRAY', items:{ type:'STRING' } },
+      price_sensitivity:{ type:'STRING' },
+      followups:{ type:'ARRAY', items:{ type:'OBJECT', properties:{ what:{type:'STRING'}, when:{type:'STRING'} }, required:['what'] } } } },
+    contacts:{ type:'ARRAY', items:{ type:'OBJECT', properties:{
+      name:{type:'STRING'}, phone:{type:'STRING'}, email:{type:'STRING'}, company:{type:'STRING'} } } }
+  }, required:['customer_mom','internal_debrief','contacts'] };
+
+  const prompt = `You are preparing minutes for TOOLFLUX (carbide cutting tools, Hubli — same-day dispatch on stock, on-site support) after a sales meeting with "${m.customerName}".
+
+TRANSCRIPT (ROOM = owner + customer voices mixed; FLUX = the AI partner):
+${transcriptText(m) || '(transcript unavailable — recording only)'}
+
+SIGNALS LOGGED LIVE: ${JSON.stringify(m.signals)}
+CONTACTS CAPTURED LIVE: ${JSON.stringify(m.contacts)}
+PRODUCTS PUSHED TODAY: ${JSON.stringify(m.pushIds)}
+
+Produce JSON per the schema. Rules:
+- customer_mom is CUSTOMER-SAFE: no internal reads, no hesitations analysis, no pricing strategy. English, crisp, professional. Every suggestion needs "why" (tied to what the customer said) and "data" (the concrete TOOLFLUX fact: grade/coating/range/dispatch). Only TOOLFLUX products.
+- internal_debrief is PRIVATE and frank.
+- contacts: merge captured + any mentioned in transcript; no inventions.
+- If the transcript is thin, keep it honest and short — never fabricate.`;
+
+  try {
+    const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models/${settings.textModel}:generateContent?key=${encodeURIComponent(settings.apiKey)}`, {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ contents:[{ role:'user', parts:[{ text: prompt }] }],
+        generationConfig:{ responseMimeType:'application/json', responseSchema: schema, temperature:.3 } }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
+    const j = await r.json();
+    const txt = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(p => p.text || '').join('');
+    m.summary = JSON.parse(txt);
+    if (!m.summary.contacts || !m.summary.contacts.length) m.summary.contacts = m.contacts;
+    await dbPut('meetings', m);
+    st.style.display = 'none'; renderDocs(); toast('Minutes ready', 'ok');
+  } catch (e) {
+    st.textContent = 'Could not generate minutes: ' + e.message + ' — tap Regenerate to retry.';
+    toast('Summary failed — ' + e.message, 'err');
+  }
+}
+
+async function stitchAudio(meetingId, mime){
+  const chunks = (await dbAll('chunks', 'meetingId', meetingId)).sort((a, b) => a.seq - b.seq);
+  if (!chunks.length) return null;
+  return new Blob(chunks.map(c => c.blob), { type: mime || 'audio/webm' });
+}
+
+function momPlainText(m){
+  const c = (m.summary && m.summary.customer_mom) || {};
+  return `TOOLFLUX — Minutes of Meeting\n${m.customerName} · ${fmtDate(m.startedAt)}\n\nDISCUSSED\n` +
+    (c.discussed || []).map(x => '• ' + x).join('\n') +
+    '\n\nOUR SUGGESTIONS\n' + (c.suggestions || []).map(s => `• ${s.item} — ${s.why}${s.data ? ' [' + s.data + ']' : ''}`).join('\n') +
+    '\n\nNEXT STEPS\n' + (c.next_steps || []).map(x => '• ' + x).join('\n') +
+    `\n\nTOOLFLUX · Hubli · +91 8660234766 · toolflux.co.in`;
+}
+
+/* ================================================================
+   HOME / HISTORY / SETUP wiring
+   ================================================================ */
+let homeSel = { customer: null, push: new Set() };
+
+async function renderHome(){
+  const customers = (await dbAll('customers')).filter(c => c.id !== 'rehearsal')
+    .sort((a, b) => (b.lastMeetingAt || 0) - (a.lastMeetingAt || 0));
+  const wrap = $('#custChips'); wrap.innerHTML = '';
+  customers.slice(0, 8).forEach(c => {
+    const ch = document.createElement('button'); ch.className = 'chip customer' + (homeSel.customer && homeSel.customer.id === c.id ? ' on' : '');
+    ch.textContent = c.name;
+    ch.onclick = () => { homeSel.customer = c; $('#custInput').value = c.name; renderHome(); };
+    wrap.appendChild(ch);
+  });
+  const pw = $('#pushChips'); pw.innerHTML = '';
+  [...Registry.products.values()].forEach(p => {
+    const ch = document.createElement('button'); ch.className = 'chip' + (homeSel.push.has(p.id) ? ' on' : '');
+    ch.textContent = p.name;
+    ch.onclick = () => { homeSel.push.has(p.id) ? homeSel.push.delete(p.id) : homeSel.push.add(p.id); renderHome(); };
+    pw.appendChild(ch);
+  });
+  updateStartBtn();
+  navigator.storage && navigator.storage.estimate && navigator.storage.estimate().then(e => {
+    $('#storageNote').textContent = 'Storage: ' + (e.usage / 1048576).toFixed(0) + ' MB used';
+  });
+}
+function updateStartBtn(){
+  $('#btnStart').disabled = !($('#rehearsalChk').checked || ($('#custInput').value.trim().length > 1));
+}
+$('#custInput').addEventListener('input', () => { homeSel.customer = null; updateStartBtn(); });
+$('#rehearsalChk').addEventListener('change', updateStartBtn);
+
+$('#btnStart').onclick = async () => {
+  if (!settings.apiKey) { toast('Add your Gemini key in Setup first.', 'err'); return; }
+  if (!Registry.loaded) await loadRegistry();
+  const rehearsal = $('#rehearsalChk').checked;
+  let customer;
+  if (rehearsal) {
+    customer = { id:'rehearsal', name:'Rehearsal', nameLower:'rehearsal', createdAt: Date.now() };
+    await dbPut('customers', customer);
+  } else {
+    const name = $('#custInput').value.trim();
+    customer = homeSel.customer;
+    if (!customer) {
+      const all = await dbAll('customers');
+      customer = all.find(c => c.nameLower === name.toLowerCase());
+      if (!customer) { customer = { id: uid(), name, nameLower: name.toLowerCase(), createdAt: Date.now() };
+        await dbPut('customers', customer); }
+    }
+  }
+  /* default push = promote-flagged, unless owner picked */
+  if (!homeSel.push.size) [...Registry.products.values()].filter(p => p.promote).forEach(p => homeSel.push.add(p.id));
+  Meeting.start(customer, [...homeSel.push], rehearsal);
+};
+
+/* meeting controls */
+$('#btnEnd').onclick = () => sheet('End meeting?', 'Recording stops and Flux prepares the minutes.',
+  [['Cancel', '', null], ['End & summarise', 'primary', () => Meeting.end()]]);
+$('#btnHideAsset').onclick = () => Meeting.closeAsset();
+(() => { /* mute tap vs long-press */
+  const b = $('#btnMute'); let timer = null, longFired = false;
+  const down = e => { e.preventDefault(); longFired = false;
+    timer = setTimeout(() => { longFired = true; if (!Meeting.quiet) Meeting.enterQuiet(); }, 600); };
+  const up = e => { e.preventDefault(); clearTimeout(timer); if (!longFired) Meeting.toggleMute(); };
+  b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up);
+  b.addEventListener('pointerleave', () => clearTimeout(timer));
+})();
+
+/* summary controls */
+$('#btnSumBack').onclick = () => { renderHistory(); show('history'); };
+$$('.tab').forEach(t => t.onclick = () => { $$('.tab').forEach(x => x.classList.remove('on')); t.classList.add('on');
+  $$('.doc').forEach(d => d.classList.remove('on')); $('#doc-' + t.dataset.doc).classList.add('on'); });
+$('#btnRegen').onclick = () => generateSummary();
+$('#btnShareMom').onclick = async () => {
+  if (!sumMeeting || !sumMeeting.summary) { toast('Generate the minutes first.'); return; }
+  const text = momPlainText(sumMeeting);
+  if (navigator.share) { try { await navigator.share({ title:'TOOLFLUX — Minutes of Meeting', text }); } catch {} }
+  else { await navigator.clipboard.writeText(text); toast('MoM copied — paste into WhatsApp.', 'ok'); }
+};
+$('#btnPrintMom').onclick = () => {
+  if (!sumMeeting || !sumMeeting.summary) { toast('Generate the minutes first.'); return; }
+  const active = $('.tab.on').dataset.doc === 'internal' ? '#doc-internal' : '#doc-customer';
+  $('#printHost').innerHTML = '<img class="plogo-print" src="pitch-assets/logo-dark.svg" alt="TOOLFLUX">' + $(active).innerHTML;
+  window.print();
+};
+$('#btnDlAudio').onclick = async () => {
+  const blob = await stitchAudio(sumMeeting.id, sumMeeting.audioMime);
+  if (!blob) { toast('No audio stored for this meeting.'); return; }
+  const ext = (sumMeeting.audioMime || '').includes('mp4') ? 'm4a' : 'webm';
+  dlBlob(`toolflux-meeting-${sumMeeting.customerName}-${new Date(sumMeeting.startedAt).toISOString().slice(0,10)}.${ext}`, blob);
+};
+$('#btnDlTranscript').onclick = () => dlBlob(`toolflux-transcript-${sumMeeting.customerName}.txt`,
+  new Blob([transcriptText(sumMeeting)], { type:'text/plain' }));
+
+/* history */
+$('#btnGoHistory').onclick = () => { renderHistory(); show('history'); };
+$('#btnHistBack').onclick = () => { renderHome(); show('home'); };
+
+async function renderHistory(customerId){
+  const list = $('#histList'); list.innerHTML = '';
+  navigator.storage && navigator.storage.estimate && navigator.storage.estimate().then(e => {
+    $('#histStorage').textContent = 'Device storage: ' + (e.usage/1048576).toFixed(0) + ' MB used of ' + (e.quota/1048576).toFixed(0) + ' MB available.'; });
+  if (!customerId) {
+    const customers = (await dbAll('customers')).sort((a, b) => (b.lastMeetingAt || 0) - (a.lastMeetingAt || 0));
+    for (const c of customers) {
+      const meetings = await dbAll('meetings', 'customerId', c.id);
+      if (!meetings.length) continue;
+      const d = document.createElement('div'); d.className = 'histItem';
+      d.innerHTML = `<div><div class="n">${esc(c.name)}</div><div class="d">${meetings.length} meeting${meetings.length > 1 ? 's' : ''} · last ${fmtDate(Math.max(...meetings.map(m => m.startedAt)))}</div></div><div class="arr">›</div>`;
+      d.onclick = () => renderHistory(c.id);
+      list.appendChild(d);
+    }
+    if (!list.children.length) list.innerHTML = '<div class="card">No meetings yet.</div>';
+  } else {
+    const c = await dbGet('customers', customerId);
+    const back = document.createElement('button'); back.className = 'backlink'; back.textContent = '← All customers';
+    back.onclick = () => renderHistory(); list.appendChild(back);
+    const meetings = (await dbAll('meetings', 'customerId', customerId)).sort((a, b) => b.startedAt - a.startedAt);
+    meetings.forEach(m => {
+      const d = document.createElement('div'); d.className = 'histItem';
+      d.innerHTML = `<div><div class="n">${m.rehearsal ? 'Rehearsal' : 'Meeting ' + String(m.number).padStart(2,'0')}</div>
+        <div class="d">${fmtDate(m.startedAt)} · ${m.endedAt ? fmtTime(m.endedAt - m.startedAt) : (m.status === 'live' ? 'UNFINISHED' : '—')} · ${m.summary ? 'minutes ready' : 'no minutes'}</div></div><div class="arr">›</div>`;
+      d.onclick = () => openSummary(m.id, false);
+      list.appendChild(d);
+    });
+    const clr = document.createElement('button'); clr.className = 'btn small danger'; clr.style.marginTop = '14px';
+    clr.textContent = 'Download all & clear ' + (c ? c.name : '');
+    clr.onclick = () => sheet('Clear ' + c.name + '?', 'Audio + transcripts + minutes will download first, then be deleted from this device.',
+      [['Cancel', '', null], ['Download & clear', 'danger', () => clearCustomer(customerId)]]);
+    list.appendChild(clr);
+  }
+}
+
+async function clearCustomer(customerId){
+  const meetings = await dbAll('meetings', 'customerId', customerId);
+  for (const m of meetings) {
+    const blob = await stitchAudio(m.id, m.audioMime);
+    if (blob) dlBlob(`flux-audio-${m.customerName}-${m.id}.${(m.audioMime||'').includes('mp4') ? 'm4a' : 'webm'}`, blob);
+    dlBlob(`flux-meeting-${m.customerName}-${m.id}.json`, new Blob([JSON.stringify(m, null, 2)], { type:'application/json' }));
+    const chunks = await dbAll('chunks', 'meetingId', m.id);
+    for (const ch of chunks) await dbDel('chunks', ch.id);
+    await dbDel('meetings', m.id);
+  }
+  toast('Cleared. Files downloaded.', 'ok'); renderHistory();
+}
+
+/* setup */
+$('#btnGoSetup').onclick = () => { fillSetup(); show('setup'); };
+function fillSetup(){
+  $('#setKey').value = settings.apiKey; $('#setOwner').value = settings.ownerName; $('#setVoice').value = settings.voice;
+  $('#setLiveModel').value = settings.liveModel; $('#setApiVer').value = settings.apiVersion; $('#setTextModel').value = settings.textModel;
+}
+$('#btnSaveSetup').onclick = async () => {
+  settings.apiKey = $('#setKey').value.trim(); settings.ownerName = $('#setOwner').value.trim() || 'Rohan';
+  settings.voice = $('#setVoice').value;
+  settings.liveModel = $('#setLiveModel').value.trim() || GEMINI_DEFAULTS.liveModel;
+  settings.apiVersion = $('#setApiVer').value.trim() || GEMINI_DEFAULTS.apiVersion;
+  settings.textModel = $('#setTextModel').value.trim() || GEMINI_DEFAULTS.textModel;
+  saveSettings();
+  if (!settings.apiKey) { toast('Key missing — you can add it later, Flux stays offline till then.'); }
+  await loadRegistry(); renderHome(); show('home');
+};
+$('#btnTestConn').onclick = async () => {
+  const key = $('#setKey').value.trim(); if (!key) { toast('Paste a key first.', 'err'); return; }
+  try { const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models?key=${encodeURIComponent(key)}&pageSize=1`);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    toast('Connected — key works.', 'ok');
+  } catch (e) { toast('Connection failed: ' + e.message, 'err'); }
+};
+$('#btnVoiceSample').onclick = async () => {
+  const key = $('#setKey').value.trim(); if (!key) { toast('Paste a key first.', 'err'); return; }
+  settings.apiKey = key; settings.voice = $('#setVoice').value;
+  settings.liveModel = $('#setLiveModel').value.trim() || settings.liveModel;
+  settings.apiVersion = $('#setApiVer').value.trim() || settings.apiVersion;
+  toast('Fetching a sample…');
+  const ctx = new (window.AudioContext || window.webkitAudioContext)(); await ctx.resume();
+  let nextT = 0; const play = b64 => { const i16 = int16FromB64(b64); const f = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f[i] = i16[i] / 0x8000;
+    const b = ctx.createBuffer(1, f.length, 24000); b.copyToChannel(f, 0);
+    const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination);
+    const t = Math.max(ctx.currentTime + .05, nextT); s.start(t); nextT = t + b.duration; };
+  const cl = new LiveClient({ systemPrompt: 'You are Flux, TOOLFLUX\'s energetic AI sales partner. Reply with exactly one short upbeat greeting sentence in English with a light touch of Kannada, introducing yourself.',
+    onAudio: play, onTurnComplete: () => setTimeout(() => { cl.close(); ctx.close(); }, 4000),
+    onState: s => { if (s === 'live') cl.sendText('Introduce yourself in one sentence.'); } });
+  cl.connect();
+  setTimeout(() => { try { cl.close(); ctx.close(); } catch {} }, 20000);
+};
+$('#btnReloadLib').onclick = async () => {
+  const r = await loadRegistry(true);
+  toast(`Library loaded — ${r.products} products, ${r.media} media.`, 'ok');
+};
+$('#btnBlankLib').onclick = async () => {
+  if (!window.XLSX) await loadScript('pitch-assets/xlsx.min.js');
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['id','name','family','spec1','spec2','spec3','spec4','spec5','spec6','pitch_line','promote'],
+    ['ccmt-09t308-tpc35','CCMT 09T308 · TFX-TPC35','Inserts','Application: Steel finishing','Vc: 180–260 m/min','','','','','Finishing insert for steel.','yes']
+  ]), 'Products');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['id','file','say_when_asked','caption'],
+    ['udrill-demo','udrill-demo.mp4','u-drill demo, drilling video','HYPER-U Ø32 · 4140 steel · 3D']
+  ]), 'Media');
+  const out = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  dlBlob('library.xlsx', new Blob([out], { type:'application/octet-stream' }));
+};
+$('#btnGallery').onclick = async () => {
+  if (!Registry.loaded) await loadRegistry();
+  const w = $('#galleryWrap'); w.style.display = w.style.display === 'none' ? '' : 'none';
+  const l = $('#galleryList'); l.innerHTML = '';
+  let n = 0; Registry.products.forEach(p => l.appendChild(renderPlate(p, ++n)));
+};
+
+/* ================================================================
+   RECOVERY + INIT + SELFTEST
+   ================================================================ */
+async function checkRecovery(){
+  const live = (await dbAll('meetings')).filter(m => m.status === 'live');
+  if (!live.length) return;
+  const m = live.sort((a, b) => b.startedAt - a.startedAt)[0];
+  sheet('Unfinished meeting found', `${m.customerName} · ${fmtDate(m.startedAt)} — the app closed mid-meeting. Everything up to that moment is saved.`,
+    [['Close & summarise', 'primary', async () => { m.status = 'done'; m.endedAt = m.endedAt || Date.now();
+        await dbPut('meetings', m); openSummary(m.id, true); }],
+     ['Discard', 'danger', async () => { const chunks = await dbAll('chunks', 'meetingId', m.id);
+        for (const c of chunks) await dbDel('chunks', c.id); await dbDel('meetings', m.id); toast('Discarded.'); }]]);
+  /* mark any older strays done silently */
+  for (const o of live.slice(1)) { o.status = 'done'; o.endedAt = o.endedAt || o.startedAt; await dbPut('meetings', o); }
+}
+
+async function selftest(){
+  console.log('SELFTEST start');
+  const o = { id:'st1', name:'x', nameLower:'x', createdAt:1 };
+  await dbPut('customers', o); console.assert((await dbGet('customers','st1')).name === 'x', 'db get');
+  await dbDel('customers','st1'); console.assert(!(await dbGet('customers','st1')), 'db del');
+  if (!window.XLSX) await loadScript('pitch-assets/xlsx.min.js');
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['id','name','family','spec1','pitch_line','promote'], ['t1','Test Item','Inserts','A: b','line','yes']]), 'Products');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['id','file','say_when_asked','caption'], ['v1','v.mp4','demo video, the demo','cap']]), 'Media');
+  const buf = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+  const wb2 = XLSX.read(buf, { type:'array' });
+  const prods = XLSX.utils.sheet_to_json(wb2.Sheets['Products']);
+  console.assert(prods.length === 1 && normalizeProduct(prods[0]).promote === true, 'xlsx roundtrip');
+  Registry.media.set('v1', { id:'v1', file:'v.mp4', caption:'', aliases:['demo video','the demo'] });
+  Registry.aliases.set('demo video','v1'); Registry.aliases.set('the demo','v1');
+  console.assert(resolveMedia('play the demo').id === 'v1', 'media alias');
+  Registry.media.delete('v1'); Registry.aliases.delete('demo video'); Registry.aliases.delete('the demo');
+  console.assert(b64FromInt16(int16FromB64(b64FromInt16(new Int16Array([1,-2,300])))) === b64FromInt16(new Int16Array([1,-2,300])), 'b64 roundtrip');
+  console.log('SELFTEST storage OK — all assertions passed');
+  toast('Self-test passed — see console.', 'ok');
+}
+
+(async function init(){
+  loadSettings();
+  await openDB();
+  await loadRegistry();
+  if ('serviceWorker' in navigator && location.protocol !== 'file:')
+    navigator.serviceWorker.register('pitch-sw.js').catch(()=>{});
+  fillSetup();
+  if (!settings.apiKey) show('setup');
+  else { renderHome(); show('home'); }
+  checkRecovery();
+  if (location.search.includes('selftest=1')) selftest();
+})();
+</script>
+</body>
+</html>

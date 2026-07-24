@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "note": "Curated FLUX pitch cards. Verified TOOLFLUX facts only. Owner library lives in library.xlsx.",
+  "products": [
+    {
+      "id": "family-inserts", "name": "Carbide Inserts", "family": "Inserts",
+      "spec1": "Coverage: Turning · Milling · Threading", "spec2": "Also: Grooving · CBN · Drilling inserts",
+      "spec3": "Grades: TFX P/M/K/N/S/H range", "spec4": "Same-day dispatch on stock items",
+      "pitch_line": "One insert program that covers turning to drilling, in grades tuned for each ISO group."
+    },
+    {
+      "id": "family-endmills", "name": "End Mills", "family": "End Mills",
+      "spec1": "Solid carbide end mills", "spec2": "Pan-India delivery from Hubli stock",
+      "spec3": "On-site application support",
+      "pitch_line": "Solid carbide end mills backed by application support at your machine."
+    },
+    {
+      "id": "family-drills", "name": "Solid Carbide Drills", "family": "Drills",
+      "spec1": "Solid carbide drilling program", "spec2": "Same-day dispatch on stock items",
+      "pitch_line": "Solid carbide drills, off the shelf, dispatched the same day."
+    },
+    {
+      "id": "family-holders-milling", "name": "Indexable Milling Holders", "family": "Holders",
+      "spec1": "HFMA / HFMB high-feed cutters", "spec2": "Diameter range: D16 – D63",
+      "spec3": "Indexable economy, high-feed speed",
+      "pitch_line": "High-feed HFMA and HFMB bodies from D16 to D63 — roughing that pays for itself in cycle time."
+    },
+    {
+      "id": "family-holders-turning", "name": "Turning Holders", "family": "Holders",
+      "spec1": "Turning tool holder program", "spec2": "Pairs with TFX insert grades",
+      "pitch_line": "Turning holders matched to our insert program, so the whole setup comes from one supplier."
+    },
+    {
+      "id": "family-udrill", "name": "U-Drill", "family": "U-Drill",
+      "spec1": "SUPER-U — general purpose", "spec2": "HYPER-U — high performance",
+      "spec3": "Range: Ø8.5 – 70 mm", "spec4": "Depths: 2D · 3D · 5D",
+      "spec5": "Inserts: SPMG + WCMX",
+      "pitch_line": "From Ø8.5 to Ø70 in 2D, 3D and 5D — SUPER-U for everyday holes, HYPER-U when the cycle time matters."
+    },
+    {
+      "id": "grade-tfx-p25", "name": "TFX-P25", "family": "Grade",
+      "spec1": "ISO P — Steel", "spec2": "Coating: AlTiN",
+      "pitch_line": "Our steel workhorse — AlTiN-coated P25 for everyday steel turning and milling."
+    },
+    {
+      "id": "grade-tfx-m35", "name": "TFX-M35", "family": "Grade",
+      "spec1": "ISO M — Stainless Steel", "spec2": "Coating: TiSiN",
+      "pitch_line": "Built for stainless — TiSiN coating that holds its edge where SS304 eats ordinary inserts."
+    },
+    {
+      "id": "grade-tfx-k20", "name": "TFX-K20", "family": "Grade",
+      "spec1": "ISO K — Cast Iron", "spec2": "Coating: TiCN",
+      "pitch_line": "TiCN-coated K20 — made for the abrasion of cast iron."
+    },
+    {
+      "id": "grade-tfx-u15", "name": "TFX-U15", "family": "Grade",
+      "spec1": "ISO N — Aluminium & non-ferrous",
+      "pitch_line": "Sharp, clean aluminium cutting without built-up edge."
+    },
+    {
+      "id": "grade-tfx-s30", "name": "TFX-S30", "family": "Grade",
+      "spec1": "ISO S — Superalloys & titanium",
+      "pitch_line": "For the difficult stuff — heat-resistant alloys and titanium."
+    },
+    {
+      "id": "grade-tfx-h", "name": "TFX-H15 / H10 (CBN)", "family": "Grade",
+      "spec1": "ISO H — Hardened steel", "spec2": "CBN — up to 60 HRC",
+      "pitch_line": "CBN grades that turn hardened steel up to 60 HRC — grinding-quality finish off the lathe."
+    },
+    {
+      "id": "toolflux-company", "name": "Why TOOLFLUX", "family": "Company",
+      "spec1": "Same-day dispatch on stock items", "spec2": "On-site application support",
+      "spec3": "Based in Hubli · delivers pan-India", "spec4": "+91 86602 34766 · toolflux.co.in",
+      "pitch_line": "Stock in Hubli, dispatch today, and an engineer who turns up at your machine when you need one."
+    }
+  ]
+}
