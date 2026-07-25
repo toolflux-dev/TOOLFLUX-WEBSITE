@@ -128,6 +128,8 @@ a{ color:var(--teal); }
 #stageControls{ position:absolute; bottom:calc(14px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:8; }
 #stageWrap.asset-open #stageControls{ bottom:auto; top:max(12px,env(safe-area-inset-top)); left:auto; right:16px; transform:none; }
 .ctl{ background:#1d1a1fd9; border:1px solid var(--line); color:var(--bone-dim); border-radius:99px; padding:11px 18px; font-size:13px; font-weight:700; letter-spacing:.08em; backdrop-filter:blur(6px); }
+.ctl.answer{ border-color:#2c665c; color:#8fd8c9; }
+.ctl.answer:active{ background:#16302c; }
 .ctl.mute.on{ border-color:var(--ochre); color:var(--ochre); }
 .ctl.mute.quiet{ border-color:var(--rust); color:var(--rust); }
 .ctl.end{ border-color:#5e332c; color:#e8b0a4; }
@@ -206,6 +208,7 @@ a{ color:var(--teal); }
   <div class="row">
     <button class="btn small" id="btnTestConn">Test connection</button>
     <button class="btn small" id="btnVoiceSample">Hear sample</button>
+    <button class="btn small" id="btnDetect">Detect models</button>
     <button class="btn small" id="btnReloadLib">Reload library</button>
     <button class="btn small" id="btnBlankLib">Download blank library.xlsx</button>
     <button class="btn small" id="btnGallery">Preview plates</button>
@@ -217,6 +220,7 @@ a{ color:var(--teal); }
     <div class="field"><label>Gemini live API version</label><input type="text" id="setApiVer"></div>
     <div class="field"><label>Gemini summary model</label><input type="text" id="setTextModel"></div>
     <div class="field"><label>OpenAI realtime model</label><input type="text" id="setOaiModel"></div>
+    <div class="field"><label>Mic sensitivity (1 = raw, 2–3 for noisy shop floors)</label><input type="text" id="setGain" placeholder="1.6"></div>
   </details>
   <div class="hr"></div>
   <div class="row"><button class="btn primary" id="btnSaveSetup">Save & continue</button></div>
@@ -271,6 +275,7 @@ a{ color:var(--teal); }
       <div id="intel"></div>
     </div>
     <div id="stageControls">
+      <button class="ctl answer" id="btnAnswer">ANSWER</button>
       <button class="ctl mute" id="btnMute">MUTE FLUX</button>
       <button class="ctl" id="btnHideAsset" style="display:none">CLEAR</button>
       <button class="ctl end" id="btnEnd">END</button>
@@ -323,10 +328,26 @@ a{ color:var(--teal); }
 /* ---------- constants ---------- */
 const GEMINI_DEFAULTS = {
   apiVersion: 'v1alpha',                       // proactive audio requires v1alpha
-  liveModel: 'gemini-2.5-flash-native-audio-latest',
-  textModel: 'gemini-2.5-flash',
+  liveModel: 'gemini-live-2.5-flash-preview',  // overridden by auto-detect (Setup → Detect models)
+  textModel: 'gemini-flash-latest',            // rolling alias — survives model retirements
   host: 'generativelanguage.googleapis.com'
 };
+/* Ask the key which models actually exist, so retirements never 404 us again. */
+async function detectGeminiModels(key){
+  const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models?key=${encodeURIComponent(key)}&pageSize=200`);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + (await r.text()).slice(0, 120));
+  const models = ((await r.json()).models || []).map(m => ({
+    id: (m.name || '').replace(/^models\//, ''), methods: m.supportedGenerationMethods || [] }));
+  const score = (id, prefs) => { let s = 0; prefs.forEach((p, i) => { if (id.includes(p)) s += (prefs.length - i) * 10; });
+    if (id.includes('latest')) s += 25; if (/preview|exp/.test(id)) s -= 5;
+    const v = parseFloat((id.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || 0); return s + v; };
+  const live = models.filter(m => m.methods.includes('bidiGenerateContent'))
+    .sort((a, b) => score(b.id, ['native-audio','live','flash']) - score(a.id, ['native-audio','live','flash']))[0];
+  const text = models.filter(m => m.methods.includes('generateContent') && !/embed|image|tts|audio/.test(m.id))
+    .sort((a, b) => score(b.id, ['flash']) - score(a.id, ['flash']))[0];
+  return { live: live && live.id, text: text && text.id,
+    allLive: models.filter(m => m.methods.includes('bidiGenerateContent')).map(m => m.id) };
+}
 const VvERIFIED = null; // (nothing invented — facts live in pitch-assets/manifest.json + prompt below)
 
 /* ---------- tiny utils ---------- */
@@ -359,7 +380,7 @@ function loadScript(src){ return new Promise((res, rej) => { const s = document.
 let settings = null;
 function loadSettings(){ try { settings = JSON.parse(localStorage.getItem('flux_settings')) || {}; } catch { settings = {}; }
   settings = Object.assign({ apiKey:'', ownerName:'Rohan', voice:'Fenrir', mode:'balanced',
-    provider:'gemini', openaiKey:'', openaiVoice:'cedar', openaiModel:'gpt-realtime',
+    provider:'gemini', openaiKey:'', openaiVoice:'cedar', openaiModel:'gpt-realtime', micGain:1.6,
     liveModel: GEMINI_DEFAULTS.liveModel, apiVersion: GEMINI_DEFAULTS.apiVersion, textModel: GEMINI_DEFAULTS.textModel }, settings); }
 const GEMINI_VOICES = [['Fenrir','Fenrir — energetic male (recommended)'],['Puck','Puck — upbeat male'],['Charon','Charon — deep male'],['Orus','Orus — firm male']];
 const OPENAI_VOICES = [['cedar','Cedar — natural male (recommended)'],['echo','Echo — warm male'],['ash','Ash — confident male'],['verse','Verse — expressive male']];
@@ -529,10 +550,11 @@ function resolveProduct(q){
 const AudioEngine = {
   ctx: null, micStream: null, workletNode: null, playGain: null, recDest: null, recorder: null,
   playQueue: [], nextPlayTime: 0, activeSources: new Set(),
-  micLevel: 0, fluxLevel: 0, onFrame: null, meetingId: null, seq: 0, wakeLock: null, muted: false,
+  micLevel: 0, fluxLevel: 0, onFrame: null, meetingId: null, seq: 0, wakeLock: null, muted: false, gain: 1.6,
 
   async start(meetingId, targetRate){
     this.meetingId = meetingId; this.seq = 0; this.targetRate = targetRate || 16000;
+    this.gain = settings.micGain || 1.6;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
     await this.ctx.resume();
     this.micStream = await navigator.mediaDevices.getUserMedia({ audio: {
@@ -560,8 +582,18 @@ const AudioEngine = {
       const joined = new Float32Array(acc.length + f.length); joined.set(acc); joined.set(f, acc.length); acc = joined;
       const outLen = Math.floor(acc.length / ratio);
       if (!outLen) return;
+      /* box-average decimation: averaging the samples inside each output window acts as a
+         low-pass filter. Nearest-sample picking aliases high frequencies down into speech
+         range and wrecks recognition — this is the difference between "shitty pickup" and clean. */
       const out = new Int16Array(outLen);
-      for (let i = 0; i < outLen; i++) { const v = acc[Math.floor(i * ratio)]; out[i] = Math.max(-1, Math.min(1, v)) * 0x7FFF; }
+      const win = Math.max(1, Math.floor(ratio));
+      for (let i = 0; i < outLen; i++) {
+        const start = Math.floor(i * ratio); let sum = 0, n = 0;
+        for (let k = 0; k < win && start + k < acc.length; k++) { sum += acc[start + k]; n++; }
+        let v = n ? sum / n : 0;
+        v *= this.gain;
+        out[i] = Math.max(-1, Math.min(1, v)) * 0x7FFF;
+      }
       acc = acc.subarray(Math.floor(outLen * ratio));
       outAcc.push(out);
       const total = outAcc.reduce((n, a) => n + a.length, 0);
@@ -700,6 +732,7 @@ class LiveClient {
     this.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true } })); }
   sendToolResponse(responses){ if (this.ws && this.ws.readyState === 1)
     this.ws.send(JSON.stringify({ toolResponse: { functionResponses: responses } })); }
+  forceAnswer(){ this.sendText('[OWNER NOTE] Answer the last thing said to you right now, in one short sentence.'); }
   close(){ this.closing = true; try { this.ws && this.ws.close(); } catch {} }
   _setState(s){ this.state = s; this.onState(s); }
   _fail(e){ this._setState('error'); console.error(e); }
@@ -736,7 +769,9 @@ class OpenAIClient {
         voice: settings.openaiVoice,
         input_audio_format:'pcm16', output_audio_format:'pcm16',
         input_audio_transcription:{ model:'gpt-4o-mini-transcribe' },
-        turn_detection:{ type:'server_vad', threshold:0.5, prefix_padding_ms:200, silence_duration_ms:400 },
+        /* semantic VAD reads the words to decide you've finished, instead of waiting out silence —
+           much faster and far fewer mid-sentence cut-ins. eagerness high = 2s fallback timeout. */
+        turn_detection:{ type:'semantic_vad', eagerness:'high', interrupt_response:true, create_response:true },
         tools: this.tools.map(t => ({ type:'function', name:t.name, description:t.description,
           parameters: toJsonSchema(t.parameters || { type:'OBJECT', properties:{} }) })),
         tool_choice:'auto'
@@ -787,6 +822,8 @@ class OpenAIClient {
       this._send({ type:'conversation.item.create', item:{ type:'function_call_output', call_id:r.id, output: JSON.stringify(r.response) } }); });
     if (!silent) this._send({ type:'response.create' });
   }
+  forceAnswer(){ this._send({ type:'input_audio_buffer.commit' });
+    this._send({ type:'response.create', response:{ instructions:'Answer the last thing said to you right now, in one short sentence.' } }); }
   close(){ this.closing = true; try { this.ws && this.ws.close(); } catch {} }
   _setState(s){ this.state = s; this.onState(s); }
 }
@@ -829,7 +866,9 @@ NEVER invent specs, prices, client names or delivery promises beyond these. If a
 - Languages: the room mixes English, Hindi and Kannada freely. Understand all three; reply in the same mix the room is using.
 - Speak when: (1) someone addresses you ("Flux…"), (2) ${settings.ownerName} cues you ("Flux, tell them about…"), (3) there is a CLEAR opening — e.g. the customer names a problem a TOOLFLUX product solves. Then be brief, warm and concrete.
 - Stay silent when ${settings.ownerName} or the customer is mid-flow. Never talk over people. When in doubt, stay quiet. Short reactions ("haan", "correct sir") are allowed sparingly.
-- You are CONVERSATIONAL: contractions, warmth, natural rhythm. One or two sentences at a time in conversation; slightly longer only when presenting a product.
+- LENGTH — HARD LIMIT: normally ONE sentence. Two only if genuinely needed. Never three. Never a paragraph, never a list read aloud, never a summary of what was just said. If you feel a long explanation coming, say the single most useful line and stop — ${settings.ownerName} carries the rest. Long answers kill the meeting; brevity is your whole job.
+- SPEAK IMMEDIATELY when addressed. If someone says "Flux" or asks you anything directly, answer at once — never go silent on a direct question. If you did not catch it, say "sorry sir, once more?" in one breath rather than staying quiet.
+- You are CONVERSATIONAL: contractions, warmth, natural rhythm.
 - Greet a NEW voice you haven't heard yet in the meeting: welcome them warmly, ask how their day is going. Do this once per person, briefly.
 - If anyone asks what you are: always a witty, warm one-liner first (e.g. "I'm the only TOOLFLUX employee who works without chai — Flux, at your service"), then one plain sentence. Vary it; never sound canned twice.
 - Humour: positive jokes only, and only when the room is light. Machining humour is welcome ("that joke had more chatter than a worn-out insert"). Never joke about the customer, their company, or during tense price talk.
@@ -1156,13 +1195,26 @@ Produce JSON per the schema. Rules:
   try {
     let txt;
     if (settings.apiKey) { /* prefer Gemini REST when a Gemini key exists */
-      const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models/${settings.textModel}:generateContent?key=${encodeURIComponent(settings.apiKey)}`, {
-        method:'POST', headers:{ 'Content-Type':'application/json' },
-        body: JSON.stringify({ contents:[{ role:'user', parts:[{ text: prompt }] }],
-          generationConfig:{ responseMimeType:'application/json', responseSchema: schema, temperature:.3 } }) });
-      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180));
-      const j = await r.json();
-      txt = j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(p => p.text || '').join('');
+      const callGemini = async model => {
+        const r = await fetch(`https://${GEMINI_DEFAULTS.host}/v1beta/models/${model}:generateContent?key=${encodeURIComponent(settings.apiKey)}`, {
+          method:'POST', headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ contents:[{ role:'user', parts:[{ text: prompt }] }],
+            generationConfig:{ responseMimeType:'application/json', responseSchema: schema, temperature:.3 } }) });
+        if (!r.ok) { const err = new Error('HTTP ' + r.status + ': ' + (await r.text()).slice(0, 180)); err.status = r.status; throw err; }
+        const j = await r.json();
+        return j.candidates && j.candidates[0] && j.candidates[0].content.parts.map(p => p.text || '').join('');
+      };
+      try { txt = await callGemini(settings.textModel); }
+      catch (e) {
+        if (e.status !== 404) throw e;
+        /* model retired — find a live one on this key and remember it */
+        st.textContent = 'That model was retired — finding a current one…';
+        const d = await detectGeminiModels(settings.apiKey);
+        const fallback = d.text || 'gemini-flash-latest';
+        txt = await callGemini(fallback);
+        settings.textModel = fallback; saveSettings();
+        toast('Switched minutes model to ' + fallback, 'ok');
+      }
     } else if (settings.openaiKey) { /* OpenAI-only: REST blocks browser CORS — use a text-mode Realtime session */
       txt = await openaiGenerateJSON(prompt + '\n\nReturn ONLY a JSON object exactly matching this schema (no markdown fences):\n' + JSON.stringify(toJsonSchema(schema)));
     } else throw new Error('no API key configured');
@@ -1279,6 +1331,12 @@ $('#btnStart').onclick = async () => {
 $('#btnEnd').onclick = () => sheet('End meeting?', 'Recording stops and Flux prepares the minutes.',
   [['Cancel', '', null], ['End & summarise', 'primary', () => Meeting.end()]]);
 $('#btnHideAsset').onclick = () => Meeting.closeAsset();
+$('#btnAnswer').onclick = () => {
+  if (!Meeting.client || Meeting.client.state !== 'live') { toast('Flux is not connected right now.', 'err'); return; }
+  if (AudioEngine.muted || Meeting.quiet) { Meeting.quiet = false; AudioEngine.setMuted(false);
+    const b = $('#btnMute'); b.className = 'ctl mute'; b.textContent = 'MUTE FLUX'; }
+  Meeting.client.forceAnswer();
+};
 (() => { /* mute tap vs long-press */
   const b = $('#btnMute'); let timer = null, longFired = false;
   const down = e => { e.preventDefault(); longFired = false;
@@ -1382,6 +1440,7 @@ function fillSetup(){
   $('#setOwner').value = settings.ownerName;
   $('#setLiveModel').value = settings.liveModel; $('#setApiVer').value = settings.apiVersion;
   $('#setTextModel').value = settings.textModel; $('#setOaiModel').value = settings.openaiModel;
+  $('#setGain').value = settings.micGain;
   renderVoiceOptions();
 }
 function readSetupForm(){
@@ -1393,6 +1452,7 @@ function readSetupForm(){
   settings.apiVersion = $('#setApiVer').value.trim() || GEMINI_DEFAULTS.apiVersion;
   settings.textModel = $('#setTextModel').value.trim() || GEMINI_DEFAULTS.textModel;
   settings.openaiModel = $('#setOaiModel').value.trim() || 'gpt-realtime';
+  const g = parseFloat($('#setGain').value); settings.micGain = (g > 0 && g <= 6) ? g : 1.6;
 }
 $('#btnSaveSetup').onclick = async () => {
   readSetupForm(); saveSettings();
@@ -1433,6 +1493,19 @@ $('#btnVoiceSample').onclick = async () => {
     onState: s => { if (s === 'live') cl.sendText('Introduce yourself in one sentence.', true); } });
   cl.connect();
   setTimeout(() => { try { cl.close(); ctx.close(); } catch {} }, 20000);
+};
+$('#btnDetect').onclick = async () => {
+  readSetupForm();
+  if (!settings.apiKey) { toast('Paste your Gemini key first (detection uses it).', 'err'); return; }
+  toast('Asking Google which models your key can use…');
+  try {
+    const d = await detectGeminiModels(settings.apiKey);
+    if (d.live) { settings.liveModel = d.live; $('#setLiveModel').value = d.live; }
+    if (d.text) { settings.textModel = d.text; $('#setTextModel').value = d.text; }
+    saveSettings();
+    toast(`Using ${d.live || '—'} for voice, ${d.text || '—'} for minutes.`, 'ok');
+    console.log('Live-capable models on this key:', d.allLive);
+  } catch (e) { toast('Detect failed: ' + e.message, 'err'); }
 };
 $('#btnReloadLib').onclick = async () => {
   const r = await loadRegistry(true);
@@ -1504,7 +1577,7 @@ async function selftest(){
   await openDB();
   await loadRegistry();
   if ('serviceWorker' in navigator && location.protocol !== 'file:')
-    navigator.serviceWorker.register('pitch-sw.js').catch(()=>{});
+    navigator.serviceWorker.register('pitch-sw.js').then(r => r.update()).catch(()=>{});
   fillSetup();
   if (!settings.apiKey) show('setup');
   else { renderHome(); show('home'); }

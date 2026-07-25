@@ -1,5 +1,5 @@
 /* FLUX service worker — offline shell + asset cache. Independent of site sw.js. */
-const CACHE = 'flux-v1';
+const CACHE = 'flux-v3';
 const SHELL = [
   './pitch.html',
   './pitch.webmanifest',
@@ -28,9 +28,17 @@ self.addEventListener('fetch', e => {
   const isFlux = url.pathname.endsWith('/pitch.html') || url.pathname.includes('pitch-assets/') ||
     url.pathname.endsWith('/pitch.webmanifest');
   if (!isFlux) return;
-  // stale-while-revalidate: serve cache fast, refresh in background (library.xlsx picks up edits)
+  // The app itself is network-first so a new build always wins; assets are cache-first for speed.
+  const isApp = url.pathname.endsWith('/pitch.html') || url.pathname.endsWith('/pitch.webmanifest');
   e.respondWith(
     caches.open(CACHE).then(async cache => {
+      if (isApp) {
+        try {
+          const fresh = await fetch(e.request, { cache: 'no-store' });
+          if (fresh && fresh.ok) { cache.put(e.request, fresh.clone()); return fresh; }
+        } catch {}
+        return (await cache.match(e.request)) || new Response('offline', { status: 503 });
+      }
       const cached = await cache.match(e.request);
       const fetching = fetch(e.request).then(resp => {
         if (resp && resp.ok) cache.put(e.request, resp.clone());
