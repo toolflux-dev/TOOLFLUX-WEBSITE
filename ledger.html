@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#012B42">
+<meta name="description" content="FLUX LEDGER — drop a bank statement PDF, see the cash picture, separate GST from every customer payment.">
+<title>FLUX LEDGER — TOOLFLUX</title>
+<link rel="manifest" href="ledger.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="ledger.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><b>FLUX LEDGER</b><span>TOOLFLUX</span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" data-tab="dash"  aria-selected="true">Dashboard</button>
+      <button role="tab" data-tab="txn"   aria-selected="false">Transactions<span class="pip" id="pipTxn" hidden>0</span></button>
+      <button role="tab" data-tab="gst"   aria-selected="false">GST Split<span class="pip" id="pipGst" hidden>0</span></button>
+      <button role="tab" data-tab="import" aria-selected="false">Import</button>
+      <button role="tab" data-tab="data"  aria-selected="false">Data</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ════════ DASHBOARD ════════ -->
+<section class="page on" id="p-dash">
+  <div class="pagehead">
+    <div>
+      <h1>Cash position</h1>
+      <p id="dashSub">No statements imported yet.</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="periods" id="periodBar"></div>
+  </div>
+
+  <div id="dashEmpty" class="card" hidden>
+    <div class="empty">
+      <b>Nothing to show yet</b>
+      Drop a bank statement PDF on the Import tab and the whole desk fills in.
+      <div style="margin-top:16px"><button class="btn p" data-goto="import">Import a statement</button></div>
+    </div>
+  </div>
+
+  <div id="dashBody" hidden>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid g-32">
+      <div class="card">
+        <h2>Balance trail <em id="balSub"></em><span class="spacer"></span></h2>
+        <div class="cbody" style="padding:10px 8px 4px"><svg class="chart" id="chBal"></svg></div>
+      </div>
+      <div class="card">
+        <h2>By category <em>largest side of each · click to filter</em></h2>
+        <ul class="rank" id="catRank"></ul>
+      </div>
+    </div>
+
+    <div class="grid g-32">
+      <div class="card">
+        <h2>Month by month <em>click a month to drill in</em></h2>
+        <div class="cbody" style="padding:10px 8px 0"><svg class="chart" id="chMon"></svg></div>
+        <div class="legend">
+          <span><i style="background:#0f7a58"></i>Received</span>
+          <span><i style="background:#a62d1e"></i>Paid out</span>
+          <span><i style="background:#0097B2"></i>Net</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Top counterparties <em>click to filter</em></h2>
+        <ul class="rank" id="partyRank"></ul>
+      </div>
+    </div>
+
+    <div class="grid g-2">
+      <div class="card">
+        <h2>Biggest receipts <em>split GST in one tap</em></h2>
+        <div class="tblwrap"><table class="tbl"><tbody id="topIn"></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Biggest payments</h2>
+        <div class="tblwrap"><table class="tbl"><tbody id="topOut"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ TRANSACTIONS ════════ -->
+<section class="page" id="p-txn">
+  <div class="pagehead">
+    <div><h1>Transactions</h1><p id="txnSub">Every line from every statement, deduplicated.</p></div>
+    <div class="spacer"></div>
+    <div class="periods" id="periodBar2"></div>
+  </div>
+
+  <div class="card">
+    <div class="bar">
+      <input class="inp grow" id="q" type="search" placeholder="Search narration, party, reference…">
+      <select class="inp" id="fDir"><option value="">In &amp; out</option><option value="cr">Received only</option><option value="dr">Paid out only</option></select>
+      <select class="inp" id="fCat"><option value="">All categories</option></select>
+      <select class="inp" id="fBank"><option value="">All accounts</option></select>
+      <button class="btn" id="clearF">Clear</button>
+      <div class="spacer"></div>
+      <button class="btn" id="expTxn">Export CSV</button>
+    </div>
+    <div class="tblwrap">
+      <table class="tbl">
+        <thead><tr>
+          <th class="s" data-sort="date">Date <span class="ar"></span></th>
+          <th>Narration</th>
+          <th class="opt">Category</th>
+          <th class="s r" data-sort="credit">Received <span class="ar"></span></th>
+          <th class="s r" data-sort="debit">Paid <span class="ar"></span></th>
+          <th class="r opt">Balance</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="txnRows"></tbody>
+      </table>
+    </div>
+    <div class="foot" id="txnFoot"></div>
+    <div style="padding:12px 16px;text-align:center" id="moreWrap" hidden>
+      <button class="btn" id="moreBtn">Show more</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ GST SPLIT ════════ -->
+<section class="page" id="p-gst">
+  <div class="pagehead">
+    <div><h1>GST split</h1><p>One calculation only: pull the GST out of a customer payment so you can move it to the tax account.</p></div>
+  </div>
+
+  <div class="calcgrid">
+    <!-- calculator -->
+    <div class="calc">
+      <div class="hd">
+        <h2>Separator</h2>
+        <p id="calcMode2">Amount the customer paid you, GST included.</p>
+      </div>
+      <div class="calcin">
+        <label class="lbl" for="gross">Customer payment</label>
+        <div class="bigin"><span>₹</span><input id="gross" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+
+        <div style="height:14px"></div>
+        <span class="lbl">GST rate</span>
+        <div class="rates" id="rates"></div>
+
+        <div style="height:14px"></div>
+        <div class="modes" id="modes">
+          <button data-mode="incl" aria-pressed="true">Amount includes GST</button>
+          <button data-mode="excl" aria-pressed="false">Amount excludes GST</button>
+        </div>
+
+        <div style="height:14px"></div>
+        <label class="lbl" for="note">Label <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional — customer, invoice no.)</span></label>
+        <input class="inp" id="note" style="width:100%" placeholder="e.g. Sharp Engineering / INV-1042" autocomplete="off">
+      </div>
+
+      <div class="split">
+        <div class="sl"><span class="k">Total received</span><span class="v" id="oGross">₹0.00</span></div>
+        <div class="sl"><span class="k">Taxable value — yours</span><span class="v" id="oBase">₹0.00</span></div>
+        <div class="sl big"><span class="k">GST — move to tax account</span><span class="v" id="oGst">₹0.00</span></div>
+        <div class="sub">
+          <div><span class="k">CGST <i id="oHalfRate" style="font-style:normal">9%</i></span><span class="v" id="oCgst">₹0.00</span></div>
+          <div><span class="k">SGST <i id="oHalfRate2" style="font-style:normal">9%</i></span><span class="v" id="oSgst">₹0.00</span></div>
+          <div><span class="k">IGST <i id="oFullRate" style="font-style:normal">18%</i></span><span class="v" id="oIgst">₹0.00</span></div>
+        </div>
+      </div>
+
+      <div class="calcact">
+        <button class="btn p" id="addSplit" disabled>Add to separation list</button>
+        <button class="btn" id="resetCalc">Clear</button>
+      </div>
+    </div>
+
+    <!-- side panel -->
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="due">
+        <div>
+          <span class="k">To transfer to GST account</span>
+          <span class="v" id="duePend">₹0.00</span>
+          <span class="s" id="dueSub">Nothing pending.</span>
+        </div>
+        <div class="acts">
+          <button class="btn" id="markAll">Mark all separated</button>
+          <button class="btn" id="sendGst">Send list to PC</button>
+          <button class="btn" id="expGst">Export CSV</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Unsplit receipts <em>from your statements</em></h2>
+        <div class="cbody" style="padding:0">
+          <div class="tblwrap"><table class="tbl"><tbody id="unsplit"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- the separation list, below the calculator -->
+  <div style="height:16px"></div>
+  <div class="card">
+    <h2>Separation list <em id="sepSub"></em><span class="spacer"></span></h2>
+    <div class="bar">
+      <select class="inp" id="fSep"><option value="pending">Pending</option><option value="done">Separated</option><option value="">All</option></select>
+      <div class="spacer"></div>
+      <button class="btn d" id="clearDone">Remove separated rows</button>
+    </div>
+    <div class="tblwrap">
+      <table class="tbl">
+        <thead><tr>
+          <th class="opt">Added</th><th>Label</th><th class="r">Received</th><th class="r opt">Rate</th>
+          <th class="r opt">Taxable</th><th class="r">GST to move</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="sepRows"></tbody>
+      </table>
+    </div>
+    <div class="foot" id="sepFoot"></div>
+  </div>
+</section>
+
+<!-- ════════ IMPORT ════════ -->
+<section class="page" id="p-import">
+  <div class="pagehead">
+    <div><h1>Import</h1><p>Drop IDFC or SBI statement PDFs. Nothing leaves this device.</p></div>
+  </div>
+
+  <div class="drop" id="drop">
+    <span class="ic">⤓</span>
+    <b>Drop statement PDFs here</b>
+    <p>or click to choose files — you can drop several at once</p>
+    <small>Password-protected statements are fine — you'll be asked for the password. Scanned image PDFs can't be read.<br>
+    Drop the <b>GST list</b> from your phone here too — it merges into this one, it never overwrites it.</small>
+    <input type="file" id="file" accept="application/pdf,.pdf,application/json,.json" multiple hidden>
+  </div>
+
+  <div class="log" id="log"></div>
+
+  <div id="reviewWrap" hidden>
+    <div style="height:16px"></div>
+    <div class="card">
+      <h2>Review before import <em id="revSub"></em></h2>
+      <div class="cbody">
+        <div class="grid g-2" style="margin:0">
+          <dl class="dl" id="revStats"></dl>
+          <div class="note" id="revWarn"></div>
+        </div>
+      </div>
+      <div class="tblwrap" style="max-height:340px;overflow-y:auto">
+        <table class="tbl"><thead><tr><th>Date</th><th>Narration</th><th class="r">Received</th><th class="r">Paid</th><th class="r opt">Balance</th><th class="opt"></th></tr></thead>
+        <tbody id="revRows"></tbody></table>
+      </div>
+      <div class="bar" style="border-top:1px solid var(--off2);border-bottom:none">
+        <button class="btn p" id="confirmImp">Import these transactions</button>
+        <button class="btn" id="cancelImp">Discard</button>
+        <div class="spacer"></div>
+        <span class="note" id="dupNote"></span>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+  <div class="card">
+    <h2>How the parser reads your statement</h2>
+    <div class="cbody note">
+      <p>Every line is matched on a leading date, then the money columns are read off the row.
+      The direction of each transaction is decided by <b>how the running balance moved</b>, not by column position —
+      that is what makes it work across IDFC and SBI layouts without per-bank tuning.</p>
+      <p style="margin-top:9px">After parsing, the whole statement is chain-checked: <code>previous balance + received − paid = balance</code>
+      for every row. Any row that breaks the chain is flagged in the review table so you can see it before importing.</p>
+      <p style="margin-top:9px">Re-dropping the same statement is safe — duplicate rows are detected on date, narration, amount and balance, and skipped.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════ DATA ════════ -->
+<section class="page" id="p-data">
+  <div class="pagehead"><div><h1>Data</h1><p>Everything is stored in this browser only. Back it up.</p></div></div>
+
+  <div class="grid g-2">
+    <div class="card">
+      <h2>Stored here</h2>
+      <div class="cbody"><dl class="dl" id="dataStats"></dl></div>
+      <div class="bar" style="border-top:1px solid var(--off2);border-bottom:none">
+        <button class="btn p" id="backup">Download backup</button>
+        <button class="btn" id="restoreBtn">Restore backup</button>
+        <input type="file" id="restoreFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Statements <em>originals kept for the PC</em></h2>
+      <div class="bar">
+        <button class="btn p" id="sendAll">Send to PC</button>
+        <span class="note" id="sendSub" style="flex:1"></span>
+      </div>
+      <div class="tblwrap"><table class="tbl"><tbody id="srcRows"></tbody></table></div>
+      <div class="cbody note" style="border-top:1px solid var(--off2)">
+        <b>Send</b> opens your phone's share sheet — choose <b>OneDrive</b> and save into
+        <code>OneDrive / FLUX-LEDGER / statements</code>. Your PC picks it up on its own the next time it's on.
+        On a desktop the same button just saves the file straight down.
+      </div>
+    </div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div class="card">
+    <h2>Settings</h2>
+    <div class="cbody">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div><label class="lbl" for="setRate">Default GST rate</label>
+          <select class="inp" id="setRate"><option>5</option><option>12</option><option selected>18</option><option>28</option></select></div>
+        <div><label class="lbl" for="setOpen">Opening balance override (₹)</label>
+          <input class="inp" id="setOpen" placeholder="auto" style="width:150px"></div>
+        <div><label class="lbl" for="setFy">Financial year starts</label>
+          <select class="inp" id="setFy"><option value="4" selected>April (India)</option><option value="1">January</option></select></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:16px"></div>
+  <div class="card danger">
+    <h2 style="color:var(--out)">Danger zone</h2>
+    <div class="cbody" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <span class="note" style="flex:1;min-width:200px">Wipes transactions and the separation list from this browser. Download a backup first.</span>
+      <button class="btn d" id="wipe">Erase everything</button>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<div class="tip" id="tip"></div>
+<div class="toasts" id="toasts"></div>
+
+<script src="assets/vendor/pdf.min.js"></script>
+<script src="ledger.js"></script>
+</body>
+</html>

@@ -21,3 +21,9 @@ SETUP-GUIDE.md
 machlog-share-*.html
 .superpowers/
 .claude/serve.ps1
+
+# Local session handoff — never publish
+MACHLOG-HANDOFF.md
+
+# local parser fixtures (not shipped)
+_test/
