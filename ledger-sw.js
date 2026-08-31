@@ -2,8 +2,19 @@
    Network-first for the app's own code so a redeploy always wins;
    cache-first only for the big immutable vendor assets.
    Bump CACHE on every release. */
-const CACHE = 'flux-ledger-v3';
+const CACHE = 'flux-ledger-v4';
 const SHARE = 'flux-ledger-share';
+
+/* This worker sits at the site root, so its scope is the WHOLE of
+   toolflux.co.in. It must therefore touch nothing but its own files —
+   the main site and the other apps have to pass straight through,
+   uncached and untouched, exactly as if no worker were installed. */
+function isMine(p) {
+  return /\/ledger(-sw)?\.(html|css|js|webmanifest)$/.test(p)
+      || /\/assets\/vendor\//.test(p)
+      || /\/assets\/clash-grotesk\.css$/.test(p)
+      || /\/icon-(192|512)\.png$/.test(p);
+}
 const SHELL = [
   'ledger.html',
   'ledger.css',
@@ -58,6 +69,7 @@ self.addEventListener('fetch', e => {
   }
 
   if (req.method !== 'GET') return;
+  if (!isMine(url.pathname)) return;            // hands off the rest of the site
 
   if (IMMUTABLE.test(url.pathname)) {           // big, versionless, never changes
     e.respondWith(caches.match(req).then(hit => hit || fetchAndPut(req)));
