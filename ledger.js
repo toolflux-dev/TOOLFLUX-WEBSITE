@@ -134,6 +134,7 @@ async function kvSet(k, v) {
 const S = {
   txns: [],
   splits: [],
+  notSale: [],        // receipts ruled out as customer payments — decisions, so they sync
   sources: [],
   set: { rate: 18, fyStart: 4, open: null },
   period: 'all',
@@ -148,6 +149,7 @@ const S = {
 async function load() {
   S.txns   = (await kvGet('txns'))    || [];
   S.splits = (await kvGet('splits'))  || [];
+  S.notSale= (await kvGet('notsale')) || [];
   S.sources= (await kvGet('sources')) || [];
   const st = await kvGet('settings');
   if (st) Object.assign(S.set, st);
@@ -155,6 +157,7 @@ async function load() {
 }
 const saveTxns   = () => kvSet('txns', S.txns);
 const saveSplits = () => kvSet('splits', S.splits);
+const saveNotSale= () => kvSet('notsale', S.notSale);
 const saveSrc    = () => kvSet('sources', S.sources);
 const saveSet    = () => kvSet('settings', S.set);
 
@@ -215,7 +218,8 @@ const SPLIT_FILE = /^flux-ledger-gst-.*\.json$/i;
 
 function splitsFile() {
   const body = JSON.stringify({
-    app: 'flux-ledger', kind: 'splits', v: 1, at: new Date().toISOString(), splits: S.splits
+    app: 'flux-ledger', kind: 'splits', v: 1, at: new Date().toISOString(),
+    splits: S.splits, notSale: S.notSale
   });
   return new File([body], 'flux-ledger-gst-' + today() + '.json', { type: 'application/json' });
 }
@@ -258,9 +262,16 @@ async function importSplitsFile(f, row) {
   }
   if (!j || !Array.isArray(j.splits)) { say('err', 'Not a FLUX LEDGER GST list'); return; }
   const r = mergeSplits(j.splits);
+  let ruled = 0;
+  if (Array.isArray(j.notSale)) {                 // union — ruling out is one-way too
+    const have = new Set(S.notSale);
+    for (const id of j.notSale) if (id && !have.has(id)) { S.notSale.push(String(id)); have.add(id); ruled++; }
+    if (ruled) await saveNotSale();
+  }
   await saveSplits(); renderSep(); renderDash(); renderData();
   say('ok', '<b>' + r.added + '</b> new, <b>' + r.marked + '</b> newly separated, ' +
-      r.same + ' already matched' + (r.bad ? ', ' + r.bad + ' skipped as malformed' : ''));
+      r.same + ' already matched' + (ruled ? ', ' + ruled + ' newly ruled out' : '') +
+      (r.bad ? ', ' + r.bad + ' skipped as malformed' : ''));
   toast('GST list merged — ' + r.added + ' new, ' + r.marked + ' marked separated', 'g');
 }
 
@@ -798,8 +809,9 @@ function renderDash() {
   const closing = withBal.length ? withBal[withBal.length - 1].balance : null;
   const pend = S.splits.filter(s => s.status === 'pending').reduce((a, s) => a + s.gst, 0);
   const pendN = S.splits.filter(s => s.status === 'pending').length;
+  const ruledOut = new Set(S.notSale);
   const unsplitN = rows.filter(t => t.credit > 0 && t.cat !== 'Interest' && t.cat !== 'Tax' && t.cat !== 'Loan'
-    && !S.splits.some(s => s.txnId === t.id)).length;
+    && !ruledOut.has(t.id) && !S.splits.some(s => s.txnId === t.id)).length;
 
   const avgIn = rows.filter(t => t.credit > 0);
   $('#kpis').innerHTML = [
@@ -1000,14 +1012,25 @@ function renderSep() {
   // Bank interest and tax refunds are not customer payments — never invite a
   // GST split on them.
   const NOT_A_SALE = { Interest: 1, Tax: 1, Loan: 1 };
-  const un = scoped().filter(t => t.credit > 0 && !done.has(t.id) && !NOT_A_SALE[t.cat])
-    .sort((a, b) => b.date < a.date ? -1 : 1).slice(0, 12);
+  const ruled = new Set(S.notSale);
+  const pending = scoped().filter(t => t.credit > 0 && !done.has(t.id) && !NOT_A_SALE[t.cat] && !ruled.has(t.id));
+  const un = pending.slice().sort((a, b) => b.date < a.date ? -1 : 1).slice(0, 12);
   $('#unsplit').innerHTML = un.map(t =>
     '<tr><td class="dt">' + dShort(t.date) + '</td>' +
     '<td class="nar">' + esc(t.party === '—' ? t.nar.slice(0, 40) : t.party) + '</td>' +
     '<td class="num r cr">' + R(t.credit) + '</td>' +
-    '<td class="r"><button class="btn sm p" data-split="' + t.id + '">Split</button></td></tr>').join('') ||
-    '<tr><td class="empty" colspan="4">Every receipt in this period is split.</td></tr>';
+    '<td class="r" style="white-space:nowrap">' +
+      '<button class="btn sm p" data-split="' + t.id + '">Split</button> ' +
+      '<button class="btn sm" data-nosale="' + t.id + '" title="Not a customer payment">Not a sale</button>' +
+    '</td></tr>').join('') ||
+    '<tr><td class="empty" colspan="4">Nothing left to split in this period.</td></tr>';
+
+  const ruledHere = scoped().filter(t => t.credit > 0 && ruled.has(t.id)).length;
+  $('#unsplitFoot').innerHTML =
+    '<span>Waiting <b>' + pending.length + '</b></span>' +
+    (pending.length > un.length ? '<span>showing the latest ' + un.length + '</span>' : '') +
+    (ruledHere ? '<span>Ruled out <b>' + ruledHere + '</b> ' +
+      '<button class="btn sm" id="restoreNoSale" style="margin-left:6px">Restore</button></span>' : '');
 
   const p = $('#pipGst');
   p.hidden = !pend.length; p.textContent = pend.length;
@@ -1217,7 +1240,7 @@ function wire() {
   $$('nav.tabs button').forEach(b => b.addEventListener('click', () => go(b.dataset.tab)));
 
   document.addEventListener('click', e => {
-    const t = e.target.closest('[data-p],[data-goto],[data-split],[data-cat],[data-party],[data-done],[data-undo],[data-del],[data-rmsrc],[data-send],[data-rate],[data-mode]');
+    const t = e.target.closest('[data-p],[data-goto],[data-split],[data-cat],[data-party],[data-done],[data-undo],[data-del],[data-rmsrc],[data-send],[data-nosale],#restoreNoSale,[data-rate],[data-mode]');
     if (!t) return;
     if (t.dataset.p !== undefined) { S.period = t.dataset.p; renderAll(); }
     else if (t.dataset.goto) go(t.dataset.goto);
@@ -1229,6 +1252,16 @@ function wire() {
     else if (t.dataset.done) markSplit(t.dataset.done, 'done');
     else if (t.dataset.undo) markSplit(t.dataset.undo, 'pending');
     else if (t.dataset.del) { S.splits = S.splits.filter(s => s.id !== t.dataset.del); saveSplits(); renderSep(); renderDash(); }
+    else if (t.dataset.nosale) {
+      if (S.notSale.indexOf(t.dataset.nosale) < 0) S.notSale.push(t.dataset.nosale);
+      saveNotSale(); renderSep(); renderDash();
+    }
+    else if (t.id === 'restoreNoSale') {
+      const here = new Set(scoped().filter(x => x.credit > 0).map(x => x.id));
+      S.notSale = S.notSale.filter(id => !here.has(id));
+      saveNotSale(); renderSep(); renderDash();
+      toast('Restored to the unsplit list');
+    }
     else if (t.dataset.send !== undefined) sendToPc([+t.dataset.send]);
     else if (t.dataset.rmsrc !== undefined) removeSource(+t.dataset.rmsrc);
   });
@@ -1324,7 +1357,7 @@ function wire() {
   $('#setOpen').addEventListener('change', e => { S.set.open = toPaise(e.target.value); saveSet(); renderAll(); });
   $('#backup').addEventListener('click', () => {
     download('flux-ledger-backup-' + today() + '.json',
-      JSON.stringify({ v: 1, at: new Date().toISOString(), txns: S.txns, splits: S.splits, sources: S.sources, settings: S.set }, null, 1),
+      JSON.stringify({ v: 1, at: new Date().toISOString(), txns: S.txns, splits: S.splits, notSale: S.notSale, sources: S.sources, settings: S.set }, null, 1),
       'application/json');
   });
   $('#restoreBtn').addEventListener('click', () => $('#restoreFile').click());
@@ -1334,9 +1367,9 @@ function wire() {
       const j = JSON.parse(await f.text());
       if (!Array.isArray(j.txns)) throw new Error('not a FLUX LEDGER backup');
       if (!confirm('Replace everything in this browser with the backup (' + j.txns.length + ' transactions)?')) return;
-      S.txns = j.txns; S.splits = j.splits || []; S.sources = j.sources || [];
+      S.txns = j.txns; S.splits = j.splits || []; S.notSale = j.notSale || []; S.sources = j.sources || [];
       if (j.settings) Object.assign(S.set, j.settings);
-      await saveTxns(); await saveSplits(); await saveSrc(); await saveSet();
+      await saveTxns(); await saveSplits(); await saveNotSale(); await saveSrc(); await saveSet();
       renderAll(); toast('Backup restored', 'g');
     } catch (err) { toast('Could not restore: ' + err.message, 'r'); }
     e.target.value = '';
@@ -1344,8 +1377,8 @@ function wire() {
   $('#wipe').addEventListener('click', async () => {
     if (!confirm('Erase all transactions and the separation list from this browser?')) return;
     if (!confirm('Really erase? This cannot be undone without a backup.')) return;
-    S.txns = []; S.splits = []; S.sources = [];
-    await saveTxns(); await saveSplits(); await saveSrc();
+    S.txns = []; S.splits = []; S.notSale = []; S.sources = [];
+    await saveTxns(); await saveSplits(); await saveNotSale(); await saveSrc();
     renderAll(); toast('Everything erased');
   });
 
