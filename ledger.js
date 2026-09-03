@@ -333,14 +333,18 @@ function buildLine(items, page) {
     const sfx = /^\s*(Cr|Dr)/i.exec(after);
     monies.push({ v: Math.abs(v), x: xAt(m.index), s: m.index, e: m.index + m[0].length, sfx: sfx ? sfx[1].toLowerCase() : null });
   }
-  return { text: text.replace(/\s+/g, ' ').trim(), raw: text, monies, page, map };
+  return {
+    text: text.replace(/\s+/g, ' ').trim(), raw: text, monies, page, map,
+    y: items.length ? items[0].y : 0,
+    x: items.length ? Math.min.apply(null, items.map(i => i.x)) : 0
+  };
 }
 function xOfIdx(line, idx) {
   for (const m of line.map) if (idx >= m.s && idx < m.e) return m.x;
   return -1;
 }
 
-const JUNK = /^(page\s*\d+|.*computer\s*generated.*|.*registered\s*office.*|.*ifsc.*micr.*|.*continued.*)$/i;
+const JUNK = /^(page\s*\d+(\s*of\s*\d+)?|.*computer\s*generated.*|.*registered\s*office.*|.*ifsc.*micr.*|.*continued.*|statement\s*of\s*account|customer\s*id\b.*|account\s*(no|number)\b.*|statement\s*period\b.*|(opening|closing)\s*balance.*|total\s*(debit|credit).*|transaction\s*(cheque)?|value\s*date.*|date|no|cheque)$/i;
 const HDR  = /(date).{0,40}(particular|description|narration|remark|transaction)/i;
 
 function detectBank(all) {
@@ -369,34 +373,36 @@ function parseStatement(lines, fname) {
     if (c.dr > -1 && c.cr > -1) { cols = c; break; }
   }
 
-  // opening balance if the statement states one
+  // Opening balance. Some statements print the label and the figure on the
+  // same line, others (IDFC) put a row of labels above a row of figures.
   let opening = null;
-  for (const l of lines) {
-    if (/opening\s*balance|balance\s*b\/?f|b\/f balance/i.test(l.text) && l.monies.length) {
-      opening = l.monies[l.monies.length - 1].v; break;
-    }
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!/opening\s*balance|balance\s*b\/?f|b\/f balance/i.test(l.text)) continue;
+    if (l.monies.length) { opening = l.monies[l.monies.length - 1].v; break; }
+    const next = lines[i + 1];
+    if (next && next.monies.length) { opening = next.monies[0].v; break; }   // figures row beneath the labels
   }
 
-  // gather candidate rows
+  // ── dated rows ────────────────────────────────────────────────────
   const raw = [];
-  let cur = null;
   for (const l of lines) {
-    if (!l.text || JUNK.test(l.text) || HDR.test(l.text)) { continue; }
+    if (!l.text || JUNK.test(l.text) || HDR.test(l.text)) continue;
     const dm = DATE_LEAD.exec(l.text);
-    const d = dm ? parseDate(dm[1]) : null;
-    if (d && l.monies.length) {
-      if (cur) raw.push(cur);
-      let nar = l.text.slice(dm[0].length);
-      // strip a value date immediately following the txn date
-      const vd = DATE_LEAD.exec(nar);
-      if (vd && parseDate(vd[1])) nar = nar.slice(vd[0].length);
-      cur = { date: d, nar: nar, monies: l.monies.slice(), page: l.page };
-    } else if (cur && !l.monies.length && l.text.length < 90 && !/closing|total|statement/i.test(l.text)) {
-      cur.nar += ' ' + l.text;
-    }
+    if (!dm) continue;
+    const d = parseDate(dm[1]);
+    if (!d || !l.monies.length) continue;
+    let narStart = dm[0].length;
+    const vd = DATE_LEAD.exec(l.text.slice(narStart));
+    if (vd && parseDate(vd[1])) narStart += vd[0].length;      // drop the value date
+    raw.push({
+      date: d, nar: l.text.slice(narStart), monies: l.monies.slice(),
+      page: l.page, y: l.y, line: l, narStart: narStart, above: [], below: []
+    });
   }
-  if (cur) raw.push(cur);
   if (!raw.length) return { rows: [], bank, acct, opening, err: 'No dated transaction rows found. Is this a scanned image PDF?' };
+
+  attachWrapped(lines, raw);
 
   // clean narration: drop the money tokens themselves
   for (const r of raw) {
@@ -418,6 +424,72 @@ function parseStatement(lines, fname) {
     return t;
   });
   return { rows, bank, acct, opening, mode: res.mode, breaks: res.breaks, score: res.score };
+}
+
+/* Statements wrap a long narration over several lines, and IDFC centres that
+   block on the dated line — so fragments sit both ABOVE and BELOW the row they
+   belong to. Each wrapped line is claimed by the nearest dated row on its page.
+   Page headers and footers are excluded by x: they never sit in the narration
+   column. */
+function attachWrapped(lines, raw) {
+  const narX = narrationColumn(raw);
+  if (narX == null) return;
+
+  const firstOnPage = new Map();
+  raw.forEach((r, i) => { if (!firstOnPage.has(r.page)) firstOnPage.set(r.page, i); });
+
+  for (const l of lines) {
+    if (!l.text || JUNK.test(l.text) || HDR.test(l.text)) continue;
+    if (l.monies.length || !l.map.length) continue;
+    const dm = DATE_LEAD.exec(l.text);
+    if (dm && parseDate(dm[1])) continue;
+    if (Math.abs(l.x - narX) > 22) continue;          // not in the narration column
+
+    let best = -1, bd = Infinity;
+    for (let k = 0; k < raw.length; k++) {
+      if (raw[k].page !== l.page) continue;
+      const d = Math.abs(raw[k].y - l.y);
+      if (d < bd) { bd = d; best = k; }
+    }
+    if (best < 0) continue;
+    (l.y > raw[best].y ? raw[best].above : raw[best].below).push(l);
+  }
+
+  // The block is centred, so the first row on a page keeps only as many lines
+  // above it as it has below. The rest are the tail of the previous page's
+  // last transaction.
+  firstOnPage.forEach(fi => {
+    const r = raw[fi];
+    if (!r.above.length) return;
+    r.above.sort((a, b) => a.y - b.y);                // nearest to the row first
+    const spill = r.above.slice(r.below.length);
+    r.above = r.above.slice(0, r.below.length);
+    // Before the very first transaction there is only the statement header and
+    // the account holder's address — that is not narration, so drop it.
+    if (fi > 0) spill.forEach(l => raw[fi - 1].below.push(l));
+  });
+
+  const order = l => l.page * 100000 - l.y;           // page order, then top-down
+  for (const r of raw) {
+    r.above.sort((a, b) => order(a) - order(b));
+    r.below.sort((a, b) => order(a) - order(b));
+    r.nar = r.above.map(l => l.text).concat(r.nar ? [r.nar] : [], r.below.map(l => l.text)).join(' ');
+  }
+}
+
+/* Where the narration column starts, learned from the dated rows themselves —
+   the text between the date columns and the first money on each row. */
+function narrationColumn(raw) {
+  const xs = [];
+  for (const r of raw) {
+    if (!r.line || !r.line.map.length || !r.monies.length) continue;
+    const firstMoneyX = Math.min.apply(null, r.monies.map(m => m.x));
+    const toks = r.line.map.filter(m => m.s >= r.narStart && m.x < firstMoneyX);
+    if (toks.length) xs.push(Math.min.apply(null, toks.map(m => m.x)));
+  }
+  if (!xs.length) return null;
+  xs.sort((a, b) => a - b);
+  return xs[Math.floor(xs.length / 2)];               // median
 }
 
 function assign(raw, opening, cols) {
@@ -520,15 +592,18 @@ const BANKCODE = /^(yesb|hdfc|icic|sbin|idfb|utib|punb|kkbk|barb|cnrb|ioba|ubin|
 function party(nar) {
   const parts = String(nar).split(/[\/|\\\-–—:;,]+/).map(s => s.trim()).filter(Boolean);
   let best = '';
-  for (const p of parts) {
-    if (/@/.test(p)) continue;
+  for (const p0 of parts) {
+    if (/@/.test(p0)) continue;
+    // reference numbers cling to either end of the name — shed them, but leave
+    // a leading digit or two alone so names like "3M INDIA" survive
+    const p = p0.replace(/^\d{4,}\s*/, '').replace(/\s+[\d\s]+$/, '').replace(/\s{2,}/g, ' ').trim();
     const letters = (p.match(/[A-Za-z]/g) || []).length;
     if (letters < 4) continue;
-    const flat = p.replace(/[^A-Za-z]/g, '');
-    if (NOISE.test(flat) || BANKCODE.test(flat)) continue;
+    const words = p.split(/\s+/).filter(Boolean).map(w => w.replace(/[^A-Za-z]/g, ''));
+    if (words.every(w => !w || NOISE.test(w))) continue;      // "Payment NEFT" and friends
+    if (BANKCODE.test(p.replace(/[^A-Za-z]/g, ''))) continue;
     if (letters / p.length < 0.55) continue;
-    const clean = p.replace(/\s{2,}/g, ' ').trim();
-    if (clean.length > best.length) best = clean;
+    if (p.length > best.length) best = p;
   }
   return best ? best.toUpperCase().slice(0, 42) : '—';
 }
