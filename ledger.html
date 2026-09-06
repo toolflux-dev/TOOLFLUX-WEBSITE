@@ -236,7 +236,7 @@
     <p>or click to choose files — you can drop several at once</p>
     <small>Password-protected statements are fine — you'll be asked for the password. Scanned image PDFs can't be read.<br>
     Drop the <b>GST list</b> from your phone here too — it merges into this one, it never overwrites it.</small>
-    <input type="file" id="file" accept="application/pdf,.pdf,application/json,.json" multiple hidden>
+    <input type="file" id="file" accept="application/pdf,.pdf,application/json,.json,text/plain,.txt" multiple hidden>
   </div>
 
   <div class="log" id="log"></div>
@@ -303,6 +303,7 @@
         <b>Send</b> opens your phone's share sheet — choose <b>OneDrive</b> and save into
         <code>OneDrive / FLUX-LEDGER / statements</code>. Your PC picks it up on its own the next time it's on.
         On a desktop the same button just saves the file straight down.
+        <div id="shareDiag" style="margin-top:9px;padding-top:9px;border-top:1px solid var(--off2);font-size:.72rem;color:var(--mut2)"></div>
       </div>
     </div>
   </div>

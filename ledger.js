@@ -143,6 +143,7 @@ const S = {
   sort: { k: 'date', d: -1 },
   limit: 250,
   sepView: 'pending',
+  shareErr: '',
   calc: { gross: null, rate: 18, mode: 'incl', note: '', txnId: null }
 };
 
@@ -172,6 +173,38 @@ const dropPdf = name => kvSet('pdf:' + name, undefined);
 
 function canShareFiles(files) {
   try { return !!(navigator.canShare && navigator.canShare({ files })); } catch (e) { return false; }
+}
+
+/* One way out to the share sheet, used by both Send buttons.
+   Must be called straight from the tap — no await in front of it. */
+let sharing = false;
+function shareOut(files, title, onSent) {
+  if (sharing) { toast('The share sheet is already open'); return; }
+
+  // Vet each file on its own: one type Android dislikes rejects the whole share.
+  const ok = files.filter(f => canShareFiles([f]));
+  const dropped = files.length - ok.length;
+
+  if (!ok.length) { saveInstead(files, 'This phone will not share these file types'); return; }
+  if (dropped) toast(dropped + ' file could not be shared and was left behind', 'r');
+
+  sharing = true;
+  navigator.share({ files: ok, title: title }).then(() => {
+    sharing = false; S.shareErr = ''; onSent();
+  }).catch(e => {
+    sharing = false;
+    if (e && e.name === 'AbortError') return;                 // backed out — not sent
+    S.shareErr = (e && e.name ? e.name : 'Error') + ': ' + (e && e.message ? e.message : e);
+    renderData();
+    saveInstead(ok, 'Android refused the share sheet');
+  });
+}
+
+/* Guaranteed way out. The files land in Downloads; they are NOT marked as
+   sent, because they still have to be moved into OneDrive by hand. */
+function saveInstead(files, why) {
+  files.forEach(f => downloadBlob(f.name, f));
+  toast(why + ' — saved to Downloads instead. Move them into OneDrive / FLUX-LEDGER / statements.', 'r');
 }
 
 /* Android grants navigator.share() only while the tap's activation is still
@@ -220,19 +253,8 @@ function sendToPc(idxs, opts) {                            // deliberately NOT a
     toast(bits.join(' + ') + ' handed over', 'g');
   };
 
-  if (canShareFiles(files)) {
-    navigator.share({ files, title: 'FLUX LEDGER statements' }).then(done).catch(e => {
-      if (e && e.name === 'AbortError') return;            // backed out — not sent
-      if (e && e.name === 'NotAllowedError') {             // activation lost, or sharing blocked
-        toast('Android would not open the share sheet. Tap Send once more.', 'r');
-        return;
-      }
-      toast('Share failed: ' + (e.message || e), 'r');
-    });
-  } else {
-    files.forEach(f => downloadBlob(f.name, f));           // desktop: straight to Downloads
-    done();
-  }
+  if (navigator.share) shareOut(files, 'FLUX LEDGER statements', done);
+  else { files.forEach(f => downloadBlob(f.name, f)); done(); }   // desktop: straight to Downloads
 }
 
 /* ── the GST list travels as a small JSON alongside the PDFs ───────
@@ -242,12 +264,15 @@ function sendToPc(idxs, opts) {                            // deliberately NOT a
 
 const SPLIT_FILE = /^flux-ledger-gst-.*\.json$/i;
 
+/* Android's share sheet only accepts files from a fixed allowlist, and
+   application/json is not on it — a single disallowed file gets the whole
+   share rejected. The content is still JSON; only the wrapper is text. */
 function splitsFile() {
   const body = JSON.stringify({
     app: 'flux-ledger', kind: 'splits', v: 1, at: new Date().toISOString(),
     splits: S.splits, notSale: S.notSale
   });
-  return new File([body], 'flux-ledger-gst-' + today() + '.json', { type: 'application/json' });
+  return new File([body], 'flux-ledger-gst-' + today() + '.txt', { type: 'text/plain' });
 }
 
 function cleanSplit(s) {
@@ -1103,7 +1128,9 @@ async function openWithPassword(f, row) {
 async function handleFiles(files) {
   const all = Array.prototype.slice.call(files);
   const list = all.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
-  const jsons = all.filter(f => /\.json$/i.test(f.name) || f.type === 'application/json');
+  // the GST list travels as .txt so Android will share it — accept either
+  const jsons = all.filter(f => /\.(json|txt)$/i.test(f.name) ||
+                                f.type === 'application/json' || f.type === 'text/plain');
   if (!list.length && !jsons.length) { toast('Drop statement PDFs, or a GST list from the phone', 'r'); return; }
   $('#log').innerHTML = '';
 
@@ -1233,6 +1260,20 @@ function renderData() {
               : 'Every stored statement has been handed over.')
     : 'Nothing imported yet.';
 
+  // What this phone will actually accept — so a refusal can be diagnosed
+  // instead of guessed at.
+  const probePdf = new File([new Uint8Array([37, 80, 68, 70])], 'probe.pdf', { type: 'application/pdf' });
+  const probeTxt = new File(['{}'], 'probe.txt', { type: 'text/plain' });
+  const bits = [
+    'share ' + (navigator.share ? 'yes' : 'no'),
+    'pdf ' + (canShareFiles([probePdf]) ? 'ok' : 'no'),
+    'list ' + (canShareFiles([probeTxt]) ? 'ok' : 'no'),
+    'both ' + (canShareFiles([probePdf, probeTxt]) ? 'ok' : 'no'),
+    'held ' + pdfReady.size
+  ];
+  $('#shareDiag').innerHTML = '<code>' + esc(bits.join(' · ')) + '</code>' +
+    (S.shareErr ? '<br><b style="color:var(--out)">last refusal — ' + esc(S.shareErr) + '</b>' : '');
+
   $('#srcRows').innerHTML = S.sources.map((s, i) =>
     '<tr><td class="nar">' + esc(s.name) +
       '<small>' + esc(s.bank) + (s.acct ? ' ··' + s.acct : '') + ' · ' + dShort(s.from) + ' → ' + dShort(s.to) + '</small></td>' +
@@ -1358,14 +1399,8 @@ function wire() {
       S.set.gstSent = today(); saveSet(); renderSep();
       toast('GST list handed over — drop it on the PC to merge', 'g');
     };
-    if (canShareFiles([f])) {
-      navigator.share({ files: [f], title: 'FLUX LEDGER GST list' }).then(done).catch(e => {
-        if (e && e.name === 'AbortError') return;
-        toast(e && e.name === 'NotAllowedError'
-          ? 'Android would not open the share sheet. Tap it once more.'
-          : 'Share failed: ' + (e.message || e), 'r');
-      });
-    } else { downloadBlob(f.name, f); done(); }
+    if (navigator.share) shareOut([f], 'FLUX LEDGER GST list', done);
+    else { downloadBlob(f.name, f); done(); }
   });
 
   $('#markAll').addEventListener('click', () => {
