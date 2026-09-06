@@ -174,39 +174,65 @@ function canShareFiles(files) {
   try { return !!(navigator.canShare && navigator.canShare({ files })); } catch (e) { return false; }
 }
 
-async function sendToPc(idxs, opts) {
+/* Android grants navigator.share() only while the tap's activation is still
+   live, and an await spends it — reading the PDF out of IndexedDB first got
+   the share refused with "Permission denied". So the originals are held ready
+   in memory and share() is called synchronously on the tap. */
+const pdfReady = new Map();
+
+async function warmPdfs() {
+  for (const s of S.sources) {
+    if (!s.kept || pdfReady.has(s.name)) continue;
+    try {
+      const b = await getPdf(s.name);
+      if (b) pdfReady.set(s.name, new File([b], s.name, { type: 'application/pdf' }));
+    } catch (e) { /* a missing original just means that row can't be sent */ }
+  }
+}
+
+function sendToPc(idxs, opts) {                            // deliberately NOT async
   const withGst = !opts || opts.gst !== false;
   const list = idxs.map(i => S.sources[i]).filter(Boolean);
   const files = [];
-  for (const s of list) {
-    const b = await getPdf(s.name);
-    if (b) files.push(new File([b], s.name, { type: 'application/pdf' }));
-  }
+  for (const s of list) { const f = pdfReady.get(s.name); if (f) files.push(f); }
   const pdfCount = files.length;
+
+  const notYetLoaded = list.filter(s => s.kept && !pdfReady.has(s.name));
+  if (!pdfCount && notYetLoaded.length) {
+    toast('Still loading that statement — tap Send again in a moment');
+    warmPdfs();
+    return;
+  }
   if (withGst && S.splits.length) files.push(splitsFile());   // decisions ride along
   if (!files.length) {
     toast(list.length ? 'The original PDFs for these are no longer stored' : 'Nothing to send yet', 'r');
     return;
   }
+
+  const done = () => {
+    const stamp = today();
+    list.forEach(s => { if (pdfReady.has(s.name)) s.sentAt = stamp; });
+    if (files.length > pdfCount) { S.set.gstSent = stamp; saveSet(); }
+    saveSrc(); renderData(); renderSep();
+    const bits = [];
+    if (pdfCount) bits.push(pdfCount + ' statement' + (pdfCount === 1 ? '' : 's'));
+    if (files.length > pdfCount) bits.push('the GST list');
+    toast(bits.join(' + ') + ' handed over', 'g');
+  };
+
   if (canShareFiles(files)) {
-    try {
-      await navigator.share({ files, title: 'FLUX LEDGER statements' });
-    } catch (e) {
-      if (e && e.name === 'AbortError') return;            // user backed out — not sent
+    navigator.share({ files, title: 'FLUX LEDGER statements' }).then(done).catch(e => {
+      if (e && e.name === 'AbortError') return;            // backed out — not sent
+      if (e && e.name === 'NotAllowedError') {             // activation lost, or sharing blocked
+        toast('Android would not open the share sheet. Tap Send once more.', 'r');
+        return;
+      }
       toast('Share failed: ' + (e.message || e), 'r');
-      return;
-    }
+    });
   } else {
     files.forEach(f => downloadBlob(f.name, f));           // desktop: straight to Downloads
+    done();
   }
-  const stamp = today();
-  list.forEach(s => { s.sentAt = stamp; });
-  if (files.length > pdfCount) { S.set.gstSent = stamp; await saveSet(); }
-  await saveSrc(); renderData(); renderSep();
-  const bits = [];
-  if (pdfCount) bits.push(pdfCount + ' statement' + (pdfCount === 1 ? '' : 's'));
-  if (files.length > pdfCount) bits.push('the GST list');
-  toast(bits.join(' + ') + ' handed over', 'g');
 }
 
 /* ── the GST list travels as a small JSON alongside the PDFs ───────
@@ -1164,7 +1190,13 @@ async function commitImport() {
   S.txns = S.txns.concat(pending.rows).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
   for (const r of pending.results) {
     let kept = false;
-    if (r.file) { try { await savePdf(r.rows[0].src, r.file); kept = true; } catch (e) { kept = false; } }
+    if (r.file) {
+      try {
+        await savePdf(r.rows[0].src, r.file);
+        pdfReady.set(r.rows[0].src, new File([r.file], r.rows[0].src, { type: 'application/pdf' }));
+        kept = true;
+      } catch (e) { kept = false; }
+    }
     S.sources.push({
       name: r.rows[0].src, bank: r.bank, acct: r.acct, n: r.rows.length,
       from: r.rows[0].date, to: r.rows[r.rows.length - 1].date, at: today(),
@@ -1319,15 +1351,21 @@ function wire() {
 
   // ── separation list
   $('#fSep').addEventListener('change', e => { S.sepView = e.target.value; renderSep(); });
-  $('#sendGst').addEventListener('click', async () => {
+  $('#sendGst').addEventListener('click', () => {          // no await before share()
     if (!S.splits.length) { toast('The GST list is empty'); return; }
     const f = splitsFile();
+    const done = () => {
+      S.set.gstSent = today(); saveSet(); renderSep();
+      toast('GST list handed over — drop it on the PC to merge', 'g');
+    };
     if (canShareFiles([f])) {
-      try { await navigator.share({ files: [f], title: 'FLUX LEDGER GST list' }); }
-      catch (e) { if (!e || e.name !== 'AbortError') toast('Share failed: ' + (e.message || e), 'r'); return; }
-    } else downloadBlob(f.name, f);
-    S.set.gstSent = today(); await saveSet(); renderSep();
-    toast('GST list handed over — drop it on the PC to merge', 'g');
+      navigator.share({ files: [f], title: 'FLUX LEDGER GST list' }).then(done).catch(e => {
+        if (e && e.name === 'AbortError') return;
+        toast(e && e.name === 'NotAllowedError'
+          ? 'Android would not open the share sheet. Tap it once more.'
+          : 'Share failed: ' + (e.message || e), 'r');
+      });
+    } else { downloadBlob(f.name, f); done(); }
   });
 
   $('#markAll').addEventListener('click', () => {
@@ -1420,6 +1458,7 @@ async function removeSource(i) {
       (s.kept && !s.sentAt ? '\n\nThis copy has NOT been sent to the PC yet — it will be gone.' : ''))) return;
   S.txns = S.txns.filter(t => t.src !== s.name);
   S.sources.splice(i, 1);
+  pdfReady.delete(s.name);
   try { await dropPdf(s.name); } catch (e) {}
   await saveTxns(); await saveSrc();
   renderAll(); toast('Removed ' + s.name);
@@ -1431,6 +1470,7 @@ async function removeSource(i) {
   await load();
   wire();
   renderAll();
+  warmPdfs();                       // ready before the first tap on Send
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('ledger-sw.js').catch(() => {});
   collectShared();
 })();
