@@ -224,7 +224,9 @@ async function warmPdfs() {
 }
 
 function sendToPc(idxs, opts) {                            // deliberately NOT async
-  const withGst = !opts || opts.gst !== false;
+  // Statements go on their own. Bundling the GST list meant one file Android
+  // disliked took the whole share down with it; the list has its own button.
+  const withGst = !!(opts && opts.gst === true);
   const list = idxs.map(i => S.sources[i]).filter(Boolean);
   const files = [];
   for (const s of list) { const f = pdfReady.get(s.name); if (f) files.push(f); }
@@ -1341,6 +1343,19 @@ function wire() {
 
   $('#sendAll').addEventListener('click', () =>
     sendToPc(S.sources.map((s, i) => (s.kept && !s.sentAt) ? i : -1).filter(i => i >= 0)));
+
+  /* The share sheet can be refused by the phone; writing a file never is.
+     Everything lands in Downloads, ready to be put into OneDrive by hand. */
+  $('#saveLocal').addEventListener('click', () => {
+    const out = [];
+    S.sources.forEach(s => { const f = pdfReady.get(s.name); if (f && !s.sentAt) out.push(f); });
+    if (!out.length) S.sources.forEach(s => { const f = pdfReady.get(s.name); if (f) out.push(f); });
+    if (S.splits.length) out.push(splitsFile());
+    if (!out.length) { toast('Nothing stored to save yet', 'r'); return; }
+    out.forEach(f => downloadBlob(f.name, f));
+    toast(out.length + ' file' + (out.length === 1 ? '' : 's') +
+      ' saved to Downloads — put them in OneDrive / FLUX-LEDGER / statements', 'g');
+  });
 
   // ── import
   const drop = $('#drop'), file = $('#file');
