@@ -1255,8 +1255,13 @@ function renderData() {
     dl('Flagged rows', S.txns.filter(t => t.flag).length);
 
   const unsent = S.sources.filter(s => s.kept && !s.sentAt).length;
-  $('#sendAll').disabled = !unsent;
-  $('#sendAll').textContent = unsent ? 'Send ' + unsent + ' to PC' : 'All sent';
+  // Sending is never a one-shot: a file can go astray, land in the wrong
+  // folder, or be wanted on a second machine. Once everything has gone across
+  // the button keeps working and simply offers to send it all again.
+  const sendable = S.sources.filter(s => s.kept).length;
+  $('#sendAll').disabled = !sendable;
+  $('#sendAll').textContent = unsent ? 'Send ' + unsent + ' to PC'
+                            : (sendable ? 'Send all again' : 'Send to PC');
   $('#sendSub').textContent = S.sources.length
     ? (unsent ? unsent + ' statement' + (unsent === 1 ? '' : 's') + ' not yet on the PC'
               : 'Every stored statement has been handed over.')
@@ -1341,8 +1346,11 @@ function wire() {
     else if (t.dataset.rmsrc !== undefined) removeSource(+t.dataset.rmsrc);
   });
 
-  $('#sendAll').addEventListener('click', () =>
-    sendToPc(S.sources.map((s, i) => (s.kept && !s.sentAt) ? i : -1).filter(i => i >= 0)));
+  $('#sendAll').addEventListener('click', () => {
+    let idxs = S.sources.map((s, i) => (s.kept && !s.sentAt) ? i : -1).filter(i => i >= 0);
+    if (!idxs.length) idxs = S.sources.map((s, i) => s.kept ? i : -1).filter(i => i >= 0);
+    sendToPc(idxs);
+  });
 
   /* The share sheet can be refused by the phone; writing a file never is.
      Everything lands in Downloads, ready to be put into OneDrive by hand. */
