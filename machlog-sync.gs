@@ -75,10 +75,15 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-// Verify Razorpay webhook signature.
-// Razorpay sends X-Razorpay-Signature: HMAC-SHA256(rawBody, webhookSecret).
-// GAS may or may not expose e.headers — we try it, then fall back to URL param
-// verified with safeEqual (prevents timing oracle on the URL param comparison).
+// Verify Razorpay webhook authenticity.
+//
+// ⚠️ Apps Script web apps do NOT expose request headers — the doPost event
+// object carries only queryString/parameter/parameters/pathInfo/contentLength/
+// postData. So the X-Razorpay-Signature header Razorpay sends is UNREADABLE
+// here, and pasting the secret into the dashboard's "Secret" field alone
+// authenticates nothing. The webhook URL MUST carry ?wh_secret=<WEBHOOK_SECRET>
+// or every delivery is rejected. The header path below stays in case GAS ever
+// starts exposing headers; today it never fires.
 function verifyWebhookSecret(e, rawBody) {
   var secret = getSecret('WEBHOOK_SECRET');
   if (!secret) return false;
@@ -156,6 +161,25 @@ function recordPayment(ss, paymentId, email, event) {
     header(sheet, ['PaymentId', 'Email', 'Event', 'ProcessedAt'], NAVY);
   }
   sheet.appendRow([paymentId, email, event, new Date().toISOString()]);
+}
+
+// ─── Webhook delivery log ─────────────────────────────────────────
+// Every inbound webhook — accepted, ignored OR rejected — lands here.
+// Razorpay's dashboard shows a 200 for rejected deliveries (we always
+// return 200 so it stops retrying), so without this sheet a wrong secret
+// looks identical to a working webhook. Check this tab first when a
+// customer pays and Activate still says "no active subscription".
+
+var WEBHOOK_LOG_MAX = 200;
+
+function logWebhook(ss, event, email, result) {
+  try {
+    var sh = getSheet(ss, '_WebhookLog');
+    if (sh.getLastRow() === 0) header(sh, ['ReceivedAt', 'Event', 'Email', 'Result'], NAVY);
+    sh.appendRow([new Date().toISOString(), safeCell(event), safeCell(email), safeCell(result)]);
+    var extra = sh.getLastRow() - 1 - WEBHOOK_LOG_MAX;
+    if (extra > 0) sh.deleteRows(2, extra); // trim oldest, keep the header
+  } catch (_) {}
 }
 
 // ─── Live Razorpay API verification ──────────────────────────────
@@ -245,6 +269,26 @@ function doGet(e) {
       return jsonOk({ events: readEvents(ss, cleanShopId(e.parameter.shop)) });
     }
 
+    // Owner diagnostic: last 20 webhook deliveries. Guarded by the same secret
+    // that guards the webhook itself, so only whoever configured it can read it.
+    // Open the SYNC_URL with ?action=whlog&wh_secret=<WEBHOOK_SECRET> right after
+    // a test payment — if the list is empty, Razorpay never reached this script.
+    if (action === 'whlog') {
+      if (!safeEqual(e.parameter.wh_secret || '', getSecret('WEBHOOK_SECRET') || ' ')) {
+        return jsonOk({ error: 'Unauthorized' });
+      }
+      var wsh = ss.getSheetByName('_WebhookLog');
+      if (!wsh || wsh.getLastRow() < 2) {
+        return jsonOk({ deliveries: [], note: 'No webhooks received yet.' });
+      }
+      var wrows = wsh.getDataRange().getValues();
+      var out = [];
+      for (var w = wrows.length - 1; w >= 1 && out.length < 20; w--) {
+        out.push({ at: String(wrows[w][0]), event: String(wrows[w][1]), email: String(wrows[w][2]), result: String(wrows[w][3]) });
+      }
+      return jsonOk({ deliveries: out });
+    }
+
     return jsonOk({ error: 'Unknown action' });
   } catch(err) {
     // Never expose raw error messages to clients
@@ -261,11 +305,13 @@ function doPost(e) {
 
     // Detect Razorpay webhook by top-level 'event' field
     if (data.event && data.payload) {
+      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       if (!verifyWebhookSecret(e, raw)) {
         Logger.log('Webhook rejected: bad secret');
+        logWebhook(ss, data.event, '',
+          'REJECTED: secret missing or wrong — the webhook URL must end in ?wh_secret=<WEBHOOK_SECRET>');
         return ok('unauthorized');
       }
-      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       return ok(handleRazorpayWebhook(ss, data));
     }
 
@@ -384,53 +430,92 @@ function handleRazorpayWebhook(ss, data) {
   var subId     = '';
   var planId    = '';
   var paymentId = '';
+  var sub       = null;
+
+  try { sub = data.payload.subscription.entity || null; } catch(_) {}
 
   try { email     = (data.payload.payment.entity.email || '').toLowerCase().trim(); } catch(_) {}
   // Fallback: subscriptions we mint carry the customer's email in notes, so
   // events that arrive without a payment entity still resolve to a customer.
-  if (!email) { try { email = (data.payload.subscription.entity.notes.email || '').toLowerCase().trim(); } catch(_) {} }
-  try { subId     = data.payload.subscription.entity.id || ''; } catch(_) {}
-  try { planId    = data.payload.subscription.entity.plan_id || ''; } catch(_) {}
+  if (!email && sub) { try { email = (sub.notes.email || '').toLowerCase().trim(); } catch(_) {} }
+  if (sub) {
+    subId  = sub.id      || '';
+    planId = sub.plan_id || '';
+  }
   try { paymentId = data.payload.payment.entity.id || ''; } catch(_) {}
 
-  if (!email) return 'no email in payload';
+  // ── Scope guard ──────────────────────────────────────────────────
+  // This Razorpay account also takes non-Machlog money (the Wix storefront).
+  // payment.captured fires for EVERY captured payment on the whole account,
+  // so honouring it on its own would hand a free month of Machlog to anyone
+  // who buys anything else with the same email address. Only trust a payment
+  // that the payload ties to a subscription on OUR plan.
+  if (planId && planId !== RAZORPAY_PLAN_ID) {
+    return logged(ss, event, email, 'ignored: different plan (' + planId + ')');
+  }
+  if (event === 'payment.captured' && !sub) {
+    return logged(ss, event, email, 'ignored: standalone payment, not a subscription charge');
+  }
+
+  if (!email) return logged(ss, event, '', 'no email in payload');
 
   // Replay protection — reject if we've seen this payment before
   if (paymentId && isPaymentSeen(ss, paymentId)) {
     Logger.log('Duplicate webhook rejected: ' + paymentId);
-    return 'duplicate';
+    return logged(ss, event, email, 'duplicate payment ' + paymentId);
   }
 
-  var isActive    = (event === 'subscription.charged' || event === 'subscription.activated' || event === 'payment.captured');
-  var isCancelled = (event === 'subscription.completed' || event === 'subscription.cancelled' || event === 'subscription.halted');
-  var status  = isActive ? 'active' : isCancelled ? 'cancelled' : 'halted';
-  var expiry  = null;
+  // Every other event in HANDLED_EVENTS (halted/cancelled/completed) means the
+  // money stopped — the app drops to read-only, data stays viewable/exportable.
+  var isActive = (event === 'subscription.charged' || event === 'subscription.activated' || event === 'payment.captured');
+  var status   = isActive ? 'active' : 'cancelled';
+  var expiry   = null;
 
   if (isActive) {
-    var d = new Date();
-    d.setDate(d.getDate() + 32); // 32 days buffer above 30-day cycle
-    expiry = d.toISOString();
+    // Prefer Razorpay's own end-of-cycle (unix seconds) plus a 2-day grace, so
+    // access tracks the real billing period instead of a guessed 32 days.
+    var currentEnd = sub ? Number(sub.current_end) : 0;
+    if (currentEnd > 0) {
+      expiry = new Date((currentEnd + 2 * 24 * 3600) * 1000).toISOString();
+    } else {
+      var d = new Date();
+      d.setDate(d.getDate() + 32); // 32 days buffer above 30-day cycle
+      expiry = d.toISOString();
+    }
   }
 
-  var sheet = getSheet(ss, '_Subscriptions');
-  initSubscriptionsSheet(ss, sheet);
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (_) { return logged(ss, event, email, 'busy: could not acquire lock'); }
+  try {
+    var sheet = getSheet(ss, '_Subscriptions');
+    initSubscriptionsSheet(ss, sheet);
 
-  var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]).toLowerCase().trim() !== email) continue;
-    // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified
-    sheet.getRange(i + 1, 2).setValue(status);
-    if (expiry)   sheet.getRange(i + 1, 3).setValue(expiry);
-    if (subId)    sheet.getRange(i + 1, 4).setValue(subId);
-    if (planId)   sheet.getRange(i + 1, 5).setValue(planId);
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).toLowerCase().trim() !== email) continue;
+      // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified
+      sheet.getRange(i + 1, 2).setValue(status);
+      if (expiry)   sheet.getRange(i + 1, 3).setValue(expiry);
+      if (subId)    sheet.getRange(i + 1, 4).setValue(subId);
+      if (planId)   sheet.getRange(i + 1, 5).setValue(planId);
+      if (paymentId) recordPayment(ss, paymentId, email, event);
+      return logged(ss, event, email, 'updated: ' + status);
+    }
+
+    // New subscriber
+    sheet.appendRow([safeCell(email), status, expiry, safeCell(subId), safeCell(planId), new Date().toISOString()]);
     if (paymentId) recordPayment(ss, paymentId, email, event);
-    return 'updated: ' + status;
+    return logged(ss, event, email, 'created: ' + status);
+  } finally {
+    lock.releaseLock();
   }
+}
 
-  // New subscriber
-  sheet.appendRow([email, status, expiry, subId, planId, new Date().toISOString()]);
-  if (paymentId) recordPayment(ss, paymentId, email, event);
-  return 'created';
+// Write the outcome to _WebhookLog and hand the same string back as the
+// HTTP response body, so the sheet and Razorpay's dashboard always agree.
+function logged(ss, event, email, result) {
+  logWebhook(ss, event, email, result);
+  return result;
 }
 
 function initSubscriptionsSheet(ss, sheet) {
