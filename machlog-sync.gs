@@ -331,8 +331,9 @@ function doGet(e) {
       if (!checkRateLimit(ss, email)) return jsonOk({ ok: false, message: 'Too many attempts. Try again in 15 minutes.' });
       return jsonOk(createRazorpaySubscription(email, tier));
     }
-    if (action === 'activate') return jsonOk(handleActivation(ss, email));
-    if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || ''));
+    var shopParam = cleanShopId(e.parameter.shop);
+    if (action === 'activate') return jsonOk(handleActivation(ss, email, shopParam));
+    if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || '', shopParam));
 
     // ── multi-device shop sync ──
     if (action === 'pull') { // operator fetches the shop's master document
@@ -421,7 +422,7 @@ function doPost(e) {
 
 // ─── License: activation ─────────────────────────────────────────
 
-function handleActivation(ss, email) {
+function handleActivation(ss, email, shopId) {
   // Validate format before touching any data
   if (!isValidEmail(email)) {
     return { valid: false, message: 'Invalid email address.' };
@@ -464,8 +465,10 @@ function handleActivation(ss, email) {
 
     // Update last-verified timestamp only (never write the token to the sheet)
     sheet.getRange(i + 1, 6).setValue(new Date().toISOString());
+    // Link this subscription to the owner's shop so operator devices can be counted against its tier
+    if (shopId) sheet.getRange(i + 1, 7).setValue(shopId);
 
-    return { valid: true, token: token, expiresAt: expiry ? new Date(expiry).toISOString() : null, plan: plan };
+    return { valid: true, token: token, expiresAt: expiry ? new Date(expiry).toISOString() : null, plan: plan, tier: tierForRow(data[i]) };
   }
 
   // Email not found — same message as inactive subscription (no enumeration)
@@ -474,7 +477,7 @@ function handleActivation(ss, email) {
 
 // ─── License: periodic re-verification ──────────────────────────
 
-function handleVerification(ss, email, token) {
+function handleVerification(ss, email, token, shopId) {
   if (!isValidEmail(email) || !token) return { valid: false };
 
   // Re-derive expected token and compare in constant time
@@ -483,13 +486,15 @@ function handleVerification(ss, email, token) {
   if (!safeEqual(expected, token)) return { valid: false };
 
   var sheet = getSheet(ss, '_Subscriptions');
+  initSubscriptionsSheet(ss, sheet);
   var data  = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).toLowerCase().trim() !== email) continue;
     var status = String(data[i][1]).toLowerCase();
     var expiry = data[i][2];
     if (status !== 'active') return { valid: false, expired: true };
-    return { valid: true, expiresAt: expiry ? new Date(expiry).toISOString() : null };
+    if (shopId) sheet.getRange(i + 1, 7).setValue(shopId);
+    return { valid: true, expiresAt: expiry ? new Date(expiry).toISOString() : null, tier: tierForRow(data[i]) };
   }
   return { valid: false };
 }
@@ -617,10 +622,17 @@ function logged(ss, event, email, result) {
 }
 
 function initSubscriptionsSheet(ss, sheet) {
-  if (sheet.getLastRow() > 0) return;
+  if (sheet.getLastRow() > 0) {
+    // Sheets created before tiers have 6 columns — add the ShopId header once
+    if (String(sheet.getRange(1, 7).getValue()) !== 'ShopId') sheet.getRange(1, 7).setValue('ShopId');
+    return;
+  }
   // Token column is intentionally absent — tokens are derived from HMAC, never stored
-  header(sheet, ['Email', 'Status', 'ExpiresAt', 'RazorpaySubId', 'Plan', 'LastVerified'], TEAL);
+  header(sheet, ['Email', 'Status', 'ExpiresAt', 'RazorpaySubId', 'Plan', 'LastVerified', 'ShopId'], TEAL);
 }
+
+// The tier a _Subscriptions row is on. Rows from before tiers were all ₹299 = Solo.
+function tierForRow(row) { return tierForPlan(String(row[4] || '')) || 'solo'; }
 
 function jsonOk(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))

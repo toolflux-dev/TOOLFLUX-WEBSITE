@@ -115,3 +115,30 @@ test('a failed Razorpay cancel is surfaced in the webhook log', () => {
   const last = env.rows('_WebhookLog').pop();
   assert.match(last[3], /CANCEL FAILED/);
 });
+
+test('activation returns the tier and links the shop', () => {
+  const env = loadGas({ props: PLAN_PROPS });
+  post(env, subEvent('subscription.charged', { email: 'w@x.com', planId: 'plan_WORKS' }));
+  const act = get(env, { action: 'activate', email: 'w@x.com', shop: 'shop-1' });
+  assert.equal(act.valid, true);
+  assert.equal(act.tier, 'works');
+  assert.equal(findSub(env, 'w@x.com')[6], 'shop-1');
+  assert.equal(env.header('_Subscriptions')[6], 'ShopId');
+});
+
+test('a legacy row with no known plan activates as Solo', () => {
+  const env = loadGas({ props: PLAN_PROPS });
+  post(env, subEvent('subscription.charged', { email: 'l@x.com' }));
+  env.ss.getSheetByName('_Subscriptions').getRange(2, 5).setValue('monthly');
+  assert.equal(get(env, { action: 'activate', email: 'l@x.com' }).tier, 'solo');
+});
+
+test('verify returns the current tier and refreshes the shop link', () => {
+  const env = loadGas({ props: PLAN_PROPS });
+  post(env, subEvent('subscription.charged', { email: 's@x.com', planId: 'plan_SHOP' }));
+  const { token } = get(env, { action: 'activate', email: 's@x.com' });
+  const ver = get(env, { action: 'verify', email: 's@x.com', token, shop: 'shop-9' });
+  assert.equal(ver.valid, true);
+  assert.equal(ver.tier, 'shop');
+  assert.equal(findSub(env, 's@x.com')[6], 'shop-9');
+});
