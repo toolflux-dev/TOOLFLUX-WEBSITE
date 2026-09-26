@@ -15,6 +15,15 @@ let _syncTimer = null;
 // ── license / paywall ────────────────────────────────────────────
 const TRIAL_DAYS = 14;
 
+// Pricing tiers — they gate only how many operator devices may sync; every
+// feature is in every tier. Mirrors TIER_DEVICE_LIMIT in machlog-sync.gs.
+const TIERS = {
+  solo:  { name: 'Solo',  price: 299,  devices: 1 },
+  shop:  { name: 'Shop',  price: 799,  devices: 5 },
+  works: { name: 'Works', price: 2499, devices: Infinity },
+};
+const TIER_ORDER = ['solo', 'shop', 'works'];
+
 const OP_TYPES = [
   ['turning',         'Turning',          'op-turn'],
   ['face_milling',    'Face Milling',     'op-mill'],
@@ -437,7 +446,8 @@ function sanitizeLicense(lic) {
       // beyond 400 days is an impossible value, not a real license.
       if (expiresAt > Date.now() + 400 * MS_DAY) return null;
     }
-    return { token: lic.token, email, expiresAt, lastVerified: trustedPastTs(lic.lastVerified) };
+    const tier = TIERS[lic.tier] ? lic.tier : null;
+    return { token: lic.token, email, expiresAt, lastVerified: trustedPastTs(lic.lastVerified), tier };
   } catch (e) { return null; }
 }
 
@@ -486,6 +496,21 @@ function getTrialDaysLeft() {
   if (!ts) return TRIAL_DAYS;
   return Math.max(0, Math.ceil((ts + TRIAL_DAYS * MS_DAY - effectiveNow()) / MS_DAY));
 }
+
+// ── pricing tier ──────────────────────────────────────────────────
+// Trial runs at Works level so the shop sees multi-device sync before it
+// chooses. Licences from before tiers carry none: they were bought on the
+// ₹299 plan, which is Solo.
+function getTier() {
+  if (getLicenseStatus() === 'trial') return 'works';
+  const lic = sanitizeLicense(db.settings.license);
+  return (lic && lic.tier) || 'solo';
+}
+function getDeviceLimit() { return TIERS[getTier()].devices; }
+function canAddOperator() { return (db.settings.operators || []).length < getDeviceLimit(); }
+function nextTierFor(count) { return TIER_ORDER.find(t => TIERS[t].devices >= count) || 'works'; }
+function tierPrice(t) { return '₹' + TIERS[t].price.toLocaleString('en-IN'); }
+function subscribeLabel(t) { return `Subscribe — ${TIERS[t].name} ${tierPrice(t)} / month`; }
 
 // ── read-only (lapsed subscription) ───────────────────────────────
 // When the subscription ends the shop keeps ALL its data and can still read,
