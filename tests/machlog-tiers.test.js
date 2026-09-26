@@ -32,3 +32,35 @@ test('webhook accepts Shop and Works plans', () => {
   assert.match(post(env, subEvent('subscription.charged', { email: 's@x.com', planId: 'plan_SHOP' })), /created: active/);
   assert.match(post(env, subEvent('subscription.charged', { email: 'w@x.com', planId: 'plan_WORKS', subId: 'sub_W' })), /created: active/);
 });
+
+const KEY_PROPS = Object.assign({ RAZORPAY_KEY_ID: 'rzp_test_x', RAZORPAY_KEY_SECRET: 'secret_x' }, PLAN_PROPS);
+const mintOk = () => okResponse({ id: 'sub_NEW', short_url: 'https://rzp.io/i/abc' });
+
+test('subscribe mints on the requested tier plan', () => {
+  const env = loadGas({ props: KEY_PROPS, fetch: mintOk });
+  const res = get(env, { action: 'subscribe', email: 'a@x.com', tier: 'shop' });
+  assert.equal(res.ok, true);
+  const body = JSON.parse(env.fetchCalls[0].payload);
+  assert.equal(body.plan_id, 'plan_SHOP');
+  assert.equal(body.notes.tier, 'shop');
+});
+
+test('subscribe without a tier defaults to Solo (older app builds)', () => {
+  const env = loadGas({ props: KEY_PROPS, fetch: mintOk });
+  get(env, { action: 'subscribe', email: 'a@x.com' });
+  assert.equal(JSON.parse(env.fetchCalls[0].payload).plan_id, SOLO);
+});
+
+test('subscribe rejects an unknown tier', () => {
+  const env = loadGas({ props: KEY_PROPS, fetch: mintOk });
+  const res = get(env, { action: 'subscribe', email: 'a@x.com', tier: 'gold' });
+  assert.equal(res.ok, false);
+  assert.equal(env.fetchCalls.length, 0);
+});
+
+test('subscribe refuses a tier whose plan id is not configured', () => {
+  const env = loadGas({ props: { RAZORPAY_KEY_ID: 'k', RAZORPAY_KEY_SECRET: 's' }, fetch: mintOk });
+  const res = get(env, { action: 'subscribe', email: 'a@x.com', tier: 'works' });
+  assert.equal(res.ok, false);
+  assert.equal(env.fetchCalls.length, 0);
+});

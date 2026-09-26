@@ -223,10 +223,12 @@ function tierForPlan(planId) {
   return '';
 }
 
-function createRazorpaySubscription(email) {
+function createRazorpaySubscription(email, tier) {
   var keyId     = getSecret('RAZORPAY_KEY_ID');
   var keySecret = getSecret('RAZORPAY_KEY_SECRET');
   if (!keyId || !keySecret) return { ok: false, message: 'Payments not configured. Please contact TOOLFLUX.' };
+  var planId = planIdForTier(tier);
+  if (!planId) return { ok: false, message: 'That plan is not available yet. Please contact TOOLFLUX.' };
 
   try {
     var res = UrlFetchApp.fetch('https://api.razorpay.com/v1/subscriptions', {
@@ -234,12 +236,12 @@ function createRazorpaySubscription(email) {
       contentType: 'application/json',
       headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(keyId + ':' + keySecret) },
       payload: JSON.stringify({
-        plan_id: RAZORPAY_PLAN_ID,
+        plan_id: planId,
         total_count: SUBSCRIPTION_CYCLES,
         customer_notify: 1,
         // Stamp the email so the webhook can always resolve the customer,
         // even on events whose payload carries no payment entity.
-        notes: { email: email, product: 'TOOLFLUX Machining Log' },
+        notes: { email: email, product: 'TOOLFLUX Machining Log', tier: tier },
       }),
       muteHttpExceptions: true,
     });
@@ -281,8 +283,11 @@ function doGet(e) {
 
     if (action === 'subscribe') { // mint a monthly subscription link for this customer
       if (!isValidEmail(email)) return jsonOk({ ok: false, message: 'Enter a valid email address.' });
+      // Builds from before tiers send no tier: they only ever sold the ₹299 plan.
+      var tier = String(e.parameter.tier || 'solo').toLowerCase();
+      if (!TIER_DEVICE_LIMIT.hasOwnProperty(tier)) return jsonOk({ ok: false, message: 'Unknown plan.' });
       if (!checkRateLimit(ss, email)) return jsonOk({ ok: false, message: 'Too many attempts. Try again in 15 minutes.' });
-      return jsonOk(createRazorpaySubscription(email));
+      return jsonOk(createRazorpaySubscription(email, tier));
     }
     if (action === 'activate') return jsonOk(handleActivation(ss, email));
     if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || ''));
