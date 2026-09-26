@@ -651,6 +651,12 @@ function removeOperator(id) {
 function submitAddOperator(e) {
   e.preventDefault();
   if (!requireOwner() || !requireActive()) return;
+  if (!canAddOperator()) {
+    const lim = getDeviceLimit();
+    toast(`${TIERS[getTier()].name} includes ${lim} operator phone${lim === 1 ? '' : 's'} — upgrade to add more`, 'warn', 6000);
+    navigate('paywall');
+    return;
+  }
   const inp = document.getElementById('team-op-name');
   const op = addOperatorToTeam(inp ? inp.value : '');
   if (op) { toast(`${op.name} added — send them the link`, 'ok'); render(); }
@@ -3365,10 +3371,15 @@ function vSettings() {
       <div class="panel-hd"><span class="lbl">Operators (Team)</span><div class="hr"></div><span class="lbl muted">${(db.settings.operators||[]).length}</span></div>
       <div class="panel-bd">
         <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem;line-height:1.55">Add an operator, then send them their link on WhatsApp. They open it on their phone and it launches straight into the shop-floor screen — locked to Operator Mode, no PIN, no setup.</div>
+        ${canAddOperator() ? `
         <form onsubmit="submitAddOperator(event)" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem">
           <input id="team-op-name" placeholder="Operator name (e.g. Ravi)" autocomplete="off" style="flex:1;min-width:160px">
           <button type="submit" class="btn btn-pri">+ Add Operator</button>
-        </form>
+        </form>` : `
+        <div class="tier-full">
+          <span>Your <strong>${esc(TIERS[getTier()].name)}</strong> plan includes ${getDeviceLimit()} operator phone${getDeviceLimit() === 1 ? '' : 's'}.</span>
+          <button class="btn btn-teal btn-sm" onclick="navigate('paywall')">Upgrade</button>
+        </div>`}
         ${(db.settings.operators||[]).length ? `
         <div class="team-list">
           ${db.settings.operators.map(o => `
