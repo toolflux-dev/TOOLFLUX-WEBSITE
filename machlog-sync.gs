@@ -46,6 +46,10 @@ const SPREADSHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
 //
 //   RAZORPAY_KEY_ID      Your Razorpay API key ID (optional). Enables live
 //   RAZORPAY_KEY_SECRET  subscription verification at activation time.
+//
+//   PLAN_ID_SHOP         Razorpay plan id for the ₹799/month Shop tier.
+//   PLAN_ID_WORKS        Razorpay plan id for the ₹2,499/month Works tier.
+//                        Until set, those tiers can't be bought (Solo still can).
 // ──────────────────────────────────────────────────────────────────
 
 function getSecret(name) {
@@ -191,8 +195,33 @@ function logWebhook(ss, event, email, result) {
 // The ₹299/month recurring plan. Razorpay's dashboard can only issue
 // one-subscriber links, so the app asks us to mint a subscription per
 // customer on demand and sends them to its short_url to authorise.
-var RAZORPAY_PLAN_ID = 'plan_T1e4VFqtRs0qPR';
+var RAZORPAY_PLAN_ID = 'plan_T1e4VFqtRs0qPR'; // Solo — the original ₹299 plan
 var SUBSCRIPTION_CYCLES = 120; // ~10 years of monthly billing; cancel anytime
+
+// ─── Pricing tiers ────────────────────────────────────────────────
+// Tiers gate only how many operator devices may sync; every feature is in
+// every tier. Mirrors TIERS in machlog.js — keep the two in step.
+// Solo's plan id is fixed. Shop and Works plan ids live in Script Properties
+// (PLAN_ID_SHOP, PLAN_ID_WORKS) so they can be set without a code change.
+var TIER_DEVICE_LIMIT = { solo: 1, shop: 5, works: 1e9 }; // 1e9, not Infinity: it must survive JSON
+
+function planIdForTier(tier) {
+  if (tier === 'solo')  return RAZORPAY_PLAN_ID;
+  if (tier === 'shop')  return getSecret('PLAN_ID_SHOP');
+  if (tier === 'works') return getSecret('PLAN_ID_WORKS');
+  return '';
+}
+
+// '' for any plan that isn't one of ours (including legacy 'monthly' rows)
+function tierForPlan(planId) {
+  if (!planId) return '';
+  var tiers = ['solo', 'shop', 'works'];
+  for (var i = 0; i < tiers.length; i++) {
+    var p = planIdForTier(tiers[i]);
+    if (p && p === planId) return tiers[i];
+  }
+  return '';
+}
 
 function createRazorpaySubscription(email) {
   var keyId     = getSecret('RAZORPAY_KEY_ID');
@@ -450,7 +479,7 @@ function handleRazorpayWebhook(ss, data) {
   // so honouring it on its own would hand a free month of Machlog to anyone
   // who buys anything else with the same email address. Only trust a payment
   // that the payload ties to a subscription on OUR plan.
-  if (planId && planId !== RAZORPAY_PLAN_ID) {
+  if (planId && !tierForPlan(planId)) {
     return logged(ss, event, email, 'ignored: different plan (' + planId + ')');
   }
   if (event === 'payment.captured' && !sub) {
