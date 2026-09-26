@@ -64,3 +64,54 @@ test('subscribe refuses a tier whose plan id is not configured', () => {
   assert.equal(res.ok, false);
   assert.equal(env.fetchCalls.length, 0);
 });
+
+function tierChangeEnv(fetchImpl) {
+  const env = loadGas({ props: KEY_PROPS, fetch: fetchImpl });
+  post(env, subEvent('subscription.charged', { email: 'a@x.com', subId: 'sub_A' }));                        // Solo
+  post(env, subEvent('subscription.charged', { email: 'a@x.com', subId: 'sub_B', planId: 'plan_SHOP' }));   // → Shop
+  return env;
+}
+
+test('new subscription replaces the stored one and cancels it at Razorpay', () => {
+  const env = tierChangeEnv();
+  const row = findSub(env, 'a@x.com');
+  assert.equal(row[1], 'active');
+  assert.equal(row[3], 'sub_B');
+  assert.equal(row[4], 'plan_SHOP');
+  const cancel = env.fetchCalls.find(c => /\/subscriptions\/sub_A\/cancel$/.test(c.url));
+  assert.ok(cancel, 'expected a cancel call for sub_A');
+  assert.equal(cancel.method, 'post');
+});
+
+test("the old subscription's cancel event does not lock the shop out", () => {
+  const env = tierChangeEnv();
+  const res = post(env, subEvent('subscription.cancelled', { email: 'a@x.com', subId: 'sub_A', payId: null }));
+  assert.match(res, /ignored: superseded subscription sub_A/);
+  assert.equal(findSub(env, 'a@x.com')[1], 'active');
+});
+
+test('a late renewal on the old subscription neither switches back nor cancels the new one', () => {
+  const env = tierChangeEnv();
+  post(env, subEvent('subscription.charged', { email: 'a@x.com', subId: 'sub_A' }));
+  assert.equal(findSub(env, 'a@x.com')[3], 'sub_B');
+  assert.equal(env.fetchCalls.filter(c => /sub_B\/cancel/.test(c.url)).length, 0);
+});
+
+test('a cancel for a subscription id we never stored is ignored', () => {
+  const env = tierChangeEnv();
+  assert.match(post(env, subEvent('subscription.halted', { email: 'a@x.com', subId: 'sub_Z', payId: null })), /ignored/);
+  assert.equal(findSub(env, 'a@x.com')[1], 'active');
+});
+
+test('cancelling the current subscription still works', () => {
+  const env = tierChangeEnv();
+  assert.match(post(env, subEvent('subscription.cancelled', { email: 'a@x.com', subId: 'sub_B', payId: null })), /updated: cancelled/);
+});
+
+test('a failed Razorpay cancel is surfaced in the webhook log', () => {
+  const env = tierChangeEnv(url => (/\/cancel$/.test(url)
+    ? { getResponseCode: () => 400, getContentText: () => '{"error":{}}' }
+    : okResponse({})));
+  const last = env.rows('_WebhookLog').pop();
+  assert.match(last[3], /CANCEL FAILED/);
+});

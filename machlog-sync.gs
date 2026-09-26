@@ -274,6 +274,48 @@ function fetchRazorpaySubStatus(subId) {
   } catch(_) { return null; }
 }
 
+// Stop billing a subscription immediately. Used when a customer changes tier:
+// the new subscription is live, so the old one must not charge again.
+// POST /v1/subscriptions/:id/cancel with cancel_at_cycle_end false (Razorpay docs).
+function cancelRazorpaySubscription(subId) {
+  var keyId     = getSecret('RAZORPAY_KEY_ID');
+  var keySecret = getSecret('RAZORPAY_KEY_SECRET');
+  if (!keyId || !keySecret || !subId) return false;
+  try {
+    var res = UrlFetchApp.fetch('https://api.razorpay.com/v1/subscriptions/' + encodeURIComponent(subId) + '/cancel', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(keyId + ':' + keySecret) },
+      payload: JSON.stringify({ cancel_at_cycle_end: false }),
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) Logger.log('Cancel ' + subId + ' failed: ' + res.getContentText());
+    return res.getResponseCode() === 200;
+  } catch (err) {
+    Logger.log('cancelRazorpaySubscription error: ' + err.message);
+    return false;
+  }
+}
+
+// ─── Superseded subscriptions ─────────────────────────────────────
+// After a tier change the old subscription's events keep arriving (its
+// cancellation, or a renewal already in flight). Any event for a superseded
+// id is ignored so it can't lock the customer out or switch them back.
+function isSubSuperseded(ss, subId) {
+  if (!subId) return false;
+  var sh = ss.getSheetByName('_SupersededSubs');
+  if (!sh || sh.getLastRow() < 2) return false;
+  var rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) if (String(rows[i][0]) === subId) return true;
+  return false;
+}
+
+function markSubSuperseded(ss, subId, email) {
+  var sh = getSheet(ss, '_SupersededSubs');
+  if (sh.getLastRow() === 0) header(sh, ['SubId', 'Email', 'SupersededAt'], NAVY);
+  sh.appendRow([safeCell(subId), safeCell(email), new Date().toISOString()]);
+}
+
 // ─── GET: license activation & verification ───────────────────────
 function doGet(e) {
   try {
@@ -493,6 +535,10 @@ function handleRazorpayWebhook(ss, data) {
 
   if (!email) return logged(ss, event, '', 'no email in payload');
 
+  if (subId && isSubSuperseded(ss, subId)) {
+    return logged(ss, event, email, 'ignored: superseded subscription ' + subId);
+  }
+
   // Replay protection — reject if we've seen this payment before
   if (paymentId && isPaymentSeen(ss, paymentId)) {
     Logger.log('Duplicate webhook rejected: ' + paymentId);
@@ -527,13 +573,31 @@ function handleRazorpayWebhook(ss, data) {
     var rows = sheet.getDataRange().getValues();
     for (var i = 1; i < rows.length; i++) {
       if (String(rows[i][0]).toLowerCase().trim() !== email) continue;
-      // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified
+      // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified | ShopId
+      var storedSubId = String(rows[i][3] || '');
+      var switched = !!(subId && storedSubId && subId !== storedSubId);
+
+      // A stop-type event only counts for the subscription we hold. Anything
+      // else is noise from a subscription this customer already moved off.
+      if (!isActive && switched) {
+        return logged(ss, event, email, 'ignored: cancel for ' + subId + ', current is ' + storedSubId);
+      }
+
+      var note = '';
+      if (isActive && switched) {
+        // Tier change: the customer paid on a new subscription. Stop billing the old one.
+        markSubSuperseded(ss, storedSubId, email);
+        note = cancelRazorpaySubscription(storedSubId)
+          ? ' (old ' + storedSubId + ' cancelled)'
+          : ' (old ' + storedSubId + ' CANCEL FAILED — cancel it in the Razorpay dashboard)';
+      }
+
       sheet.getRange(i + 1, 2).setValue(status);
       if (expiry)   sheet.getRange(i + 1, 3).setValue(expiry);
       if (subId)    sheet.getRange(i + 1, 4).setValue(subId);
       if (planId)   sheet.getRange(i + 1, 5).setValue(planId);
       if (paymentId) recordPayment(ss, paymentId, email, event);
-      return logged(ss, event, email, 'updated: ' + status);
+      return logged(ss, event, email, 'updated: ' + status + note);
     }
 
     // New subscriber
