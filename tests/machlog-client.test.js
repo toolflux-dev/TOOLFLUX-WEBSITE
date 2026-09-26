@@ -128,3 +128,13 @@ test('a later normal pull clears the flag', async () => {
   await c.flush(); await c.flush();
   assert.equal(c.run('db.settings.overLimit'), false);
 });
+
+test('subscribe asks the server for the selected tier', async () => {
+  const c = loadClient();
+  c.ctx.__els['#pw-email'] = { value: 'o@x.com', focus() {} };   // $('#pw-email') reads this
+  c.run(`ui.pwTier = 'shop'; requireOwner = () => true; window.open = () => {};`);
+  c.ctx.__nextJson = { ok: true, url: 'https://rzp.io/i/x' };
+  await c.run('startSubscription()');
+  const call = c.fetchCalls.find(f => /action=subscribe/.test(f.url));
+  assert.match(call.url, /action=subscribe&email=o%40x\.com&tier=shop/);
+});

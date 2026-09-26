@@ -542,7 +542,7 @@ function trialBanner() {
   if (isReadOnly()) {
     return `<div class="trial-bar ro-bar">
       <span class="trial-bar-txt"><strong>Read-only</strong> — subscription ended. Your data is safe and still viewable; subscribe to log production again.</span>
-      <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe &#8377;299/mo</button>
+      <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe — from &#8377;299/mo</button>
     </div>`;
   }
   if (getLicenseStatus() !== 'trial') return '';
@@ -3003,21 +3003,38 @@ function vPaywall() {
   const expired = getLicenseStatus() === 'expired';
   // A stored license that failed validation or lapsed: guide re-verification,
   // never alarm. All app data stays intact — activation simply refreshes it.
-  const hadLicense = !!(db.settings.license && db.settings.license.token);
-  const title   = hadLicense ? 'License verification required'
+  const licensed = getLicenseStatus() === 'licensed';
+  const hadLicense = !licensed && !!(db.settings.license && db.settings.license.token);
+  const title   = licensed ? 'Change your plan'
+    : hadLicense ? 'License verification required'
     : expired ? 'Your free trial has ended' : 'Subscribe to TOOLFLUX';
-  const subtext = hadLicense
+  const subtext = licensed
+    ? 'Plans differ only in how many operator phones can sync. Your current plan is cancelled automatically when the new one starts.'
+    : hadLicense
     ? 'Your license needs a quick re-verification. Enter your subscription email below — your data is untouched.'
     : expired
     ? 'Activate a subscription to keep tracking your tooling costs and CPC.'
     : 'Unlock unlimited access. Your data stays on your device, always offline.';
+  const cur = licensed ? getTier() : null;
+  if (!TIERS[ui.pwTier]) ui.pwTier = cur || nextTierFor((db.settings.operators || []).length);
+  const sel = ui.pwTier;
+  const tierCards = TIER_ORDER.map(t => {
+    const T = TIERS[t];
+    const dev = T.devices === Infinity ? 'Unlimited operator phones' : `${T.devices} operator phone${T.devices === 1 ? '' : 's'}`;
+    return `<button type="button" class="tier-opt${t === sel ? ' sel' : ''}" data-tier="${t}" onclick="pwSelectTier('${t}')" aria-pressed="${t === sel}">
+      <span class="tier-name">${T.name}${t === cur ? ' <em>· current</em>' : ''}</span>
+      <span class="tier-price">${tierPrice(t)}<small>/mo</small></span>
+      <span class="tier-dev">${dev}</span>
+    </button>`;
+  }).join('');
   return `
     <div class="paywall-wrap">
       <div class="paywall-card">
         <div class="paywall-logo">TOOLFLUX</div>
         <div class="paywall-title">${esc(title)}</div>
         <p class="paywall-sub">${esc(subtext)}</p>
-        <div class="paywall-price">₹299 <span>/ month</span></div>
+        <div class="tier-opts" role="group" aria-label="Choose a plan">${tierCards}</div>
+        <div class="tier-note">Every plan includes every feature.</div>
         <div class="sub-benefits" style="margin-top:1.2rem">
           <div class="sub-benefit">Unlimited jobs and tooling stations</div>
           <div class="sub-benefit">Insert lifecycle tracking per corner</div>
@@ -3029,9 +3046,7 @@ function vPaywall() {
           <label class="paywall-activate-label" for="pw-email">Your email — used for billing and to unlock the app</label>
           <input id="pw-email" type="email" placeholder="you@workshop.com" style="width:100%;margin-top:.4rem" autocomplete="email" value="${esc(db.settings.email||'')}">
         </div>
-        <button id="pw-sub-btn" class="btn btn-pri paywall-sub-btn" onclick="startSubscription()">
-          Subscribe — ₹299 / month
-        </button>
+        <button id="pw-sub-btn" class="btn btn-pri paywall-sub-btn" onclick="startSubscription()">${subscribeLabel(sel)}</button>
         <div class="paywall-activate">
           <div class="paywall-activate-label">Already paid? Unlock this device with the same email</div>
           <div style="margin-top:.5rem">
@@ -3041,6 +3056,19 @@ function vPaywall() {
         ${!expired ? `<div style="margin-top:1.2rem;text-align:center"><button class="btn btn-ghost" style="font-size:.75rem" onclick="navigate('jobs')">&#8592; Back to App</button></div>` : ''}
       </div>
     </div>`;
+}
+
+// Patch the DOM instead of re-rendering, so a half-typed email isn't lost
+function pwSelectTier(t) {
+  if (!TIERS[t]) return;
+  ui.pwTier = t;
+  document.querySelectorAll('.tier-opt').forEach(el => {
+    const on = el.dataset.tier === t;
+    el.classList.toggle('sel', on);
+    el.setAttribute('aria-pressed', String(on));
+  });
+  const btn = document.getElementById('pw-sub-btn');
+  if (btn) btn.textContent = subscribeLabel(t);
 }
 
 function vSetup() {
@@ -4284,19 +4312,24 @@ async function startSubscription() {
     if (emailEl) emailEl.focus();
     return;
   }
+  const tier = TIERS[ui.pwTier] ? ui.pwTier : 'solo';
+  const changing = getLicenseStatus() === 'licensed';
+  if (changing && tier === getTier()) { toast(`You're already on ${TIERS[tier].name}`, 'warn'); return; }
   const btn = $('#pw-sub-btn');
-  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = 'Subscribe — ₹299 / month'; } };
+  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = subscribeLabel(tier); } };
   if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
 
   try {
-    const res = await fetch(SYNC_URL + '?action=subscribe&email=' + encodeURIComponent(email));
+    const res = await fetch(SYNC_URL + '?action=subscribe&email=' + encodeURIComponent(email) + '&tier=' + tier);
     if (!res.ok) throw new Error('Server error ' + res.status);
     const data = await res.json();
     if (data.ok && data.url) {
       db.settings.email = email;
       saveDB();
       window.open(data.url, '_blank');
-      toast('Complete the payment, then tap Activate', 'ok', 6000);
+      toast(changing
+        ? 'Complete the payment, then tap Activate — your old plan is cancelled automatically'
+        : 'Complete the payment, then tap Activate', 'ok', 7000);
     } else {
       toast(data.message || 'Could not start the subscription.', 'bad');
     }
@@ -4354,7 +4387,7 @@ Object.assign(window, {
   copyShiftSummary, printShiftProof, whatsappShiftSummary,
   installApp, dismissNudge,
   startTutorial, tutNext, tutPrev, skipTutorial, replayTutorial,
-  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync, startSubscription,
+  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync, startSubscription, pwSelectTier,
 });
 
 // ── init ──────────────────────────────────────────────────────────
