@@ -61,3 +61,27 @@ test('subscribeLabel formats the price', () => {
   const c = loadClient();
   assert.equal(c.run(`subscribeLabel('works')`), 'Subscribe — Works ₹2,499 / month');
 });
+
+test('licenseQuery carries email and shop id', () => {
+  const c = loadClient();
+  const q = c.run(`licenseQuery('o@x.com')`);
+  assert.match(q, /^&email=o%40x\.com&shop=[A-Za-z0-9_-]+$/);
+});
+
+test('licenseFromActivation keeps a known tier, defaults to Solo', () => {
+  const c = loadClient();
+  assert.equal(c.run(`licenseFromActivation({ token: '${TOKEN}', tier: 'shop' }, 'o@x.com').tier`), 'shop');
+  assert.equal(c.run(`licenseFromActivation({ token: '${TOKEN}' }, 'o@x.com').tier`), 'solo');
+  assert.equal(c.run(`licenseFromActivation({ token: '${TOKEN}', tier: 'x' }, 'o@x.com').tier`), 'solo');
+});
+
+test('verification adopts a changed tier and sends the shop id', async () => {
+  const c = loadClient();
+  licensed(c, 'solo');
+  c.run(`db.settings.license.lastVerified = new Date(Date.now() - 5 * 86400000).toISOString();`);
+  c.ctx.__nextJson = { valid: true, tier: 'works', expiresAt: new Date(Date.now() + 30 * 86400000).toISOString() };
+  c.run('verifyLicenseIfNeeded(true)');
+  await c.flush(); await c.flush();
+  assert.equal(c.run('db.settings.license.tier'), 'works');
+  assert.match(c.fetchCalls[0].url, /&shop=/);
+});

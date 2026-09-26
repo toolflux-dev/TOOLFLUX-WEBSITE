@@ -4184,6 +4184,23 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// Query string for activate/verify. The shop id links this subscription to
+// the shop so the server can count operator devices against its tier.
+function licenseQuery(email) {
+  return '&email=' + encodeURIComponent(email) + '&shop=' + encodeURIComponent(getShopId());
+}
+
+function licenseFromActivation(data, email) {
+  return {
+    token: data.token,
+    email: email,
+    expiresAt: data.expiresAt || null,
+    plan: data.plan || 'monthly',
+    tier: TIERS[data.tier] ? data.tier : 'solo',
+    lastVerified: new Date().toISOString(),
+  };
+}
+
 // ── license: background re-verification ──────────────────────────
 // Silently re-verifies the stored token against the server every 7 days.
 // On failure: if server says expired, clears the license and re-renders.
@@ -4200,7 +4217,7 @@ function verifyLicenseIfNeeded(force) {
   const daysSince = lastVerified ? (Date.now() - lastVerified) / MS_DAY : 999;
   if (!force && daysSince < 3) return;
 
-  const url = SYNC_URL + '?action=verify&email=' + encodeURIComponent(lic.email) + '&token=' + encodeURIComponent(lic.token);
+  const url = SYNC_URL + '?action=verify' + licenseQuery(lic.email) + '&token=' + encodeURIComponent(lic.token);
   fetch(url)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
@@ -4209,6 +4226,7 @@ function verifyLicenseIfNeeded(force) {
         raw.lastVerified = new Date().toISOString();
         raw.verifyFails = 0;
         if (data.expiresAt) raw.expiresAt = data.expiresAt;
+        if (TIERS[data.tier]) raw.tier = data.tier; // picks up a tier change made on another device
         anchorLastSeen(); // confirmed server contact — re-anchor the clock guard
         saveDB();
       } else if (data.expired) {
@@ -4280,19 +4298,13 @@ async function activateLicense() {
   if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
 
   try {
-    const url = SYNC_URL + '?action=activate&email=' + encodeURIComponent(email);
+    const url = SYNC_URL + '?action=activate' + licenseQuery(email);
     const res = await fetch(url);
     if (!res.ok) throw new Error('Server error ' + res.status);
     const data = await res.json();
 
     if (data.valid && data.token) {
-      db.settings.license = {
-        token: data.token,
-        email: email,
-        expiresAt: data.expiresAt || null,
-        plan: data.plan || 'monthly',
-        lastVerified: new Date().toISOString(),
-      };
+      db.settings.license = licenseFromActivation(data, email);
       db.settings.email = email;
       saveDB();
       toast('License activated! Welcome to TOOLFLUX.', 'ok');
