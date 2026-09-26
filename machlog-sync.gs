@@ -339,8 +339,15 @@ function doGet(e) {
     if (action === 'pull') { // operator fetches the shop's master document
       var shop = cleanShopId(e.parameter.shop);
       var master = readMaster(ss, shop);
-      if (!master) return jsonOk({ empty: true });
-      return ContentService.createTextOutput(master).setMimeType(ContentService.MimeType.JSON);
+      // Uploads are no-cors (unreadable), so the device learns it is over its
+      // tier's limit here. It still gets the master so its screen stays current.
+      var overLimit = e.parameter.device ? !admitDevice(ss, shop, e.parameter.device, false) : false;
+      if (!master) return jsonOk(overLimit ? { empty: true, overLimit: true } : { empty: true });
+      if (!overLimit) return ContentService.createTextOutput(master).setMimeType(ContentService.MimeType.JSON);
+      var m;
+      try { m = JSON.parse(master); } catch (_) { m = {}; }
+      m.overLimit = true;
+      return jsonOk(m);
     }
     if (action === 'events') { // owner fetches operators' pending production events
       return jsonOk({ events: readEvents(ss, cleanShopId(e.parameter.shop)) });
@@ -395,8 +402,8 @@ function doPost(e) {
     // Operator device uploading append-only production events
     if (data.role === 'operator' && data.events) {
       var oshop = cleanShopId(data.shopId);
-      if (oshop) appendEvents(SpreadsheetApp.openById(SPREADSHEET_ID), oshop, data.events);
-      return ok('events-received');
+      var outcome = oshop ? appendEvents(SpreadsheetApp.openById(SPREADSHEET_ID), oshop, data.events, data.deviceId) : '';
+      return ok(outcome === 'over-limit' ? 'over-limit' : 'events-received');
     }
 
     // Regular machlog data sync (owner) — validate customerId before using it
@@ -655,6 +662,59 @@ function getSheet(ss, name) {
 // across cells because one cell holds at most 50k chars.
 function cleanShopId(v) { return String(v || '').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40); }
 
+// ─── Operator device registry (tier limits) ──────────────────────
+// A device is the operator phone's permanent installId. Builds from before
+// tiers send none and are counted together as one 'legacy' device.
+var DEVICE_ACTIVE_MS = 30 * 24 * 3600 * 1000;
+
+// How many operator devices this shop may sync. Only a shop with an ACTIVE
+// subscription linked at activation is limited: a trial shop runs at Works
+// level by design, and a lapsed shop's owner app is already read-only.
+function deviceLimitForShop(ss, shopId) {
+  var sh = ss.getSheetByName('_Subscriptions');
+  if (!shopId || !sh || sh.getLastRow() < 2) return TIER_DEVICE_LIMIT.works;
+  var rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][6] || '') !== shopId) continue;
+    if (String(rows[i][1]).toLowerCase() !== 'active') continue;
+    return TIER_DEVICE_LIMIT[tierForRow(rows[i])];
+  }
+  return TIER_DEVICE_LIMIT.works;
+}
+
+// True when this device may sync for the shop. Devices active in the last
+// 30 days are ranked by when they first joined; only the first `limit` are
+// admitted, so a downgrade takes effect at once. With register=true an
+// admitted device is recorded/refreshed (uploads); pulls only ask.
+function admitDevice(ss, shopId, deviceId, register) {
+  var dev   = cleanShopId(deviceId) || 'legacy'; // same safe charset as shop ids
+  var limit = deviceLimitForShop(ss, shopId);
+  var sh = getSheet(ss, '_ShopDevices');
+  if (sh.getLastRow() === 0) header(sh, ['ShopId', 'DeviceId', 'FirstSeen', 'LastSeen'], NAVY);
+
+  var rows = sh.getDataRange().getValues(), now = Date.now(), active = [], mineRow = -1;
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) !== shopId) continue;
+    if (String(rows[i][1]) === dev) mineRow = i;
+    var last = Date.parse(rows[i][3]);
+    if (!isNaN(last) && now - last < DEVICE_ACTIVE_MS) {
+      active.push({ id: String(rows[i][1]), first: Date.parse(rows[i][2]) || 0 });
+    }
+  }
+  active.sort(function (a, b) { return a.first - b.first; }); // stable: ties keep row order
+
+  var rank = -1;
+  for (var k = 0; k < active.length; k++) { if (active[k].id === dev) { rank = k; break; } }
+  var admitted = rank >= 0 ? rank < limit : active.length < limit;
+
+  if (admitted && register) {
+    var stamp = new Date(now).toISOString();
+    if (mineRow > 0) sh.getRange(mineRow + 1, 4).setValue(stamp);
+    else sh.appendRow([shopId, dev, stamp, stamp]);
+  }
+  return admitted;
+}
+
 // Strip every cost/price figure before a master reaches operators. Operators
 // need designations, corner counts and stock quantities to log against — never
 // the money. Deep-cloned so the owner's own sheet write is untouched.
@@ -697,11 +757,14 @@ function readMaster(ss, shopId) {
   return chunks.map(function (c) { return c[1]; }).join('');
 }
 
-function appendEvents(ss, shopId, events) {
+function appendEvents(ss, shopId, events, deviceId) {
   if (!shopId || !events || !events.length) return;
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch (e) { return; }
   try {
+    // Over the tier's device limit: append nothing. The device keeps its
+    // queue and learns why from its next ?action=pull.
+    if (!admitDevice(ss, shopId, deviceId, true)) return 'over-limit';
     var sh = ss.getSheetByName('_ShopEvents');
     if (!sh) { sh = ss.insertSheet('_ShopEvents'); sh.appendRow(['ShopId', 'EventId', 'Kind', 'Payload', 'CreatedAt']); }
     var data = sh.getDataRange().getValues(), seen = {}, gc = [], cutoff = Date.now() - 7 * 24 * 3600 * 1000;
