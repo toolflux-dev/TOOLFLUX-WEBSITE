@@ -85,3 +85,46 @@ test('verification adopts a changed tier and sends the shop id', async () => {
   assert.equal(c.run('db.settings.license.tier'), 'works');
   assert.match(c.fetchCalls[0].url, /&shop=/);
 });
+
+function operator(c) {
+  c.run(`db.settings.deviceRole = 'operator'; db.settings.shopId = 'shop-1';
+         db.outbox = [{ id: 'e1', kind: 'production', jobId: 'j', entry: { id: 'e1' } }];`);
+}
+
+test('operator upload carries this device id', () => {
+  const c = loadClient();
+  operator(c);
+  c.run('operatorSyncTick()');
+  const push = c.fetchCalls.find(f => f.opts.method === 'POST');
+  const body = JSON.parse(push.opts.body);
+  assert.equal(body.deviceId, c.run('db.settings.installId'));
+});
+
+test('operator pull asks as this device', () => {
+  const c = loadClient();
+  operator(c);
+  c.run('operatorSyncTick()');
+  const pull = c.fetchCalls.find(f => /action=pull/.test(f.url));
+  assert.match(pull.url, new RegExp('&device=' + c.run('db.settings.installId')));
+});
+
+test('an over-limit pull flags the device and keeps its queue', async () => {
+  const c = loadClient();
+  operator(c);
+  c.ctx.__nextJson = { overLimit: true, jobs: [] };
+  c.run('operatorSyncTick()');
+  await c.flush(); await c.flush();
+  assert.equal(c.run('db.settings.overLimit'), true);
+  assert.equal(c.run('syncStatusInfo().state'), 'blocked');
+  assert.equal(c.run('db.outbox.length'), 1);
+});
+
+test('a later normal pull clears the flag', async () => {
+  const c = loadClient();
+  operator(c);
+  c.run('db.settings.overLimit = true;');
+  c.ctx.__nextJson = { jobs: [] };
+  c.run('operatorSyncTick()');
+  await c.flush(); await c.flush();
+  assert.equal(c.run('db.settings.overLimit'), false);
+});

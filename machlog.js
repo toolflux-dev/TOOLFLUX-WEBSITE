@@ -277,14 +277,21 @@ function operatorSyncTick() {
     try {
       fetch(SYNC_URL, {
         method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ role: 'operator', shopId: getShopId(), events: db.outbox }),
+        body: JSON.stringify({ role: 'operator', shopId: getShopId(), deviceId: db.settings.installId, events: db.outbox }),
       }).catch(() => {});
     } catch (_) {}
   }
   // 2) pull the master document and adopt the shop's current state
-  fetch(SYNC_URL + '?action=pull&shop=' + encodeURIComponent(getShopId()))
+  fetch(SYNC_URL + '?action=pull&shop=' + encodeURIComponent(getShopId()) + '&device=' + encodeURIComponent(db.settings.installId || ''))
     .then(r => r.ok ? r.json() : null)
-    .then(m => { if (m && !m.empty && Array.isArray(m.jobs)) adoptMaster(m); })
+    .then(m => {
+      if (!m) return;
+      // Over the shop's tier limit: the server keeps refusing this phone's
+      // uploads. Entries stay queued here and send once the owner upgrades.
+      const over = !!m.overLimit;
+      if (over !== !!db.settings.overLimit) { db.settings.overLimit = over; saveDB(); patchSyncStatus(); }
+      if (!m.empty && Array.isArray(m.jobs)) adoptMaster(m);
+    })
     .catch(() => {});
 }
 
@@ -346,6 +353,7 @@ function syncStatusInfo() {
   const pending = (db.outbox || []).length;
   const online = navigator.onLine !== false;
   if (!online)   return { state: 'offline', label: 'Offline', detail: pending ? `${pending} to send when back online` : 'Will sync when back online' };
+  if (db.settings.overLimit) return { state: 'blocked', label: 'Not syncing', detail: 'Phone limit reached — ask the owner to upgrade. Entries are kept on this phone.' };
   if (pending)   return { state: 'pending', label: 'Sending…', detail: `${pending} production ${pending === 1 ? 'entry' : 'entries'}` };
   if (lastOk)    return { state: 'ok', label: 'Synced', detail: 'Updated ' + fmtAgo(lastOk) };
   return { state: 'idle', label: 'Connecting…', detail: 'Reaching your shop' };

@@ -313,6 +313,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1.4rem 6rem }
 .op-sync.pending .op-sync-dot { background: var(--warn); animation: opblink 1.1s ease-in-out infinite } .op-sync.pending .op-sync-lbl { color: #8a5200 }
 .op-sync.offline { background: var(--off2) }
 .op-sync.offline .op-sync-dot { background: var(--mut) } .op-sync.offline .op-sync-lbl { color: var(--navy) }
+.op-sync.blocked { background: #fbecea; border-color: #e7bdb6 }
+.op-sync.blocked .op-sync-dot { background: var(--bad) } .op-sync.blocked .op-sync-lbl { color: var(--bad) }
 .op-sync.idle { background: var(--teal-tint); border-color: rgba(0,151,178,.35) }
 .op-sync.idle .op-sync-dot { background: var(--teal); animation: opblink 1.1s ease-in-out infinite } .op-sync.idle .op-sync-lbl { color: var(--teal-d) }
 @keyframes opblink { 0%,100%{opacity:1} 50%{opacity:.35} }
