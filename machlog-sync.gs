@@ -46,6 +46,10 @@ const SPREADSHEET_ID = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
 //
 //   RAZORPAY_KEY_ID      Your Razorpay API key ID (optional). Enables live
 //   RAZORPAY_KEY_SECRET  subscription verification at activation time.
+//
+//   PLAN_ID_SHOP         Razorpay plan id for the ₹799/month Shop tier.
+//   PLAN_ID_WORKS        Razorpay plan id for the ₹2,499/month Works tier.
+//                        Until set, those tiers can't be bought (Solo still can).
 // ──────────────────────────────────────────────────────────────────
 
 function getSecret(name) {
@@ -75,10 +79,15 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-// Verify Razorpay webhook signature.
-// Razorpay sends X-Razorpay-Signature: HMAC-SHA256(rawBody, webhookSecret).
-// GAS may or may not expose e.headers — we try it, then fall back to URL param
-// verified with safeEqual (prevents timing oracle on the URL param comparison).
+// Verify Razorpay webhook authenticity.
+//
+// ⚠️ Apps Script web apps do NOT expose request headers — the doPost event
+// object carries only queryString/parameter/parameters/pathInfo/contentLength/
+// postData. So the X-Razorpay-Signature header Razorpay sends is UNREADABLE
+// here, and pasting the secret into the dashboard's "Secret" field alone
+// authenticates nothing. The webhook URL MUST carry ?wh_secret=<WEBHOOK_SECRET>
+// or every delivery is rejected. The header path below stays in case GAS ever
+// starts exposing headers; today it never fires.
 function verifyWebhookSecret(e, rawBody) {
   var secret = getSecret('WEBHOOK_SECRET');
   if (!secret) return false;
@@ -158,6 +167,25 @@ function recordPayment(ss, paymentId, email, event) {
   sheet.appendRow([paymentId, email, event, new Date().toISOString()]);
 }
 
+// ─── Webhook delivery log ─────────────────────────────────────────
+// Every inbound webhook — accepted, ignored OR rejected — lands here.
+// Razorpay's dashboard shows a 200 for rejected deliveries (we always
+// return 200 so it stops retrying), so without this sheet a wrong secret
+// looks identical to a working webhook. Check this tab first when a
+// customer pays and Activate still says "no active subscription".
+
+var WEBHOOK_LOG_MAX = 200;
+
+function logWebhook(ss, event, email, result) {
+  try {
+    var sh = getSheet(ss, '_WebhookLog');
+    if (sh.getLastRow() === 0) header(sh, ['ReceivedAt', 'Event', 'Email', 'Result'], NAVY);
+    sh.appendRow([new Date().toISOString(), safeCell(event), safeCell(email), safeCell(result)]);
+    var extra = sh.getLastRow() - 1 - WEBHOOK_LOG_MAX;
+    if (extra > 0) sh.deleteRows(2, extra); // trim oldest, keep the header
+  } catch (_) {}
+}
+
 // ─── Live Razorpay API verification ──────────────────────────────
 // If RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are set, activation calls
 // the Razorpay REST API to confirm the subscription is actually active,
@@ -167,13 +195,40 @@ function recordPayment(ss, paymentId, email, event) {
 // The ₹299/month recurring plan. Razorpay's dashboard can only issue
 // one-subscriber links, so the app asks us to mint a subscription per
 // customer on demand and sends them to its short_url to authorise.
-var RAZORPAY_PLAN_ID = 'plan_T1e4VFqtRs0qPR';
+var RAZORPAY_PLAN_ID = 'plan_T1e4VFqtRs0qPR'; // Solo — the original ₹299 plan
 var SUBSCRIPTION_CYCLES = 120; // ~10 years of monthly billing; cancel anytime
 
-function createRazorpaySubscription(email) {
+// ─── Pricing tiers ────────────────────────────────────────────────
+// Tiers gate only how many operator devices may sync; every feature is in
+// every tier. Mirrors TIERS in machlog.js — keep the two in step.
+// Solo's plan id is fixed. Shop and Works plan ids live in Script Properties
+// (PLAN_ID_SHOP, PLAN_ID_WORKS) so they can be set without a code change.
+var TIER_DEVICE_LIMIT = { solo: 1, shop: 5, works: 1e9 }; // 1e9, not Infinity: it must survive JSON
+
+function planIdForTier(tier) {
+  if (tier === 'solo')  return RAZORPAY_PLAN_ID;
+  if (tier === 'shop')  return getSecret('PLAN_ID_SHOP');
+  if (tier === 'works') return getSecret('PLAN_ID_WORKS');
+  return '';
+}
+
+// '' for any plan that isn't one of ours (including legacy 'monthly' rows)
+function tierForPlan(planId) {
+  if (!planId) return '';
+  var tiers = ['solo', 'shop', 'works'];
+  for (var i = 0; i < tiers.length; i++) {
+    var p = planIdForTier(tiers[i]);
+    if (p && p === planId) return tiers[i];
+  }
+  return '';
+}
+
+function createRazorpaySubscription(email, tier) {
   var keyId     = getSecret('RAZORPAY_KEY_ID');
   var keySecret = getSecret('RAZORPAY_KEY_SECRET');
   if (!keyId || !keySecret) return { ok: false, message: 'Payments not configured. Please contact TOOLFLUX.' };
+  var planId = planIdForTier(tier);
+  if (!planId) return { ok: false, message: 'That plan is not available yet. Please contact TOOLFLUX.' };
 
   try {
     var res = UrlFetchApp.fetch('https://api.razorpay.com/v1/subscriptions', {
@@ -181,12 +236,12 @@ function createRazorpaySubscription(email) {
       contentType: 'application/json',
       headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(keyId + ':' + keySecret) },
       payload: JSON.stringify({
-        plan_id: RAZORPAY_PLAN_ID,
+        plan_id: planId,
         total_count: SUBSCRIPTION_CYCLES,
         customer_notify: 1,
         // Stamp the email so the webhook can always resolve the customer,
         // even on events whose payload carries no payment entity.
-        notes: { email: email, product: 'TOOLFLUX Machining Log' },
+        notes: { email: email, product: 'TOOLFLUX Machining Log', tier: tier },
       }),
       muteHttpExceptions: true,
     });
@@ -219,6 +274,48 @@ function fetchRazorpaySubStatus(subId) {
   } catch(_) { return null; }
 }
 
+// Stop billing a subscription immediately. Used when a customer changes tier:
+// the new subscription is live, so the old one must not charge again.
+// POST /v1/subscriptions/:id/cancel with cancel_at_cycle_end false (Razorpay docs).
+function cancelRazorpaySubscription(subId) {
+  var keyId     = getSecret('RAZORPAY_KEY_ID');
+  var keySecret = getSecret('RAZORPAY_KEY_SECRET');
+  if (!keyId || !keySecret || !subId) return false;
+  try {
+    var res = UrlFetchApp.fetch('https://api.razorpay.com/v1/subscriptions/' + encodeURIComponent(subId) + '/cancel', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'Authorization': 'Basic ' + Utilities.base64Encode(keyId + ':' + keySecret) },
+      payload: JSON.stringify({ cancel_at_cycle_end: false }),
+      muteHttpExceptions: true,
+    });
+    if (res.getResponseCode() !== 200) Logger.log('Cancel ' + subId + ' failed: ' + res.getContentText());
+    return res.getResponseCode() === 200;
+  } catch (err) {
+    Logger.log('cancelRazorpaySubscription error: ' + err.message);
+    return false;
+  }
+}
+
+// ─── Superseded subscriptions ─────────────────────────────────────
+// After a tier change the old subscription's events keep arriving (its
+// cancellation, or a renewal already in flight). Any event for a superseded
+// id is ignored so it can't lock the customer out or switch them back.
+function isSubSuperseded(ss, subId) {
+  if (!subId) return false;
+  var sh = ss.getSheetByName('_SupersededSubs');
+  if (!sh || sh.getLastRow() < 2) return false;
+  var rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) if (String(rows[i][0]) === subId) return true;
+  return false;
+}
+
+function markSubSuperseded(ss, subId, email) {
+  var sh = getSheet(ss, '_SupersededSubs');
+  if (sh.getLastRow() === 0) header(sh, ['SubId', 'Email', 'SupersededAt'], NAVY);
+  sh.appendRow([safeCell(subId), safeCell(email), new Date().toISOString()]);
+}
+
 // ─── GET: license activation & verification ───────────────────────
 function doGet(e) {
   try {
@@ -228,21 +325,52 @@ function doGet(e) {
 
     if (action === 'subscribe') { // mint a monthly subscription link for this customer
       if (!isValidEmail(email)) return jsonOk({ ok: false, message: 'Enter a valid email address.' });
+      // Builds from before tiers send no tier: they only ever sold the ₹299 plan.
+      var tier = String(e.parameter.tier || 'solo').toLowerCase();
+      if (!TIER_DEVICE_LIMIT.hasOwnProperty(tier)) return jsonOk({ ok: false, message: 'Unknown plan.' });
       if (!checkRateLimit(ss, email)) return jsonOk({ ok: false, message: 'Too many attempts. Try again in 15 minutes.' });
-      return jsonOk(createRazorpaySubscription(email));
+      return jsonOk(createRazorpaySubscription(email, tier));
     }
-    if (action === 'activate') return jsonOk(handleActivation(ss, email));
-    if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || ''));
+    var shopParam = cleanShopId(e.parameter.shop);
+    if (action === 'activate') return jsonOk(handleActivation(ss, email, shopParam));
+    if (action === 'verify')   return jsonOk(handleVerification(ss, email, e.parameter.token || '', shopParam));
 
     // ── multi-device shop sync ──
     if (action === 'pull') { // operator fetches the shop's master document
       var shop = cleanShopId(e.parameter.shop);
       var master = readMaster(ss, shop);
-      if (!master) return jsonOk({ empty: true });
-      return ContentService.createTextOutput(master).setMimeType(ContentService.MimeType.JSON);
+      // Uploads are no-cors (unreadable), so the device learns it is over its
+      // tier's limit here. It still gets the master so its screen stays current.
+      var overLimit = e.parameter.device ? !admitDevice(ss, shop, e.parameter.device, false) : false;
+      if (!master) return jsonOk(overLimit ? { empty: true, overLimit: true } : { empty: true });
+      if (!overLimit) return ContentService.createTextOutput(master).setMimeType(ContentService.MimeType.JSON);
+      var m;
+      try { m = JSON.parse(master); } catch (_) { m = {}; }
+      m.overLimit = true;
+      return jsonOk(m);
     }
     if (action === 'events') { // owner fetches operators' pending production events
       return jsonOk({ events: readEvents(ss, cleanShopId(e.parameter.shop)) });
+    }
+
+    // Owner diagnostic: last 20 webhook deliveries. Guarded by the same secret
+    // that guards the webhook itself, so only whoever configured it can read it.
+    // Open the SYNC_URL with ?action=whlog&wh_secret=<WEBHOOK_SECRET> right after
+    // a test payment — if the list is empty, Razorpay never reached this script.
+    if (action === 'whlog') {
+      if (!safeEqual(e.parameter.wh_secret || '', getSecret('WEBHOOK_SECRET') || ' ')) {
+        return jsonOk({ error: 'Unauthorized' });
+      }
+      var wsh = ss.getSheetByName('_WebhookLog');
+      if (!wsh || wsh.getLastRow() < 2) {
+        return jsonOk({ deliveries: [], note: 'No webhooks received yet.' });
+      }
+      var wrows = wsh.getDataRange().getValues();
+      var out = [];
+      for (var w = wrows.length - 1; w >= 1 && out.length < 20; w--) {
+        out.push({ at: String(wrows[w][0]), event: String(wrows[w][1]), email: String(wrows[w][2]), result: String(wrows[w][3]) });
+      }
+      return jsonOk({ deliveries: out });
     }
 
     return jsonOk({ error: 'Unknown action' });
@@ -261,19 +389,21 @@ function doPost(e) {
 
     // Detect Razorpay webhook by top-level 'event' field
     if (data.event && data.payload) {
+      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       if (!verifyWebhookSecret(e, raw)) {
         Logger.log('Webhook rejected: bad secret');
+        logWebhook(ss, data.event, '',
+          'REJECTED: secret missing or wrong — the webhook URL must end in ?wh_secret=<WEBHOOK_SECRET>');
         return ok('unauthorized');
       }
-      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       return ok(handleRazorpayWebhook(ss, data));
     }
 
     // Operator device uploading append-only production events
     if (data.role === 'operator' && data.events) {
       var oshop = cleanShopId(data.shopId);
-      if (oshop) appendEvents(SpreadsheetApp.openById(SPREADSHEET_ID), oshop, data.events);
-      return ok('events-received');
+      var outcome = oshop ? appendEvents(SpreadsheetApp.openById(SPREADSHEET_ID), oshop, data.events, data.deviceId) : '';
+      return ok(outcome === 'over-limit' ? 'over-limit' : 'events-received');
     }
 
     // Regular machlog data sync (owner) — validate customerId before using it
@@ -299,7 +429,7 @@ function doPost(e) {
 
 // ─── License: activation ─────────────────────────────────────────
 
-function handleActivation(ss, email) {
+function handleActivation(ss, email, shopId) {
   // Validate format before touching any data
   if (!isValidEmail(email)) {
     return { valid: false, message: 'Invalid email address.' };
@@ -342,8 +472,10 @@ function handleActivation(ss, email) {
 
     // Update last-verified timestamp only (never write the token to the sheet)
     sheet.getRange(i + 1, 6).setValue(new Date().toISOString());
+    // Link this subscription to the owner's shop so operator devices can be counted against its tier
+    if (shopId) sheet.getRange(i + 1, 7).setValue(shopId);
 
-    return { valid: true, token: token, expiresAt: expiry ? new Date(expiry).toISOString() : null, plan: plan };
+    return { valid: true, token: token, expiresAt: expiry ? new Date(expiry).toISOString() : null, plan: plan, tier: tierForRow(data[i]) };
   }
 
   // Email not found — same message as inactive subscription (no enumeration)
@@ -352,7 +484,7 @@ function handleActivation(ss, email) {
 
 // ─── License: periodic re-verification ──────────────────────────
 
-function handleVerification(ss, email, token) {
+function handleVerification(ss, email, token, shopId) {
   if (!isValidEmail(email) || !token) return { valid: false };
 
   // Re-derive expected token and compare in constant time
@@ -361,13 +493,15 @@ function handleVerification(ss, email, token) {
   if (!safeEqual(expected, token)) return { valid: false };
 
   var sheet = getSheet(ss, '_Subscriptions');
+  initSubscriptionsSheet(ss, sheet);
   var data  = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).toLowerCase().trim() !== email) continue;
     var status = String(data[i][1]).toLowerCase();
     var expiry = data[i][2];
     if (status !== 'active') return { valid: false, expired: true };
-    return { valid: true, expiresAt: expiry ? new Date(expiry).toISOString() : null };
+    if (shopId) sheet.getRange(i + 1, 7).setValue(shopId);
+    return { valid: true, expiresAt: expiry ? new Date(expiry).toISOString() : null, tier: tierForRow(data[i]) };
   }
   return { valid: false };
 }
@@ -384,60 +518,128 @@ function handleRazorpayWebhook(ss, data) {
   var subId     = '';
   var planId    = '';
   var paymentId = '';
+  var sub       = null;
+
+  try { sub = data.payload.subscription.entity || null; } catch(_) {}
 
   try { email     = (data.payload.payment.entity.email || '').toLowerCase().trim(); } catch(_) {}
   // Fallback: subscriptions we mint carry the customer's email in notes, so
   // events that arrive without a payment entity still resolve to a customer.
-  if (!email) { try { email = (data.payload.subscription.entity.notes.email || '').toLowerCase().trim(); } catch(_) {} }
-  try { subId     = data.payload.subscription.entity.id || ''; } catch(_) {}
-  try { planId    = data.payload.subscription.entity.plan_id || ''; } catch(_) {}
+  if (!email && sub) { try { email = (sub.notes.email || '').toLowerCase().trim(); } catch(_) {} }
+  if (sub) {
+    subId  = sub.id      || '';
+    planId = sub.plan_id || '';
+  }
   try { paymentId = data.payload.payment.entity.id || ''; } catch(_) {}
 
-  if (!email) return 'no email in payload';
+  // ── Scope guard ──────────────────────────────────────────────────
+  // This Razorpay account also takes non-Machlog money (the Wix storefront).
+  // payment.captured fires for EVERY captured payment on the whole account,
+  // so honouring it on its own would hand a free month of Machlog to anyone
+  // who buys anything else with the same email address. Only trust a payment
+  // that the payload ties to a subscription on OUR plan.
+  if (planId && !tierForPlan(planId)) {
+    return logged(ss, event, email, 'ignored: different plan (' + planId + ')');
+  }
+  if (event === 'payment.captured' && !sub) {
+    return logged(ss, event, email, 'ignored: standalone payment, not a subscription charge');
+  }
+
+  if (!email) return logged(ss, event, '', 'no email in payload');
+
+  if (subId && isSubSuperseded(ss, subId)) {
+    return logged(ss, event, email, 'ignored: superseded subscription ' + subId);
+  }
 
   // Replay protection — reject if we've seen this payment before
   if (paymentId && isPaymentSeen(ss, paymentId)) {
     Logger.log('Duplicate webhook rejected: ' + paymentId);
-    return 'duplicate';
+    return logged(ss, event, email, 'duplicate payment ' + paymentId);
   }
 
-  var isActive    = (event === 'subscription.charged' || event === 'subscription.activated' || event === 'payment.captured');
-  var isCancelled = (event === 'subscription.completed' || event === 'subscription.cancelled' || event === 'subscription.halted');
-  var status  = isActive ? 'active' : isCancelled ? 'cancelled' : 'halted';
-  var expiry  = null;
+  // Every other event in HANDLED_EVENTS (halted/cancelled/completed) means the
+  // money stopped — the app drops to read-only, data stays viewable/exportable.
+  var isActive = (event === 'subscription.charged' || event === 'subscription.activated' || event === 'payment.captured');
+  var status   = isActive ? 'active' : 'cancelled';
+  var expiry   = null;
 
   if (isActive) {
-    var d = new Date();
-    d.setDate(d.getDate() + 32); // 32 days buffer above 30-day cycle
-    expiry = d.toISOString();
+    // Prefer Razorpay's own end-of-cycle (unix seconds) plus a 2-day grace, so
+    // access tracks the real billing period instead of a guessed 32 days.
+    var currentEnd = sub ? Number(sub.current_end) : 0;
+    if (currentEnd > 0) {
+      expiry = new Date((currentEnd + 2 * 24 * 3600) * 1000).toISOString();
+    } else {
+      var d = new Date();
+      d.setDate(d.getDate() + 32); // 32 days buffer above 30-day cycle
+      expiry = d.toISOString();
+    }
   }
 
-  var sheet = getSheet(ss, '_Subscriptions');
-  initSubscriptionsSheet(ss, sheet);
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(20000); } catch (_) { return logged(ss, event, email, 'busy: could not acquire lock'); }
+  try {
+    var sheet = getSheet(ss, '_Subscriptions');
+    initSubscriptionsSheet(ss, sheet);
 
-  var rows = sheet.getDataRange().getValues();
-  for (var i = 1; i < rows.length; i++) {
-    if (String(rows[i][0]).toLowerCase().trim() !== email) continue;
-    // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified
-    sheet.getRange(i + 1, 2).setValue(status);
-    if (expiry)   sheet.getRange(i + 1, 3).setValue(expiry);
-    if (subId)    sheet.getRange(i + 1, 4).setValue(subId);
-    if (planId)   sheet.getRange(i + 1, 5).setValue(planId);
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if (String(rows[i][0]).toLowerCase().trim() !== email) continue;
+      // Columns: Email | Status | ExpiresAt | RazorpaySubId | Plan | LastVerified | ShopId
+      var storedSubId = String(rows[i][3] || '');
+      var switched = !!(subId && storedSubId && subId !== storedSubId);
+
+      // A stop-type event only counts for the subscription we hold. Anything
+      // else is noise from a subscription this customer already moved off.
+      if (!isActive && switched) {
+        return logged(ss, event, email, 'ignored: cancel for ' + subId + ', current is ' + storedSubId);
+      }
+
+      var note = '';
+      if (isActive && switched) {
+        // Tier change: the customer paid on a new subscription. Stop billing the old one.
+        markSubSuperseded(ss, storedSubId, email);
+        note = cancelRazorpaySubscription(storedSubId)
+          ? ' (old ' + storedSubId + ' cancelled)'
+          : ' (old ' + storedSubId + ' CANCEL FAILED — cancel it in the Razorpay dashboard)';
+      }
+
+      sheet.getRange(i + 1, 2).setValue(status);
+      if (expiry)   sheet.getRange(i + 1, 3).setValue(expiry);
+      if (subId)    sheet.getRange(i + 1, 4).setValue(subId);
+      if (planId)   sheet.getRange(i + 1, 5).setValue(planId);
+      if (paymentId) recordPayment(ss, paymentId, email, event);
+      return logged(ss, event, email, 'updated: ' + status + note);
+    }
+
+    // New subscriber
+    sheet.appendRow([safeCell(email), status, expiry, safeCell(subId), safeCell(planId), new Date().toISOString()]);
     if (paymentId) recordPayment(ss, paymentId, email, event);
-    return 'updated: ' + status;
+    return logged(ss, event, email, 'created: ' + status);
+  } finally {
+    lock.releaseLock();
   }
+}
 
-  // New subscriber
-  sheet.appendRow([email, status, expiry, subId, planId, new Date().toISOString()]);
-  if (paymentId) recordPayment(ss, paymentId, email, event);
-  return 'created';
+// Write the outcome to _WebhookLog and hand the same string back as the
+// HTTP response body, so the sheet and Razorpay's dashboard always agree.
+function logged(ss, event, email, result) {
+  logWebhook(ss, event, email, result);
+  return result;
 }
 
 function initSubscriptionsSheet(ss, sheet) {
-  if (sheet.getLastRow() > 0) return;
+  if (sheet.getLastRow() > 0) {
+    // Sheets created before tiers have 6 columns — add the ShopId header once
+    if (String(sheet.getRange(1, 7).getValue()) !== 'ShopId') sheet.getRange(1, 7).setValue('ShopId');
+    return;
+  }
   // Token column is intentionally absent — tokens are derived from HMAC, never stored
-  header(sheet, ['Email', 'Status', 'ExpiresAt', 'RazorpaySubId', 'Plan', 'LastVerified'], TEAL);
+  header(sheet, ['Email', 'Status', 'ExpiresAt', 'RazorpaySubId', 'Plan', 'LastVerified', 'ShopId'], TEAL);
 }
+
+// The tier a _Subscriptions row is on. Rows from before tiers were all ₹299 = Solo.
+function tierForRow(row) { return tierForPlan(String(row[4] || '')) || 'solo'; }
 
 function jsonOk(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -459,6 +661,59 @@ function getSheet(ss, name) {
 // (operators → owner). Both live in hidden sheets; the master is chunked
 // across cells because one cell holds at most 50k chars.
 function cleanShopId(v) { return String(v || '').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 40); }
+
+// ─── Operator device registry (tier limits) ──────────────────────
+// A device is the operator phone's permanent installId. Builds from before
+// tiers send none and are counted together as one 'legacy' device.
+var DEVICE_ACTIVE_MS = 30 * 24 * 3600 * 1000;
+
+// How many operator devices this shop may sync. Only a shop with an ACTIVE
+// subscription linked at activation is limited: a trial shop runs at Works
+// level by design, and a lapsed shop's owner app is already read-only.
+function deviceLimitForShop(ss, shopId) {
+  var sh = ss.getSheetByName('_Subscriptions');
+  if (!shopId || !sh || sh.getLastRow() < 2) return TIER_DEVICE_LIMIT.works;
+  var rows = sh.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][6] || '') !== shopId) continue;
+    if (String(rows[i][1]).toLowerCase() !== 'active') continue;
+    return TIER_DEVICE_LIMIT[tierForRow(rows[i])];
+  }
+  return TIER_DEVICE_LIMIT.works;
+}
+
+// True when this device may sync for the shop. Devices active in the last
+// 30 days are ranked by when they first joined; only the first `limit` are
+// admitted, so a downgrade takes effect at once. With register=true an
+// admitted device is recorded/refreshed (uploads); pulls only ask.
+function admitDevice(ss, shopId, deviceId, register) {
+  var dev   = cleanShopId(deviceId) || 'legacy'; // same safe charset as shop ids
+  var limit = deviceLimitForShop(ss, shopId);
+  var sh = getSheet(ss, '_ShopDevices');
+  if (sh.getLastRow() === 0) header(sh, ['ShopId', 'DeviceId', 'FirstSeen', 'LastSeen'], NAVY);
+
+  var rows = sh.getDataRange().getValues(), now = Date.now(), active = [], mineRow = -1;
+  for (var i = 1; i < rows.length; i++) {
+    if (String(rows[i][0]) !== shopId) continue;
+    if (String(rows[i][1]) === dev) mineRow = i;
+    var last = Date.parse(rows[i][3]);
+    if (!isNaN(last) && now - last < DEVICE_ACTIVE_MS) {
+      active.push({ id: String(rows[i][1]), first: Date.parse(rows[i][2]) || 0 });
+    }
+  }
+  active.sort(function (a, b) { return a.first - b.first; }); // stable: ties keep row order
+
+  var rank = -1;
+  for (var k = 0; k < active.length; k++) { if (active[k].id === dev) { rank = k; break; } }
+  var admitted = rank >= 0 ? rank < limit : active.length < limit;
+
+  if (admitted && register) {
+    var stamp = new Date(now).toISOString();
+    if (mineRow > 0) sh.getRange(mineRow + 1, 4).setValue(stamp);
+    else sh.appendRow([shopId, dev, stamp, stamp]);
+  }
+  return admitted;
+}
 
 // Strip every cost/price figure before a master reaches operators. Operators
 // need designations, corner counts and stock quantities to log against — never
@@ -502,11 +757,14 @@ function readMaster(ss, shopId) {
   return chunks.map(function (c) { return c[1]; }).join('');
 }
 
-function appendEvents(ss, shopId, events) {
+function appendEvents(ss, shopId, events, deviceId) {
   if (!shopId || !events || !events.length) return;
   var lock = LockService.getScriptLock();
   try { lock.waitLock(20000); } catch (e) { return; }
   try {
+    // Over the tier's device limit: append nothing. The device keeps its
+    // queue and learns why from its next ?action=pull.
+    if (!admitDevice(ss, shopId, deviceId, true)) return 'over-limit';
     var sh = ss.getSheetByName('_ShopEvents');
     if (!sh) { sh = ss.insertSheet('_ShopEvents'); sh.appendRow(['ShopId', 'EventId', 'Kind', 'Payload', 'CreatedAt']); }
     var data = sh.getDataRange().getValues(), seen = {}, gc = [], cutoff = Date.now() - 7 * 24 * 3600 * 1000;
