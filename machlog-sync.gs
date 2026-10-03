@@ -358,7 +358,7 @@ function doGet(e) {
     // Open the SYNC_URL with ?action=whlog&wh_secret=<WEBHOOK_SECRET> right after
     // a test payment — if the list is empty, Razorpay never reached this script.
     if (action === 'whlog') {
-      if (!safeEqual(e.parameter.wh_secret || '', getSecret('WEBHOOK_SECRET') || ' ')) {
+      if (!safeEqual(e.parameter.wh_secret || '', getSecret('WEBHOOK_SECRET') || ' ')) {
         return jsonOk({ error: 'Unauthorized' });
       }
       var wsh = ss.getSheetByName('_WebhookLog');
