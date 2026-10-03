@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" id="root">
 <head>
 <meta charset="UTF-8">
@@ -313,6 +313,8 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1.4rem 6rem }
 .op-sync.pending .op-sync-dot { background: var(--warn); animation: opblink 1.1s ease-in-out infinite } .op-sync.pending .op-sync-lbl { color: #8a5200 }
 .op-sync.offline { background: var(--off2) }
 .op-sync.offline .op-sync-dot { background: var(--mut) } .op-sync.offline .op-sync-lbl { color: var(--navy) }
+.op-sync.blocked { background: #fbecea; border-color: #e7bdb6 }
+.op-sync.blocked .op-sync-dot { background: var(--bad) } .op-sync.blocked .op-sync-lbl { color: var(--bad) }
 .op-sync.idle { background: var(--teal-tint); border-color: rgba(0,151,178,.35) }
 .op-sync.idle .op-sync-dot { background: var(--teal); animation: opblink 1.1s ease-in-out infinite } .op-sync.idle .op-sync-lbl { color: var(--teal-d) }
 @keyframes opblink { 0%,100%{opacity:1} 50%{opacity:.35} }
@@ -520,6 +522,20 @@ main { max-width: 1280px; margin: 0 auto; padding: 1.2rem 1.4rem 6rem }
   margin-bottom: .2rem;
 }
 .paywall-price span { font-size: .8rem; font-weight: 400; color: var(--mut) }
+
+/* ─── pricing tiers ─── */
+.tier-full { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; padding: .6rem .8rem; margin-bottom: .85rem; background: var(--off2); border: 1px solid var(--rule); border-radius: 4px; font-size: .76rem; color: var(--T) }
+.tier-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin: .2rem 0 .5rem }
+.tier-opt { display: flex; flex-direction: column; align-items: center; gap: .2rem; padding: .7rem .35rem; min-height: 44px; background: var(--W); border: 1.5px solid var(--rule); border-radius: 4px; cursor: pointer; font: inherit; color: var(--T) }
+.tier-opt:hover { border-color: var(--teal) }
+.tier-opt.sel { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(0,151,178,.18) }
+.tier-name { font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--navy) }
+.tier-name em { font-style: normal; color: var(--teal); letter-spacing: .04em; text-transform: none }
+.tier-price { font-size: 1.05rem; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums }
+.tier-price small { font-size: .65rem; font-weight: 400; color: var(--mut) }
+.tier-dev { font-size: .66rem; color: var(--mut); line-height: 1.3 }
+.tier-note { font-size: .7rem; color: var(--mut); margin-bottom: .3rem }
+@media (max-width: 380px) { .tier-opts { grid-template-columns: 1fr } }
 
 /* ─── anomaly flag ─── */
 .anomaly-flag {
@@ -1186,6 +1202,15 @@ let _syncTimer = null;
 // ── license / paywall ────────────────────────────────────────────
 const TRIAL_DAYS = 14;
 
+// Pricing tiers — they gate only how many operator devices may sync; every
+// feature is in every tier. Mirrors TIER_DEVICE_LIMIT in machlog-sync.gs.
+const TIERS = {
+  solo:  { name: 'Solo',  price: 299,  devices: 1 },
+  shop:  { name: 'Shop',  price: 799,  devices: 5 },
+  works: { name: 'Works', price: 2499, devices: Infinity },
+};
+const TIER_ORDER = ['solo', 'shop', 'works'];
+
 const OP_TYPES = [
   ['turning',         'Turning',          'op-turn'],
   ['face_milling',    'Face Milling',     'op-mill'],
@@ -1439,14 +1464,21 @@ function operatorSyncTick() {
     try {
       fetch(SYNC_URL, {
         method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ role: 'operator', shopId: getShopId(), events: db.outbox }),
+        body: JSON.stringify({ role: 'operator', shopId: getShopId(), deviceId: db.settings.installId, events: db.outbox }),
       }).catch(() => {});
     } catch (_) {}
   }
   // 2) pull the master document and adopt the shop's current state
-  fetch(SYNC_URL + '?action=pull&shop=' + encodeURIComponent(getShopId()))
+  fetch(SYNC_URL + '?action=pull&shop=' + encodeURIComponent(getShopId()) + '&device=' + encodeURIComponent(db.settings.installId || ''))
     .then(r => r.ok ? r.json() : null)
-    .then(m => { if (m && !m.empty && Array.isArray(m.jobs)) adoptMaster(m); })
+    .then(m => {
+      if (!m) return;
+      // Over the shop's tier limit: the server keeps refusing this phone's
+      // uploads. Entries stay queued here and send once the owner upgrades.
+      const over = !!m.overLimit;
+      if (over !== !!db.settings.overLimit) { db.settings.overLimit = over; saveDB(); patchSyncStatus(); }
+      if (!m.empty && Array.isArray(m.jobs)) adoptMaster(m);
+    })
     .catch(() => {});
 }
 
@@ -1508,6 +1540,7 @@ function syncStatusInfo() {
   const pending = (db.outbox || []).length;
   const online = navigator.onLine !== false;
   if (!online)   return { state: 'offline', label: 'Offline', detail: pending ? `${pending} to send when back online` : 'Will sync when back online' };
+  if (db.settings.overLimit) return { state: 'blocked', label: 'Not syncing', detail: 'Phone limit reached — ask the owner to upgrade. Entries are kept on this phone.' };
   if (pending)   return { state: 'pending', label: 'Sending…', detail: `${pending} production ${pending === 1 ? 'entry' : 'entries'}` };
   if (lastOk)    return { state: 'ok', label: 'Synced', detail: 'Updated ' + fmtAgo(lastOk) };
   return { state: 'idle', label: 'Connecting…', detail: 'Reaching your shop' };
@@ -1608,7 +1641,8 @@ function sanitizeLicense(lic) {
       // beyond 400 days is an impossible value, not a real license.
       if (expiresAt > Date.now() + 400 * MS_DAY) return null;
     }
-    return { token: lic.token, email, expiresAt, lastVerified: trustedPastTs(lic.lastVerified) };
+    const tier = TIERS[lic.tier] ? lic.tier : null;
+    return { token: lic.token, email, expiresAt, lastVerified: trustedPastTs(lic.lastVerified), tier };
   } catch (e) { return null; }
 }
 
@@ -1658,6 +1692,21 @@ function getTrialDaysLeft() {
   return Math.max(0, Math.ceil((ts + TRIAL_DAYS * MS_DAY - effectiveNow()) / MS_DAY));
 }
 
+// ── pricing tier ──────────────────────────────────────────────────
+// Trial runs at Works level so the shop sees multi-device sync before it
+// chooses. Licences from before tiers carry none: they were bought on the
+// ₹299 plan, which is Solo.
+function getTier() {
+  if (getLicenseStatus() === 'trial') return 'works';
+  const lic = sanitizeLicense(db.settings.license);
+  return (lic && lic.tier) || 'solo';
+}
+function getDeviceLimit() { return TIERS[getTier()].devices; }
+function canAddOperator() { return (db.settings.operators || []).length < getDeviceLimit(); }
+function nextTierFor(count) { return TIER_ORDER.find(t => TIERS[t].devices >= count) || 'works'; }
+function tierPrice(t) { return '₹' + TIERS[t].price.toLocaleString('en-IN'); }
+function subscribeLabel(t) { return `Subscribe — ${TIERS[t].name} ${tierPrice(t)} / month`; }
+
 // ── read-only (lapsed subscription) ───────────────────────────────
 // When the subscription ends the shop keeps ALL its data and can still read,
 // print and export it — only new entries and edits are blocked. Locking an
@@ -1680,7 +1729,7 @@ function trialBanner() {
   if (isReadOnly()) {
     return `<div class="trial-bar ro-bar">
       <span class="trial-bar-txt"><strong>Read-only</strong> — subscription ended. Your data is safe and still viewable; subscribe to log production again.</span>
-      <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe &#8377;299/mo</button>
+      <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe — from &#8377;299/mo</button>
     </div>`;
   }
   if (getLicenseStatus() !== 'trial') return '';
@@ -1797,6 +1846,12 @@ function removeOperator(id) {
 function submitAddOperator(e) {
   e.preventDefault();
   if (!requireOwner() || !requireActive()) return;
+  if (!canAddOperator()) {
+    const lim = getDeviceLimit();
+    toast(`${TIERS[getTier()].name} includes ${lim} operator phone${lim === 1 ? '' : 's'} — upgrade to add more`, 'warn', 6000);
+    navigate('paywall');
+    return;
+  }
   const inp = document.getElementById('team-op-name');
   const op = addOperatorToTeam(inp ? inp.value : '');
   if (op) { toast(`${op.name} added — send them the link`, 'ok'); render(); }
@@ -4135,21 +4190,38 @@ function vPaywall() {
   const expired = getLicenseStatus() === 'expired';
   // A stored license that failed validation or lapsed: guide re-verification,
   // never alarm. All app data stays intact — activation simply refreshes it.
-  const hadLicense = !!(db.settings.license && db.settings.license.token);
-  const title   = hadLicense ? 'License verification required'
+  const licensed = getLicenseStatus() === 'licensed';
+  const hadLicense = !licensed && !!(db.settings.license && db.settings.license.token);
+  const title   = licensed ? 'Change your plan'
+    : hadLicense ? 'License verification required'
     : expired ? 'Your free trial has ended' : 'Subscribe to TOOLFLUX';
-  const subtext = hadLicense
+  const subtext = licensed
+    ? 'Plans differ only in how many operator phones can sync. Your current plan is cancelled automatically when the new one starts.'
+    : hadLicense
     ? 'Your license needs a quick re-verification. Enter your subscription email below — your data is untouched.'
     : expired
     ? 'Activate a subscription to keep tracking your tooling costs and CPC.'
     : 'Unlock unlimited access. Your data stays on your device, always offline.';
+  const cur = licensed ? getTier() : null;
+  if (!TIERS[ui.pwTier]) ui.pwTier = cur || nextTierFor((db.settings.operators || []).length);
+  const sel = ui.pwTier;
+  const tierCards = TIER_ORDER.map(t => {
+    const T = TIERS[t];
+    const dev = T.devices === Infinity ? 'Unlimited operator phones' : `${T.devices} operator phone${T.devices === 1 ? '' : 's'}`;
+    return `<button type="button" class="tier-opt${t === sel ? ' sel' : ''}" data-tier="${t}" onclick="pwSelectTier('${t}')" aria-pressed="${t === sel}">
+      <span class="tier-name">${T.name}${t === cur ? ' <em>· current</em>' : ''}</span>
+      <span class="tier-price">${tierPrice(t)}<small>/mo</small></span>
+      <span class="tier-dev">${dev}</span>
+    </button>`;
+  }).join('');
   return `
     <div class="paywall-wrap">
       <div class="paywall-card">
         <div class="paywall-logo">TOOLFLUX</div>
         <div class="paywall-title">${esc(title)}</div>
         <p class="paywall-sub">${esc(subtext)}</p>
-        <div class="paywall-price">₹299 <span>/ month</span></div>
+        <div class="tier-opts" role="group" aria-label="Choose a plan">${tierCards}</div>
+        <div class="tier-note">Every plan includes every feature.</div>
         <div class="sub-benefits" style="margin-top:1.2rem">
           <div class="sub-benefit">Unlimited jobs and tooling stations</div>
           <div class="sub-benefit">Insert lifecycle tracking per corner</div>
@@ -4161,9 +4233,7 @@ function vPaywall() {
           <label class="paywall-activate-label" for="pw-email">Your email — used for billing and to unlock the app</label>
           <input id="pw-email" type="email" placeholder="you@workshop.com" style="width:100%;margin-top:.4rem" autocomplete="email" value="${esc(db.settings.email||'')}">
         </div>
-        <button id="pw-sub-btn" class="btn btn-pri paywall-sub-btn" onclick="startSubscription()">
-          Subscribe — ₹299 / month
-        </button>
+        <button id="pw-sub-btn" class="btn btn-pri paywall-sub-btn" onclick="startSubscription()">${subscribeLabel(sel)}</button>
         <div class="paywall-activate">
           <div class="paywall-activate-label">Already paid? Unlock this device with the same email</div>
           <div style="margin-top:.5rem">
@@ -4173,6 +4243,19 @@ function vPaywall() {
         ${!expired ? `<div style="margin-top:1.2rem;text-align:center"><button class="btn btn-ghost" style="font-size:.75rem" onclick="navigate('jobs')">&#8592; Back to App</button></div>` : ''}
       </div>
     </div>`;
+}
+
+// Patch the DOM instead of re-rendering, so a half-typed email isn't lost
+function pwSelectTier(t) {
+  if (!TIERS[t]) return;
+  ui.pwTier = t;
+  document.querySelectorAll('.tier-opt').forEach(el => {
+    const on = el.dataset.tier === t;
+    el.classList.toggle('sel', on);
+    el.setAttribute('aria-pressed', String(on));
+  });
+  const btn = document.getElementById('pw-sub-btn');
+  if (btn) btn.textContent = subscribeLabel(t);
 }
 
 function vSetup() {
@@ -4511,10 +4594,15 @@ function vSettings() {
       <div class="panel-hd"><span class="lbl">Operators (Team)</span><div class="hr"></div><span class="lbl muted">${(db.settings.operators||[]).length}</span></div>
       <div class="panel-bd">
         <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem;line-height:1.55">Add an operator, then send them their link on WhatsApp. They open it on their phone and it launches straight into the shop-floor screen — locked to Operator Mode, no PIN, no setup.</div>
+        ${canAddOperator() ? `
         <form onsubmit="submitAddOperator(event)" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem">
           <input id="team-op-name" placeholder="Operator name (e.g. Ravi)" autocomplete="off" style="flex:1;min-width:160px">
           <button type="submit" class="btn btn-pri">+ Add Operator</button>
-        </form>
+        </form>` : `
+        <div class="tier-full">
+          <span>Your <strong>${esc(TIERS[getTier()].name)}</strong> plan includes ${getDeviceLimit()} operator phone${getDeviceLimit() === 1 ? '' : 's'}.</span>
+          <button class="btn btn-teal btn-sm" onclick="navigate('paywall')">Upgrade</button>
+        </div>`}
         ${(db.settings.operators||[]).length ? `
         <div class="team-list">
           ${db.settings.operators.map(o => `
@@ -5330,6 +5418,23 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// Query string for activate/verify. The shop id links this subscription to
+// the shop so the server can count operator devices against its tier.
+function licenseQuery(email) {
+  return '&email=' + encodeURIComponent(email) + '&shop=' + encodeURIComponent(getShopId());
+}
+
+function licenseFromActivation(data, email) {
+  return {
+    token: data.token,
+    email: email,
+    expiresAt: data.expiresAt || null,
+    plan: data.plan || 'monthly',
+    tier: TIERS[data.tier] ? data.tier : 'solo',
+    lastVerified: new Date().toISOString(),
+  };
+}
+
 // ── license: background re-verification ──────────────────────────
 // Silently re-verifies the stored token against the server every 7 days.
 // On failure: if server says expired, clears the license and re-renders.
@@ -5346,7 +5451,7 @@ function verifyLicenseIfNeeded(force) {
   const daysSince = lastVerified ? (Date.now() - lastVerified) / MS_DAY : 999;
   if (!force && daysSince < 3) return;
 
-  const url = SYNC_URL + '?action=verify&email=' + encodeURIComponent(lic.email) + '&token=' + encodeURIComponent(lic.token);
+  const url = SYNC_URL + '?action=verify' + licenseQuery(lic.email) + '&token=' + encodeURIComponent(lic.token);
   fetch(url)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
@@ -5355,6 +5460,7 @@ function verifyLicenseIfNeeded(force) {
         raw.lastVerified = new Date().toISOString();
         raw.verifyFails = 0;
         if (data.expiresAt) raw.expiresAt = data.expiresAt;
+        if (TIERS[data.tier]) raw.tier = data.tier; // picks up a tier change made on another device
         anchorLastSeen(); // confirmed server contact — re-anchor the clock guard
         saveDB();
       } else if (data.expired) {
@@ -5393,19 +5499,24 @@ async function startSubscription() {
     if (emailEl) emailEl.focus();
     return;
   }
+  const tier = TIERS[ui.pwTier] ? ui.pwTier : 'solo';
+  const changing = getLicenseStatus() === 'licensed';
+  if (changing && tier === getTier()) { toast(`You're already on ${TIERS[tier].name}`, 'warn'); return; }
   const btn = $('#pw-sub-btn');
-  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = 'Subscribe — ₹299 / month'; } };
+  const restore = () => { if (btn) { btn.disabled = false; btn.textContent = subscribeLabel(tier); } };
   if (btn) { btn.disabled = true; btn.textContent = 'Starting…'; }
 
   try {
-    const res = await fetch(SYNC_URL + '?action=subscribe&email=' + encodeURIComponent(email));
+    const res = await fetch(SYNC_URL + '?action=subscribe&email=' + encodeURIComponent(email) + '&tier=' + tier);
     if (!res.ok) throw new Error('Server error ' + res.status);
     const data = await res.json();
     if (data.ok && data.url) {
       db.settings.email = email;
       saveDB();
       window.open(data.url, '_blank');
-      toast('Complete the payment, then tap Activate', 'ok', 6000);
+      toast(changing
+        ? 'Complete the payment, then tap Activate — your old plan is cancelled automatically'
+        : 'Complete the payment, then tap Activate', 'ok', 7000);
     } else {
       toast(data.message || 'Could not start the subscription.', 'bad');
     }
@@ -5426,19 +5537,13 @@ async function activateLicense() {
   if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
 
   try {
-    const url = SYNC_URL + '?action=activate&email=' + encodeURIComponent(email);
+    const url = SYNC_URL + '?action=activate' + licenseQuery(email);
     const res = await fetch(url);
     if (!res.ok) throw new Error('Server error ' + res.status);
     const data = await res.json();
 
     if (data.valid && data.token) {
-      db.settings.license = {
-        token: data.token,
-        email: email,
-        expiresAt: data.expiresAt || null,
-        plan: data.plan || 'monthly',
-        lastVerified: new Date().toISOString(),
-      };
+      db.settings.license = licenseFromActivation(data, email);
       db.settings.email = email;
       saveDB();
       toast('License activated! Welcome to TOOLFLUX.', 'ok');
@@ -5469,7 +5574,7 @@ Object.assign(window, {
   copyShiftSummary, printShiftProof, whatsappShiftSummary,
   installApp, dismissNudge,
   startTutorial, tutNext, tutPrev, skipTutorial, replayTutorial,
-  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync, startSubscription,
+  submitAddOperator, copyInvite, shareInvite, removeOperator, manualSync, startSubscription, pwSelectTier,
 });
 
 // ── init ──────────────────────────────────────────────────────────
