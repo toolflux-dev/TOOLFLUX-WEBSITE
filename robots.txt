@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Private apps and per-customer pages carry their own noindex meta tag.
+# They are intentionally left crawlable so Google can read that tag and drop them.
+
+Sitemap: https://www.toolflux.co.in/sitemap.xml
