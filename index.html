@@ -723,6 +723,17 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .blog-title a{color:inherit;text-decoration:none}
 .bmod-perma{margin-top:1.6rem;padding-top:1.1rem;border-top:1px solid var(--rule)}
 .bmod-perma a{color:var(--teal-dark);font-weight:600;text-decoration:none}
+
+/* ── SOCIAL BUTTONS ── */
+.fsoc{flex-wrap:wrap;gap:.6rem}
+.fsoc a{display:inline-flex;align-items:center;gap:.45rem;padding:.45rem .85rem;border:1px solid rgba(255,255,255,.18);border-radius:999px;color:rgba(255,255,255,.85);transition:color .2s,border-color .2s,background .2s}
+.fsoc a:hover{color:#fff;border-color:var(--teal);background:rgba(0,151,178,.18)}
+.fsoc svg{width:14px;height:14px;flex-shrink:0}
+.ctsoc{margin:-1rem 0 2rem;display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.ctsoc-l{font-size:.55rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--mut);margin-right:.35rem}
+.ctsoc a{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .9rem;border:1px solid var(--rule);border-radius:999px;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:none;transition:all .2s}
+.ctsoc a:hover{border-color:var(--teal);color:var(--teal-dark);background:rgba(0,151,178,.06)}
+.ctsoc svg{width:15px;height:15px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1803,6 +1814,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         <div><div class="ctwl">WhatsApp — fastest response</div><div class="ctwn">+91 86602 34766</div></div>
       </a>
+      <div class="ctsoc"><span class="ctsoc-l">Follow us</span><a href="https://www.instagram.com/toolflux.in/" target="_blank" rel="noopener" aria-label="TOOLFLUX on Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg><span>Instagram</span></a><a href="https://www.linkedin.com/in/tool-flux-91203b322/" target="_blank" rel="noopener" aria-label="TOOLFLUX on LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></svg><span>LinkedIn</span></a><a href="https://www.youtube.com/@toolflux-92" target="_blank" rel="noopener" aria-label="TOOLFLUX on YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23.5 12 31 31 0 0 0 23 7.2zM9.75 15.5v-7l6 3.5-6 3.5z"/></svg><span>YouTube</span></a></div>
       <form class="ctform" onsubmit="return false">
         <div class="ct2"><input type="text" class="cti" placeholder="Your name"><input type="text" class="cti" placeholder="Company name"></div>
         <div class="ct2"><input type="tel" class="cti" placeholder="Mobile number"><select class="csel"><option>Karnataka</option><option>Tamil Nadu</option><option>Maharashtra</option><option>Gujarat</option><option>Andhra Pradesh</option><option>Other state</option></select></div>
@@ -1849,7 +1861,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   </div>
   <div class="fbot">
     <div class="fcopy">© 2026 TOOLFLUX · 54, Laxmi Colony, Vidyanagar, Hubli 580021 · <a href="#contact" style="color:inherit">Contact</a></div>
-    <div class="fsoc"><a href="#">LinkedIn</a><a href="#">Instagram</a><a href="#">YouTube</a></div>
+    <div class="fsoc"><a href="https://www.linkedin.com/in/tool-flux-91203b322/" target="_blank" rel="noopener" aria-label="TOOLFLUX on LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></svg><span>LinkedIn</span></a><a href="https://www.instagram.com/toolflux.in/" target="_blank" rel="noopener" aria-label="TOOLFLUX on Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg><span>Instagram</span></a><a href="https://www.youtube.com/@toolflux-92" target="_blank" rel="noopener" aria-label="TOOLFLUX on YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23.5 12 31 31 0 0 0 23 7.2zM9.75 15.5v-7l6 3.5-6 3.5z"/></svg><span>YouTube</span></a></div>
   </div>
 </footer>
 
@@ -2425,6 +2437,7 @@ document.querySelectorAll('.nm a').forEach(function(a){a.addEventListener('click
         "addressCountry": "IN"
       },
       "areaServed": "IN",
+      "sameAs": ["https://www.instagram.com/toolflux.in/", "https://www.linkedin.com/in/tool-flux-91203b322/", "https://www.youtube.com/@toolflux-92"],
       "knowsAbout": ["Carbide cutting tools", "Turning inserts", "Milling inserts", "Solid carbide drills", "U-Drill systems", "CNC machining", "Feeds and speeds"]
     },
     {
