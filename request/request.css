@@ -130,6 +130,9 @@ h1 { font-family: var(--display); font-weight: 600; font-size: clamp(28px, 8vw, 
 .shapes .ico-ins { width: 56px; height: 56px; margin-bottom: 4px; }
 .shapes .tile .t { font: 700 15px var(--mono); letter-spacing: .02em; }
 .shapes .tile .h { font-size: 12px; line-height: 1.25; }
+.sgroup { grid-column: 1 / -1; margin: 10px 0 0; font: 600 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px; }
+.sgroup::before { content: ''; width: 12px; height: 12px; border-radius: 3px; background: var(--warn); border: 1.5px solid var(--ink); }
 .ico-ins .ins { transform-box: view-box; transform-origin: center; transition: transform .6s var(--ease); }
 .tile.on .ico-ins .ins { transform: rotate(var(--turn, 90deg)); }
 .find .use { border: 0; border-radius: 12px; padding: 0 18px; background: var(--acc); color: var(--paper); font-weight: 600; }

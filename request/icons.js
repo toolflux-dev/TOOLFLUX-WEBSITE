@@ -121,6 +121,16 @@ window.TFX_ICONS = (function () {
   const shape = (d, neg, turn, hole = true, r) => S('0 0 64 64', `<g class="ins">
     ${neg ? '' : `<path d="${d}" transform="translate(1.6 2.4)" fill="var(--steel-2)" ${k}/>`}
     <path d="${d}" fill="var(--steel)" ${k}/>${neg ? inner(d) : ''}${hole ? (neg ? holeN(r) : holeP(r)) : ''}</g>`, 'ico-ins').replace('<svg ', `<svg style="--turn:${turn}deg" `);
+  // CBN: the brazed tip on a corner, in its own colour. tips = corner indexes of pts.
+  const cbn = (pts, neg, turn, tips, r) => {
+    const d = P(pts);
+    const tip = (i) => {
+      const v = pts[i]; const a = pts[(i + pts.length - 1) % pts.length]; const b = pts[(i + 1) % pts.length];
+      const at = (p) => [v[0] + (p[0] - v[0]) * 0.3, v[1] + (p[1] - v[1]) * 0.3].map((n) => n.toFixed(1)).join(' ');
+      return `<path d="M${v.join(' ')}L${at(a)}L${at(b)}Z" fill="var(--warn)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/>`;
+    };
+    return shape(d, neg, turn, true, r).replace('</g></svg>', `${tips.map(tip).join('')}</g></svg>`);
+  };
   const C80 = P([[6, 32], [32, 10.5], [58, 32], [32, 53.5]]);
   const D55 = P([[5, 32], [32, 18], [59, 32], [32, 46]]);
   const V35 = P([[4, 32], [32, 23.5], [60, 32], [32, 40.5]]);
@@ -145,6 +155,12 @@ window.TFX_ICONS = (function () {
     SEKT: shape(SQ45, false, 90), SNMX: shape(SQ, true, 90), RPMT: shape(RND, false, 45),
     TDC: shape(TDC, true, 180, false), MGMN: shape(MGMN, true, 180, false),
     SPMG: shape(SQ, false, 90, true, 5.5), WCMX: shape(TRIGON, false, 120, true, 5.5), XOMX: shape(XO, false, 180, true, 5),
+    // CBN turning: CCGW one tip; the negative NGA inserts tipped on their main corners
+    CCGW06: cbn([[6, 32], [32, 10.5], [58, 32], [32, 53.5]], false, 180, [0], 4.5),
+    CCGW09: cbn([[6, 32], [32, 10.5], [58, 32], [32, 53.5]], false, 180, [0], 5.5),
+    CNGA: cbn([[6, 32], [32, 10.5], [58, 32], [32, 53.5]], true, 180, [0, 2]),
+    TNGA: cbn([[32, 8], [54.5, 47], [9.5, 47]], true, 120, [0, 1, 2], 4.5),
+    WNGA: cbn([[32, 7], [46.7, 24.5], [54.5, 46], [32, 50], [9.5, 46], [17.3, 24.5]], true, 120, [0, 2, 4]),
     unsure,
   };
 

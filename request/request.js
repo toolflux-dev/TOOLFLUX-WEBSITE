@@ -26,14 +26,18 @@
     turning: [['CNMG', 'CNMG', '80° · negative'], ['CCMT', 'CCMT', '80° · positive'], ['DNMG', 'DNMG', '55° · negative'],
       ['DCMT', 'DCMT', '55° · positive'], ['VNMG', 'VNMG', '35° · negative'], ['VCMT', 'VCMT', '35° · positive'],
       ['VCGT', 'VCGT', '35° · ground'], ['TNMG', 'TNMG', 'Triangle · neg.'], ['TCMT', 'TCMT', 'Triangle · pos.'],
-      ['WNMG', 'WNMG', 'Trigon · neg.'], ['SNMG', 'SNMG', 'Square · neg.'], ['RCMT', 'RCMT', 'Round · pos.']],
+      ['WNMG', 'WNMG', 'Trigon · neg.'], ['SNMG', 'SNMG', 'Square · neg.'], ['RCMT', 'RCMT', 'Round · pos.'],
+      'CBN · hardened steel',
+      ['CCGW06', 'CCGW06', '80° · CBN tip'], ['CCGW09', 'CCGW09', '80° · CBN tip'], ['CNGA', 'CNGA', '80° · CBN tips'],
+      ['TNGA', 'TNGA', 'Triangle · CBN'], ['WNGA', 'WNGA', 'Trigon · CBN']],
     milling: [['APMT', 'APMT', '90° shoulder'], ['APKT', 'APKT', '90° shoulder'], ['SEKT', 'SEKT / SEMT', '45° face'],
       ['SNMX', 'SNMX', 'Square face'], ['RPMT', 'RPMT / RDMT', 'Round']],
     grooving: [['TDC', 'TDC', 'Series'], ['MGMN', 'MGMN', 'Series']],
     drilling: [['SPMG', 'SPMG', 'U-drill'], ['WCMX', 'WCMX', 'U-drill'], ['XOMX', 'XOMX', 'U-drill']],
   };
+  const CBN = ['CCGW06', 'CCGW09', 'CNGA', 'TNGA', 'WNGA'];
   const shapeName = () => st.shapeTyped || (st.shape && st.shape !== 'unsure'
-    ? ((SHAPES[st.operation] || []).find((x) => x[0] === st.shape) || [, st.shape])[1] : '');
+    ? ((SHAPES[st.operation] || []).find((x) => Array.isArray(x) && x[0] === st.shape) || [, st.shape])[1] : '');
   const ISSUES = [['chipping', 'Breaks or chips'], ['wear', 'Wears out fast'], ['finish', 'Poor finish'], ['chatter', 'Chatter'],
     ['chips', 'Long chips'], ['bue', 'Built-up edge'], ['none', 'Nothing, new job']];
 
@@ -172,13 +176,16 @@
     },
 
     shape() {
-      const list = SHAPES[st.operation] || [];
+      const all = SHAPES[st.operation] || [];
+      const list = all.filter(Array.isArray);   // strings in SHAPES are group headings
       const s = el(`<section><h1>Which insert?</h1>
         <div class="find"><input type="text" placeholder="Or type it: CNMG120408, APMT1604…" autocomplete="off" autocapitalize="characters" enterkeyhint="next" aria-label="Type your insert"><button type="button" class="use" hidden>Use</button></div>
         <div class="shapes"></div></section>`);
       const box = s.querySelector('.shapes');
-      for (const [v, t, hint] of [...list, ['unsure', 'Not sure', 'We\'ll check']]) {
-        const b = el(`<button type="button" class="tile${st.shape === v && !st.shapeTyped ? ' on' : ''}">${I.inserts[v] || I.inserts.unsure}<span class="t">${esc(t)}</span><span class="h">${esc(hint)}</span></button>`);
+      for (const item of [...all, ['unsure', 'Not sure', 'We\'ll check']]) {
+        if (!Array.isArray(item)) { box.append(el(`<p class="sgroup">${esc(item)}</p>`)); continue; }
+        const [v, t, hint] = item;
+        const b = el(`<button type="button" data-v="${v}" class="tile${st.shape === v && !st.shapeTyped ? ' on' : ''}">${I.inserts[v] || I.inserts.unsure}<span class="t">${esc(t)}</span><span class="h">${esc(hint)}</span></button>`);
         b.onclick = () => choose(b, () => { st.shape = v; st.shapeTyped = ''; }, 560);
         box.append(b);
       }
@@ -189,7 +196,7 @@
       const mark = () => {
         const key = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
         const hit = list.find(([v]) => key.startsWith(v) || (v === 'SEKT' && key.startsWith('SEMT')) || (v === 'RPMT' && key.startsWith('RDMT')));
-        box.querySelectorAll('.tile').forEach((t, i) => t.classList.toggle('on', !!hit && list[i] === hit));
+        box.querySelectorAll('.tile').forEach((t) => t.classList.toggle('on', !!hit && t.dataset.v === hit[0]));
         use.hidden = key.length < 3;
         return hit;
       };
@@ -219,12 +226,16 @@
 
     grades() {
       const iso = st.iso || (st.sub || st.group || '').charAt(0);
-      const cards = iso ? G.pick(iso, st.operation, st.duty) : [];
+      // CBN inserts: the confirmed TX/TFX table is carbide only, so no grade is offered for them.
+      const cbn = CBN.includes(st.shape);
+      const cards = iso && !cbn ? G.pick(iso, st.operation, st.duty) : [];
       const where = [st.groupName || (fam(iso) && fam(iso).name) || st.typed, OPS.find((o) => o[0] === st.operation)?.[1], shapeName(), DUTY.find((d) => d[0] === st.duty)?.[1]].filter(Boolean).join(' · ');
       const s = el(`<section class="reveal"><p class="kicker">${esc(where.toUpperCase())}</p><h1>${cards.length ? 'Your TOOLFLUX grades' : 'We\'ll pick it for you'}</h1><div class="cards"></div></section>`);
       const box = s.querySelector('.cards');
       if (!cards.length) {
-        box.append(el(`<div class="advise"><b>We'll recommend after studying your job</b><p>This combination needs a closer look. Tell us what needs fixing and we will come back with the right grade.</p></div>`));
+        box.append(el(cbn
+          ? `<div class="advise"><b>We'll pick your CBN grade</b><p>CBN grade depends on hardness and how interrupted the cut is. Tell us what needs fixing and we will come back with the right one.</p></div>`
+          : `<div class="advise"><b>We'll recommend after studying your job</b><p>This combination needs a closer look. Tell us what needs fixing and we will come back with the right grade.</p></div>`));
         const go = el('<div class="act"><button type="button" class="go">Continue</button></div>');
         go.querySelector('button').onclick = () => { st.line = 'help'; st.grade = ''; forward(0); };
         s.append(go);
