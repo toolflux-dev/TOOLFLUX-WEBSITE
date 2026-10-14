@@ -8,7 +8,7 @@
   const WMG = (window.TFX_WMG || { families: [] }).families;
   const G = window.TFX_GRADES;
   const START = Date.now();
-  const DRAFT = 'tfx-finder-v2';
+  const DRAFT = 'tfx-finder-v3';   // v3: the insert step moved the step numbers
   const MAX_FILES = 3;
   const MAX_BYTES = 8 * 1024 * 1024;
   const stage = document.getElementById('stage');
@@ -20,12 +20,26 @@
   ];
   const OPS = [['turning', 'Turning'], ['milling', 'Milling'], ['grooving', 'Grooving'], ['drilling', 'U-drilling']];
   const DUTY = [['roughing', 'Roughing', 'Deep cuts, heavy stock removal'], ['medium', 'Medium', 'General machining'], ['finishing', 'Finishing', 'Light cuts, final size and finish']];
+  // Insert types offered per operation: [code (icon key), label, hint]. The shape is recorded
+  // with the request; it does not change the grades shown.
+  const SHAPES = {
+    turning: [['CNMG', 'CNMG', '80° · negative'], ['CCMT', 'CCMT', '80° · positive'], ['DNMG', 'DNMG', '55° · negative'],
+      ['DCMT', 'DCMT', '55° · positive'], ['VNMG', 'VNMG', '35° · negative'], ['VCMT', 'VCMT', '35° · positive'],
+      ['VCGT', 'VCGT', '35° · ground'], ['TNMG', 'TNMG', 'Triangle · neg.'], ['TCMT', 'TCMT', 'Triangle · pos.'],
+      ['WNMG', 'WNMG', 'Trigon · neg.'], ['SNMG', 'SNMG', 'Square · neg.'], ['RCMT', 'RCMT', 'Round · pos.']],
+    milling: [['APMT', 'APMT', '90° shoulder'], ['APKT', 'APKT', '90° shoulder'], ['SEKT', 'SEKT / SEMT', '45° face'],
+      ['SNMX', 'SNMX', 'Square face'], ['RPMT', 'RPMT / RDMT', 'Round']],
+    grooving: [['TDC', 'TDC', 'Series'], ['MGMN', 'MGMN', 'Series']],
+    drilling: [['SPMG', 'SPMG', 'U-drill'], ['WCMX', 'WCMX', 'U-drill'], ['XOMX', 'XOMX', 'U-drill']],
+  };
+  const shapeName = () => st.shapeTyped || (st.shape && st.shape !== 'unsure'
+    ? ((SHAPES[st.operation] || []).find((x) => x[0] === st.shape) || [, st.shape])[1] : '');
   const ISSUES = [['chipping', 'Breaks or chips'], ['wear', 'Wears out fast'], ['finish', 'Poor finish'], ['chatter', 'Chatter'],
     ['chips', 'Long chips'], ['bue', 'Built-up edge'], ['none', 'Nothing, new job']];
 
   let st = blank();
   function blank() {
-    return { product: '', iso: '', group: '', groupName: '', sub: '', typed: '', operation: '', duty: '', line: '', grade: '',
+    return { product: '', iso: '', group: '', groupName: '', sub: '', typed: '', operation: '', shape: '', shapeTyped: '', duty: '', line: '', grade: '',
       issues: [], extras: { currentInsert: '', partsPerEdge: '', note: '' }, contact: { name: '', company: '', phone: '', email: '' } };
   }
   let files = [];
@@ -42,7 +56,7 @@
   // The path depends on what they need: inserts get the full finder; drills and holders a short one.
   function path() {
     return st.product === 'insert' || !st.product
-      ? ['product', 'family', 'group', 'operation', 'duty', 'grades', 'issues', 'contact']
+      ? ['product', 'family', 'group', 'operation', 'shape', 'duty', 'grades', 'issues', 'contact']
       : ['product', 'family', 'group', 'issues', 'contact'];
   }
 
@@ -151,9 +165,44 @@
       const box = s.querySelector('.ops');
       for (const [v, t] of OPS) {
         const b = el(`<button type="button" class="tile${st.operation === v ? ' on' : ''}">${I.ops[v]}<span class="t">${t}</span></button>`);
-        b.onclick = () => choose(b, () => { st.operation = v; st.line = ''; st.grade = ''; });
+        b.onclick = () => choose(b, () => { if (st.operation !== v) { st.shape = ''; st.shapeTyped = ''; } st.operation = v; st.line = ''; st.grade = ''; });
         box.append(b);
       }
+      return s;
+    },
+
+    shape() {
+      const list = SHAPES[st.operation] || [];
+      const s = el(`<section><h1>Which insert?</h1>
+        <div class="find"><input type="text" placeholder="Or type it: CNMG120408, APMT1604…" autocomplete="off" autocapitalize="characters" enterkeyhint="next" aria-label="Type your insert"><button type="button" class="use" hidden>Use</button></div>
+        <div class="shapes"></div></section>`);
+      const box = s.querySelector('.shapes');
+      for (const [v, t, hint] of [...list, ['unsure', 'Not sure', 'We\'ll check']]) {
+        const b = el(`<button type="button" class="tile${st.shape === v && !st.shapeTyped ? ' on' : ''}">${I.inserts[v] || I.inserts.unsure}<span class="t">${esc(t)}</span><span class="h">${esc(hint)}</span></button>`);
+        b.onclick = () => choose(b, () => { st.shape = v; st.shapeTyped = ''; }, 560);
+        box.append(b);
+      }
+      const input = s.querySelector('input');
+      const use = s.querySelector('.use');
+      input.value = st.shapeTyped;
+      // Typing lights up the matching tile (CNMG120408 -> CNMG) so they see it understood.
+      const mark = () => {
+        const key = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        const hit = list.find(([v]) => key.startsWith(v) || (v === 'SEKT' && key.startsWith('SEMT')) || (v === 'RPMT' && key.startsWith('RDMT')));
+        box.querySelectorAll('.tile').forEach((t, i) => t.classList.toggle('on', !!hit && list[i] === hit));
+        use.hidden = key.length < 3;
+        return hit;
+      };
+      const go = () => {
+        const val = input.value.trim().toUpperCase().slice(0, 40);
+        if (val.replace(/[^A-Z0-9]/g, '').length < 3) return;
+        const hit = mark();
+        st.shapeTyped = val; st.shape = hit ? hit[0] : ''; save(); forward(200);
+      };
+      input.addEventListener('input', mark);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+      use.onclick = go;
+      if (st.shapeTyped) mark();
       return s;
     },
 
@@ -171,7 +220,7 @@
     grades() {
       const iso = st.iso || (st.sub || st.group || '').charAt(0);
       const cards = iso ? G.pick(iso, st.operation, st.duty) : [];
-      const where = [st.groupName || (fam(iso) && fam(iso).name) || st.typed, OPS.find((o) => o[0] === st.operation)?.[1], DUTY.find((d) => d[0] === st.duty)?.[1]].filter(Boolean).join(' · ');
+      const where = [st.groupName || (fam(iso) && fam(iso).name) || st.typed, OPS.find((o) => o[0] === st.operation)?.[1], shapeName(), DUTY.find((d) => d[0] === st.duty)?.[1]].filter(Boolean).join(' · ');
       const s = el(`<section class="reveal"><p class="kicker">${esc(where.toUpperCase())}</p><h1>${cards.length ? 'Your TOOLFLUX grades' : 'We\'ll pick it for you'}</h1><div class="cards"></div></section>`);
       const box = s.querySelector('.cards');
       if (!cards.length) {
@@ -330,7 +379,7 @@
     const bits = [
       PRODUCTS.find((p) => p[0] === st.product)?.[1],
       [f && f.name, st.group && `${st.sub || st.group} ${st.groupName}`, st.typed && `typed: ${st.typed}`].filter(Boolean).join(' / '),
-      OPS.find((o) => o[0] === st.operation)?.[1], DUTY.find((d) => d[0] === st.duty)?.[1],
+      OPS.find((o) => o[0] === st.operation)?.[1], shapeName() && `Insert: ${shapeName()}`, DUTY.find((d) => d[0] === st.duty)?.[1],
       st.grade ? `${G.copy[st.line] ? G.copy[st.line].label : ''}: ${st.grade}` : st.line === 'help' ? 'Grade: help me choose' : '',
       st.issues.length ? `Fix: ${st.issues.map((v) => ISSUES.find((x) => x[0] === v)?.[1]).join(', ')}` : '',
     ];
@@ -359,7 +408,7 @@
         action: 'submit',
         contact: { name: c.name.trim(), company: c.company.trim(), phone: c.phone.trim(), email: c.email.trim(), city: '' },
         answers: { v: 2, product: st.product, metal: { iso: st.iso, group: st.group, groupName: st.groupName, code: st.sub, typed: st.typed },
-          operation: st.operation, duty: st.duty, line: st.line, grade: st.grade, issues: st.issues, extras: st.extras },
+          operation: st.operation, shape: { code: st.shape, typed: st.shapeTyped }, duty: st.duty, line: st.line, grade: st.grade, issues: st.issues, extras: st.extras },
         summary: summary(), note: st.extras.note || '',
         files: files.map((f) => ({ name: f.name, mime: f.mime, data: f.data })),
         website: c.website || '', elapsedMs: Date.now() - START,

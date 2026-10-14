@@ -111,5 +111,42 @@ window.TFX_ICONS = (function () {
   const tip = '<svg viewBox="0 0 20 20" class="ico-tip" aria-hidden="true"><path d="M2 10 10 2 18 10 10 18Z" fill="var(--acc)" stroke="var(--ink)" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="var(--paper)"/></svg>';
   const camera = '<svg viewBox="0 0 24 24" class="ico-ui" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
 
-  return { insert, drill, holder, metals, ops, duty, issues, back, tick, tip, camera };
+  // ---- insert shapes, seen from the top. Negative: double-sided, a chipbreaker line inside the
+  // edge and a straight hole. Positive: the flank shows (clearance angle) and the hole is
+  // countersunk for a screw. --turn is the indexing turn played when the tile is picked.
+  const P = (pts) => `M${pts.map((p) => p.join(' ')).join('L')}Z`;
+  const inner = (d) => `<path d="${d}" transform="translate(32 32) scale(.78) translate(-32 -32)" fill="none" stroke="var(--steel-2)" stroke-width="1.6" stroke-linejoin="round"/>`;
+  const holeN = (r = 5) => `<circle cx="32" cy="32" r="${r}" fill="var(--paper)" ${k}/>`;
+  const holeP = (r = 6) => `<circle cx="32" cy="32" r="${r}" fill="var(--steel-2)" ${k}/><circle cx="32" cy="32" r="${(r * 0.55).toFixed(1)}" fill="var(--paper)" stroke="var(--ink)" stroke-width="1.6"/>`;
+  const shape = (d, neg, turn, hole = true, r) => S('0 0 64 64', `<g class="ins">
+    ${neg ? '' : `<path d="${d}" transform="translate(1.6 2.4)" fill="var(--steel-2)" ${k}/>`}
+    <path d="${d}" fill="var(--steel)" ${k}/>${neg ? inner(d) : ''}${hole ? (neg ? holeN(r) : holeP(r)) : ''}</g>`, 'ico-ins').replace('<svg ', `<svg style="--turn:${turn}deg" `);
+  const C80 = P([[6, 32], [32, 10.5], [58, 32], [32, 53.5]]);
+  const D55 = P([[5, 32], [32, 18], [59, 32], [32, 46]]);
+  const V35 = P([[4, 32], [32, 23.5], [60, 32], [32, 40.5]]);
+  const TRI = P([[32, 8], [54.5, 47], [9.5, 47]]);
+  const TRIGON = P([[32, 7], [46.7, 24.5], [54.5, 46], [32, 50], [9.5, 46], [17.3, 24.5]]);
+  const SQ = 'M14 12h36a2 2 0 0 1 2 2v36a2 2 0 0 1-2 2H14a2 2 0 0 1-2-2V14a2 2 0 0 1 2-2z';
+  const SQ45 = P([[18, 12], [46, 12], [52, 18], [52, 46], [46, 52], [18, 52], [12, 46], [12, 18]]);
+  const RND = 'M32 10a22 22 0 1 1 0 44a22 22 0 1 1 0-44z';
+  const APM = P([[10, 24], [48, 14], [55, 40], [17, 50]]);
+  const XO = P([[9, 30], [22, 15], [52, 19], [55, 34], [42, 49], [12, 45]]);
+  const TDC = P([[4, 21], [13, 25], [51, 25], [60, 21], [60, 43], [51, 39], [13, 39], [4, 43]]);
+  const MGMN = P([[8, 20], [26, 27], [38, 27], [56, 20], [56, 44], [38, 37], [26, 37], [8, 44]]);
+  const unsure = S('0 0 64 64', `<g class="ins"><path d="${C80}" fill="none" stroke="var(--steel-2)" stroke-width="2.2" stroke-dasharray="4 4" stroke-linejoin="round"/>
+    <text x="32" y="40" text-anchor="middle" font-size="24" font-weight="700" fill="var(--ink-2)" font-family="system-ui,sans-serif">?</text></g>`, 'ico-ins');
+  const inserts = {
+    CNMG: shape(C80, true, 180), CCMT: shape(C80, false, 180),
+    DNMG: shape(D55, true, 180), DCMT: shape(D55, false, 180),
+    VNMG: shape(V35, true, 180, true, 3), VCMT: shape(V35, false, 180, true, 3.6), VCGT: shape(V35, false, 180, true, 3.6),
+    TNMG: shape(TRI, true, 120, true, 4.5), TCMT: shape(TRI, false, 120, true, 5),
+    WNMG: shape(TRIGON, true, 120), SNMG: shape(SQ, true, 90), RCMT: shape(RND, false, 45),
+    APMT: shape(APM, false, 180, true, 5), APKT: shape(APM, false, 180, true, 5),
+    SEKT: shape(SQ45, false, 90), SNMX: shape(SQ, true, 90), RPMT: shape(RND, false, 45),
+    TDC: shape(TDC, true, 180, false), MGMN: shape(MGMN, true, 180, false),
+    SPMG: shape(SQ, false, 90, true, 5.5), WCMX: shape(TRIGON, false, 120, true, 5.5), XOMX: shape(XO, false, 180, true, 5),
+    unsure,
+  };
+
+  return { insert, drill, holder, metals, ops, duty, issues, back, tick, tip, camera, inserts };
 }());

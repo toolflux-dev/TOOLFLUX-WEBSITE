@@ -121,6 +121,19 @@ h1 { font-family: var(--display); font-weight: 600; font-size: clamp(28px, 8vw, 
 .op-drilling .plunge-d { animation: plunge-d 2.8s var(--ease) infinite; }
 .op-drilling .flutes { animation: flute-d .6s linear infinite; }
 
+/* insert types: a 3-column grid of top views; picking one indexes it like a turn in the pocket */
+.shapes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shapes .tile { flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 10px 6px 12px; min-height: 112px;
+  animation: pop .38s var(--ease) both; }
+.shapes .tile:nth-child(3n+2) { animation-delay: .04s; }
+.shapes .tile:nth-child(3n) { animation-delay: .08s; }
+.shapes .ico-ins { width: 56px; height: 56px; margin-bottom: 4px; }
+.shapes .tile .t { font: 700 15px var(--mono); letter-spacing: .02em; }
+.shapes .tile .h { font-size: 12px; line-height: 1.25; }
+.ico-ins .ins { transform-box: view-box; transform-origin: center; transition: transform .6s var(--ease); }
+.tile.on .ico-ins .ins { transform: rotate(var(--turn, 90deg)); }
+.find .use { border: 0; border-radius: 12px; padding: 0 18px; background: var(--acc); color: var(--paper); font-weight: 600; }
+
 /* duty: the surface each leaves behind */
 .duty .tile { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 14px 14px 0; overflow: hidden; }
 .duty .ico-duty { width: calc(100% + 28px); height: 40px; margin: 6px -14px 0; display: block; }
