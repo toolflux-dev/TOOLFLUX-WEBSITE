@@ -686,6 +686,23 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
   #mn.mopen .nm a{color:var(--ink);font-size:.72rem}
 }
 
+/* NAV DROPDOWN (Solutions) */
+.ndd{position:relative}
+.ndt::after{content:'';display:inline-block;width:5px;height:5px;margin-left:.45em;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.ndd:hover .ndt::after,.ndd:focus-within .ndt::after{transform:translateY(0) rotate(-135deg)}
+.ndm{position:absolute;top:100%;left:-1.1rem;margin-top:.9rem;min-width:190px;list-style:none;background:#fff;border:1px solid var(--rule);border-top:2px solid var(--teal);box-shadow:0 16px 36px rgba(0,0,0,.1);padding:.45rem 0;opacity:0;visibility:hidden;transform:translateY(6px);transition:opacity .18s,transform .18s,visibility .18s;z-index:10}
+.ndm::before{content:'';position:absolute;left:0;right:0;top:-1.1rem;height:1.1rem}
+.ndd:hover .ndm,.ndd:focus-within .ndm{opacity:1;visibility:visible;transform:none}
+.ndm a{display:block;padding:.7rem 1.1rem;white-space:nowrap}
+.ndm a:hover{background:rgba(0,151,178,.07)}
+.ndm a.act::after{display:none}
+@media(max-width:960px){
+  #mn.mopen .ndt::after{display:none}
+  #mn.mopen .ndm{position:static;opacity:1;visibility:visible;transform:none;margin:.9rem 0 0;padding:0 0 0 .9rem;min-width:0;background:none;border:0;border-left:2px solid var(--rule);box-shadow:none;display:flex;flex-direction:column;gap:.9rem}
+  #mn.mopen .ndm a{padding:0}
+  #mn.mopen .ndm a:hover{background:none}
+}
+
 /* ── POLISH ── */
 ::selection{background:var(--teal);color:#fff}
 a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
@@ -781,11 +798,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <li><a href="#about">About</a></li>
     <li><a href="#products">Products</a></li>
     <li><a href="#machining-log">Machlog</a></li>
-    <li><a href="#solutions">Solutions</a></li>
-    <li><a href="#calculators">Calculator</a></li>
-    
-    <li><a href="#blog">Blog</a></li>
-    <li><a href="#faq">FAQ</a></li>
+    <li class="ndd"><a href="#solutions" class="ndt">Solutions</a><ul class="ndm"><li><a href="#solutions">Solutions</a></li><li><a href="#calculators">Calculator</a></li><li><a href="#faq">FAQ</a></li><li><a href="#blog">Blog</a></li></ul></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
   <a href="https://wa.me/918660234766" class="n-cta spk" target="_blank">WhatsApp Us</a>
@@ -2383,13 +2396,15 @@ document.querySelectorAll('.nm a').forEach(function(a){a.addEventListener('click
 (function(){
   var ids=['about','products','solutions','calculators','blog','faq','contact'];
   var links={};
-  document.querySelectorAll('.nm a').forEach(function(a){var t=a.getAttribute('href');if(t&&t[0]==='#')links[t.slice(1)]=a});
+  document.querySelectorAll('.nm a:not(.ndt)').forEach(function(a){var t=a.getAttribute('href');if(t&&t[0]==='#')links[t.slice(1)]=a});
+  var ddt=document.querySelector('.ndt');
   window.addEventListener('scroll',function(){
     var sp=document.getElementById('sprog');
     if(sp){var d=document.documentElement;sp.style.width=(d.scrollTop/(d.scrollHeight-d.clientHeight)*100)+'%'}
     var cur='';
     ids.forEach(function(id){var el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=130)cur=id});
     for(var k in links)links[k].classList.toggle('act',k===cur);
+    if(ddt)ddt.classList.toggle('act',['solutions','calculators','faq','blog'].indexOf(cur)>-1);
   },{passive:true});
 })();
 </script>

@@ -46,6 +46,16 @@ nav {
   color: var(--ink); transition: color .2s;
 }
 .nm a:hover { color: var(--teal-dark); }
+/* NAV DROPDOWN (Solutions) */
+.ndd{position:relative}
+.ndt::after{content:'';display:inline-block;width:5px;height:5px;margin-left:.45em;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.ndd:hover .ndt::after,.ndd:focus-within .ndt::after{transform:translateY(0) rotate(-135deg)}
+.ndm{position:absolute;top:100%;left:-1.1rem;margin-top:.9rem;min-width:190px;list-style:none;background:#fff;border:1px solid var(--rule);border-top:2px solid var(--teal);box-shadow:0 16px 36px rgba(0,0,0,.1);padding:.45rem 0;opacity:0;visibility:hidden;transform:translateY(6px);transition:opacity .18s,transform .18s,visibility .18s;z-index:10}
+.ndm::before{content:'';position:absolute;left:0;right:0;top:-1.1rem;height:1.1rem}
+.ndd:hover .ndm,.ndd:focus-within .ndm{opacity:1;visibility:visible;transform:none}
+.ndm a{display:block;padding:.7rem 1.1rem;white-space:nowrap}
+.ndm a:hover{background:rgba(0,151,178,.07)}
+.ndm a.act::after{display:none}
 .n-cta {
   font-size: .6rem; font-weight: 700; letter-spacing: .18em;
   text-transform: uppercase; background: var(--teal); color: #fff;
