@@ -101,7 +101,7 @@ BLOGS.forEach((b, i) => {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/svg+xml" href="favicon.svg"><script src="favicon-spin.js" defer></script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(b.title)} — TOOLFLUX</title>
 <meta name="description" content="${esc(desc)}">
