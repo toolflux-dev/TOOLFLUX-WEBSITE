@@ -96,6 +96,7 @@ h1 { font-family: var(--display); font-weight: 600; font-size: clamp(28px, 8vw, 
   border: 0; border-bottom: 1px solid var(--line); padding: 14px 4px; min-height: 64px; transition: background .2s var(--ease); }
 .row:active, .row.on { background: var(--tint); }
 .row .code { font: 700 15px var(--mono); color: var(--ink); }
+.row > span:nth-child(2) { min-width: 0; }
 .row .n { font-weight: 600; }
 .row .ex { display: block; font: 12px var(--mono); color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row .chev { width: 8px; height: 8px; border-right: 2px solid var(--muted); border-top: 2px solid var(--muted); transform: rotate(45deg); }
@@ -245,6 +246,61 @@ label.f.bad input { border-color: var(--crit); animation: nudge .3s var(--ease);
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .ico-duty .draw, .ico-tick .draw { stroke-dashoffset: 0; }
+}
+
+/* ---- phones: bigger type and pictures, and the one-tap choices fill the screen instead of leaving the bottom third empty */
+@media (max-width: 639px) {
+  body { font-size: 17px; }
+  .bar { grid-template-columns: 64px 1fr 64px; padding: 12px 12px 8px; }
+  .logo { height: 30px; }
+  .count { font-size: 15px; white-space: nowrap; }
+  .track { height: 10px; border-radius: 5px; }
+  .track .cut { border-radius: 5px; }
+  .track .tip { top: -7px; width: 24px; height: 24px; transform: translateX(-12px); }
+  .ico-tip { width: 24px; height: 24px; }
+  .screen { padding-top: 24px; }
+  .kicker { font-size: 14px; }
+  h1 { font-size: clamp(32px, 9.4vw, 40px); margin-bottom: 20px; }
+  .sub { font-size: 17px; }
+  .tile .t { font-size: 22px; }
+  .tile .h { font-size: 16px; }
+
+  .product, .metals, .ops, .duty { flex: 1 0 auto; grid-auto-rows: 1fr; }
+  .product .tile { min-height: 136px; }
+  .product .ico { width: 120px; height: 120px; }
+  .product .tile .t { font-size: 28px; }
+  .metals .tile { min-height: 124px; padding: 14px; justify-content: space-between; }
+  .metals .ico { width: 84px; height: 84px; }
+  .iso { width: 30px; height: 30px; font-size: 16px; }
+  .ops .tile { justify-content: space-between; }
+  .ops .tile .t { font-size: 22px; }
+  .duty .tile { align-content: space-between; }
+  .duty .ico-duty { height: 52px; }
+
+  .rows { flex: 1 0 auto; display: flex; flex-direction: column; }
+  .row { flex: 1 0 auto; grid-template-columns: 52px minmax(0, 1fr) 18px; min-height: 72px; }
+  .row .code { font-size: 17px; }
+  .row .n { font-size: 18px; }
+  .row .ex { font-size: 14px; }
+  .find input { font-size: 17px; padding: 14px 16px; }
+
+  .shapes { gap: 10px; }
+  .shapes .tile { min-height: 132px; }
+  .shapes .ico-ins { width: 68px; height: 68px; }
+  .shapes .tile .t { font-size: 17px; }
+  .shapes .tile .h { font-size: 13.5px; }
+  .sgroup { font-size: 13px; }
+
+  .chip { font-size: 17px; min-height: 52px; padding: 10px 16px 10px 12px; }
+  .ico-issue { width: 32px; height: 32px; }
+  .note { font-size: 15px; }
+  .link { font-size: 17px; }
+  label.f { font-size: 15px; }
+  .go { font-size: 21px; padding: 18px; }
+  .fine { font-size: 14px; }
+  .gcard .code { font-size: 38px; }
+  .gcard .line, .gcard .coat, .gcard .gnote { font-size: 13px; }
+  .gcard p { font-size: 16px; }
 }
 
 @media (min-width: 640px) {
