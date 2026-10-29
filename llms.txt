@@ -1,0 +1,29 @@
+# TOOLFLUX
+
+> Carbide cutting tools supplier based in Hubli, Karnataka, delivering across India. Inserts, solid carbide drills, end mills, indexable and turning holders, and the SUPER-U / HYPER-U U-Drill system, with on-site application support.
+
+- Location: 54, Laxmi Colony, Vidyanagar, Hubli, Karnataka 580021, India
+- Phone / WhatsApp: +91 8660234766
+- Email: toolflux@gmail.com
+- Hours: Monday to Saturday, 9:00 am to 6:00 pm IST
+- Same-day dispatch on stock items
+
+## Products
+
+- [Carbide cutting tools](https://www.toolflux.co.in/): turning, milling, threading, grooving, CBN and drilling inserts; solid carbide drills; end mills; indexable holders (HFMA/HFMB high-feed, D16 to D63); turning holders; U-Drill Ø8.5 to 70 mm in 2D, 3D and 5D
+- Grades: TFX-P25 (ISO P, steel), TFX-M35 (ISO M, stainless), TFX-K20 (ISO K, cast iron), TFX-U15 (ISO N, aluminium), TFX-S30 (ISO S), TFX-H15 / TFX-H10 (CBN, hardened steel up to 60 HRC)
+
+## Software
+
+- [Machlog](https://www.toolflux.co.in/machining-log.html): shop-floor software that tracks insert life and cost per component. Paid plans: Solo ₹299, Shop ₹799, Works ₹2,499 per month, with a 14-day free trial
+- [Machlog instruction manual](https://www.toolflux.co.in/machlog-guide.html)
+
+## Articles
+
+- [Why your inserts are failing before time](https://www.toolflux.co.in/blog-insert-failure.html)
+- [Steel vs stainless: choosing the grade](https://www.toolflux.co.in/blog-steel-vs-stainless.html)
+- [L/D ratio and deep hole drilling](https://www.toolflux.co.in/blog-deep-hole-drilling.html)
+
+## Contact
+
+- [Contact page](https://www.toolflux.co.in/contact.html)

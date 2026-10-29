@@ -80,6 +80,7 @@ BLOGS.forEach((b, i) => {
         inLanguage: 'en',
         mainEntityOfPage: url,
         articleSection: b.cat,
+        image: 'https://www.toolflux.co.in/assets/img/turning-inserts.jpg',
         author: { '@type': 'Organization', name: 'TOOLFLUX', url: BASE },
         publisher: { '@type': 'Organization', name: 'TOOLFLUX', url: BASE }
       },
@@ -112,6 +113,11 @@ BLOGS.forEach((b, i) => {
 <meta property="og:url" content="${url}">
 <meta property="og:site_name" content="TOOLFLUX">
 <meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://www.toolflux.co.in/assets/img/turning-inserts.jpg">
+<meta property="og:image:width" content="900">
+<meta property="og:image:height" content="1200">
+<meta property="og:image:alt" content="TOOLFLUX carbide turning inserts">
+<meta name="twitter:image" content="https://www.toolflux.co.in/assets/img/turning-inserts.jpg">
 <link rel="stylesheet" href="shared.css">
 <style>${CSS}</style>
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
