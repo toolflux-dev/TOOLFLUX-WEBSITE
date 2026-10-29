@@ -539,11 +539,11 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
    HERO FEATURE ROTATOR (bottom of right panel)
 ═══════════════════════════════════════════════ */
 .hfeat-band{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);width:340px;z-index:4}
-.hfeat-item{display:none;align-items:center;gap:.7rem;padding:.5rem .9rem;background:rgba(255,255,255,.05);border:1px solid rgba(0,151,178,.2);border-radius:2px;backdrop-filter:blur(6px)}
+.hfeat-item{display:none;align-items:center;gap:.7rem;padding:.5rem .9rem;background:rgba(254,255,254,.92);border:1px solid rgba(0,151,178,.25);border-radius:2px}
 .hfeat-item.on{display:flex;animation:featIn .4s ease}
 @keyframes featIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .hfeat-grade{font-size:.48rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:var(--teal-dark);background:rgba(0,151,178,.15);padding:.18rem .5rem;border-radius:1px;white-space:nowrap;flex-shrink:0}
-.hfeat-txt{font-size:.65rem;font-weight:300;color:rgba(255,255,255,.82);line-height:1.5}
+.hfeat-txt{font-size:.65rem;font-weight:400;color:var(--T);line-height:1.5}
 .hfeat-dots{display:flex;gap:.35rem;justify-content:center;margin-top:.55rem}
 .hfeat-dot{width:5px;height:5px;border-radius:50%;background:rgba(0,151,178,.25);transition:background .3s}
 .hfeat-dot.on{background:var(--teal-dark)}
@@ -752,6 +752,108 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .ctsoc a{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .9rem;border:1px solid var(--rule);border-radius:999px;font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink);text-decoration:none;transition:all .2s}
 .ctsoc a:hover{border-color:var(--teal);color:var(--teal-dark);background:rgba(0,151,178,.06)}
 .ctsoc svg{width:15px;height:15px;flex-shrink:0}
+
+/* ═══════════════════════════════════════
+   MOBILE BALANCE (phones, ≤600px)
+═══════════════════════════════════════ */
+@media(max-width:960px){
+  .nburg{width:44px;height:44px}
+  .n-cta{min-height:40px;display:inline-flex;align-items:center}
+  #mn.mopen .nm{gap:0;padding:.5rem 1.5rem 1.1rem}
+  #mn.mopen .nm a{display:block;padding:.7rem 0;font-size:.8rem}
+  #mn.mopen .ndm{gap:0;margin:0}
+  #mn.mopen .ndm a{padding:.6rem 0}
+}
+@media(max-width:600px){
+  /* Rhythm: shorter section padding so the page reads in fewer screens */
+  .sec{padding:3.5rem 1.25rem}
+  .hleft{padding:6.5rem 1.25rem 2.5rem}
+
+  /* Hero diagram: scale to fit instead of spilling off both edges */
+  .hright{padding:.5rem 0 1rem!important;justify-content:center!important}
+  .hright>div{zoom:.64;margin-right:12px}
+  #hero .tbadge .tbv{font-size:1.05rem}
+  #hero .tbadge .tbl{font-size:.62rem}
+  #hero .fchip{font-size:.72rem}
+
+  /* Floating buttons become one bottom bar, thumb-height, never over content */
+  .fab{left:0;right:0;bottom:0;flex-direction:row;gap:0;align-items:stretch;background:var(--ink);padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -4px 18px rgba(0,0,0,.12)}
+  .fab .fb{flex:1 1 0;justify-content:center;text-align:center;min-height:54px;padding:.4rem .35rem;border-radius:0;box-shadow:none;font-size:.62rem;letter-spacing:.06em;line-height:1.25;animation:none}
+  .fab .fb-req{border:0;border-right:1px solid var(--rule)}
+  .fab .fb svg{flex-shrink:0}
+  body{padding-bottom:calc(54px + env(safe-area-inset-bottom))}
+
+  /* Problem accordion: title gets the full line, tag drops beneath it */
+  .prob-hd{flex-wrap:wrap;gap:.35rem .75rem}
+  .prob-title{flex:1 1 0;min-width:0;font-size:1rem;line-height:1.3}
+  .prob-arr{order:2}
+  .prob-tag{order:3;margin-left:calc(26px + .75rem)}
+  .prob-body{padding-left:0}
+  .prob-item.open .prob-body{max-height:1600px}
+  .psn{font-size:.9rem}.psd{font-size:.8rem;line-height:1.55}
+  /* Calculator: 2x2 tabs, underline marks the active one */
+  .calc-tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:none}
+  .calc-tab{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:1rem .5rem}
+  .calc-tab.on{border-right-color:var(--rule);border-bottom-color:var(--rule);box-shadow:inset 0 -3px 0 var(--teal)}
+  .calc-pane{padding:1.5rem 1.1rem}
+  /* 16px inputs: stops iOS zooming the page when a field is tapped */
+  input,select,textarea,.calc-inp,.cti,.ctt,.csel,.fi,.fsel{font-size:16px}
+
+  /* Product strip: snap card to card */
+  .pstrip{scroll-snap-type:x mandatory}
+  .psc{scroll-snap-align:start}
+
+  /* Readable type: labels ≥10px, sentences ≥13px */
+  .stag{font-size:.66rem;letter-spacing:.28em}
+  .heye,.hscroll{font-size:.66rem;letter-spacing:.22em}
+  .pill{font-size:.66rem}
+  .prob-num{font-size:.66rem}
+  .prob-tag{font-size:.6rem}
+  .prob-col-hd{font-size:.66rem}
+  .prob-col-txt{font-size:.88rem}
+  .prob-improve{font-size:.82rem}
+  .stl,.spl,.pdey{font-size:.66rem}
+  .tcs{font-size:.8rem}
+  .pscs{font-size:.74rem}
+  .gp{font-size:.66rem}
+  .tki{font-size:.66rem}
+  .hfeat-grade{font-size:.62rem}
+  .hfeat-txt{font-size:.8rem}
+  .calc-tab{font-size:.72rem}
+  .calc-lbl{font-size:.84rem}
+  .calc-hint,.calc-frow span{font-size:.78rem}
+  .calc-unit{font-size:.72rem}
+  .calc-frow code{font-size:.8rem}
+  .blog-ctag{font-size:.62rem}
+  .blog-min{font-size:.72rem}
+  .blog-exc{font-size:.86rem}
+  .btn{font-size:.72rem}
+  .n-cta{font-size:.66rem;padding:.6rem 1rem}
+
+  /* Tap targets */
+  .blog-rd{min-height:42px;padding:.6rem 1.1rem;font-size:.66rem}
+  .ctsub{width:100%;min-height:50px}
+  .ctsoc a{min-height:42px;font-size:.66rem}
+  .fsoc a{min-height:42px;font-size:.66rem}
+  .fcol h5{font-size:.66rem}
+  .fcol ul{gap:0}
+  .fcol a{display:inline-block;padding:.55rem 0;font-size:.86rem}
+  .fcopy{font-size:.74rem;line-height:1.7}
+  .fcopy a{display:inline-block;padding:.4rem 0}
+  .calc-fhd,.ctwl{font-size:.66rem}
+  .calc-opt,.calc-go{font-size:.7rem}
+  .ctsoc-l{font-size:.62rem}
+  .mlf-h .tag{font-size:.62rem}
+  .fab .fb{font-size:.64rem}
+  /* Grade rotator: sit below the diagram instead of over it */
+  .hfeat-band{position:relative;left:auto;bottom:auto;transform:none;width:auto;margin:0 1.25rem 1.75rem}
+  /* Trust bar: icon above text so the copy gets the full cell width */
+  .tcell{flex-direction:column;align-items:flex-start;gap:.65rem;padding:1.3rem 1.1rem}
+}
+@media(min-width:400px) and (max-width:600px){.hright>div{zoom:.7}}
+@media(min-width:480px) and (max-width:600px){.hright>div{zoom:.82}}
+@media(max-width:370px){.hright>div{zoom:.6;margin-right:10px}}
+@media(min-width:601px) and (max-width:900px){.calc-tabs{flex-direction:row;border-bottom:none}.calc-tab{border-right:1px solid var(--rule);border-bottom:3px solid transparent}.calc-tab.on{border-right-color:var(--rule);border-bottom-color:var(--teal)}}
 </style>
 </head>
 <body>
