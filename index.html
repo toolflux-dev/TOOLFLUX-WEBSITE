@@ -581,7 +581,7 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 /* ═══════════════════════════════════════════════
    BLOG SECTION
 ═══════════════════════════════════════════════ */
-#blog{background:var(--ink);padding:5.5rem var(--px)}
+#blog{background:var(--ink);padding:7rem 3rem}
 #blog .stag{color:rgba(0,151,178,.75)}
 #blog .bh{color:#fff}
 #blog .secb{color:rgba(255,255,255,.55)}
@@ -595,9 +595,9 @@ footer{background:var(--ink);padding:4rem 3rem 2.5rem;border-top:1px solid rgba(
 .blog-title{font-size:.98rem;font-weight:700;color:#fff;margin-bottom:.5rem;line-height:1.35;letter-spacing:-.02em}
 .blog-exc{font-size:.73rem;font-weight:300;color:rgba(255,255,255,.48);line-height:1.7;margin-bottom:.95rem}
 .blog-foot{display:flex;align-items:center;justify-content:space-between}
-.blog-min{font-size:.6rem;font-weight:300;color:rgba(255,255,255,.3);letter-spacing:.05em}
-.blog-rd{background:transparent;border:1px solid rgba(0,151,178,.35);color:var(--teal-dark);font-size:.58rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:.4rem .95rem;cursor:pointer;transition:all .2s;font-family:'CG',sans-serif;border-radius:1px}
-.blog-rd:hover{background:var(--teal-dark);color:#fff;border-color:var(--teal-dark)}
+.blog-min{font-size:.6rem;font-weight:300;color:rgba(255,255,255,.6);letter-spacing:.05em}
+.blog-rd{background:transparent;border:1px solid rgba(158,224,240,.45);color:var(--teal-lt);font-size:.58rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;padding:.4rem .95rem;cursor:pointer;transition:all .2s;font-family:'CG',sans-serif;border-radius:1px}
+.blog-rd:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
 .blog-cta-row{text-align:center;margin-top:2.5rem}
 /* Blog modal */
 .bmod-overlay{display:none;position:fixed;inset:0;z-index:9500;background:rgba(12,18,24,.88);backdrop-filter:blur(5px);align-items:flex-start;justify-content:center;padding:2.5rem 1rem;overflow-y:auto}
@@ -860,6 +860,102 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 @media(min-width:480px) and (max-width:600px){.hright>div{zoom:.82}}
 @media(max-width:370px){.hright>div{zoom:.6;margin-right:10px}}
 @media(min-width:601px) and (max-width:900px){.calc-tabs{flex-direction:row;border-bottom:none}.calc-tab{border-right:1px solid var(--rule);border-bottom:3px solid transparent}.calc-tab.on{border-right-color:var(--rule);border-bottom-color:var(--teal)}}
+
+/* ═══════════════════════════════════════
+   MOBILE VARIANT (phones, ≤600px)
+   Selective content for phone visitors; desktop is untouched.
+═══════════════════════════════════════ */
+.m-only{display:none}
+@media (prefers-reduced-motion: reduce){.rv{opacity:1;transform:none}.hleft h1,.heye,.hsub,.hctas,.hpills,.hscroll{animation:none!important;opacity:1!important}}
+@media(max-width:600px){
+  .m-only{display:block}
+
+  /* Paint as it downloads: no loader, no reveal fades */
+  #ldr{display:none!important}
+  .rv{opacity:1!important;transform:none!important;transition:none!important}
+
+  /* Top bar: logo + menu (WhatsApp lives in the bottom bar) */
+  #mn .n-cta{display:none}
+  .nl img{height:30px}
+
+  /* Section eyebrows and their numbers go; the headings carry the section */
+  .stag{display:none}
+
+  /* Readable text: regular weight, 16px, full ink on light grounds */
+  html body section p,.secb,.hsub,.scb,.mlf-p,.prob-col-txt,.faqa,.blog-exc,.psd,.tcs,.cs-sub{font-weight:400!important}
+  .secb,.hsub,.scb,.mlf-p,.prob-col-txt,.faqa{font-size:1rem!important;line-height:1.6!important}
+  html body #about p,#about .ab-commit div[style]{font-size:1rem!important;font-weight:400!important;line-height:1.6!important}
+  .hsub,#about .secb,#products .secb,#solutions .secb,#calculators .secb,#faq .secb,#contact .secb{color:var(--T)!important}
+
+  /* Hero: headline, text, two full-width actions, grade grid */
+  .hright,.hfeat-band,.hpills,.hscroll,.hgeo{display:none!important}
+  .hleft{padding:6rem 1.25rem 2rem;border-right:0}
+  .heye{display:none}
+  .hctas{flex-direction:column;align-items:stretch;gap:.6rem}
+  .hctas .btn{justify-content:center;min-height:52px;font-size:.78rem}
+  .hleft h1{animation:fu .45s ease .05s both!important}
+  .hsub{animation:fu .45s ease .15s both!important}
+  .hctas{animation:fu .45s ease .25s both!important}
+  .m-grades{margin-top:1.8rem}
+  .m-grades h2{font-size:1rem;font-weight:700;color:var(--T);margin-bottom:.75rem;letter-spacing:-.01em}
+  .m-grades ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+  .m-grades li{display:flex;align-items:center;gap:.6rem;background:#fff;padding:.7rem .75rem;border-radius:2px}
+  .m-grades .iso{flex-shrink:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.95rem;color:#fff;border-radius:2px}
+  .m-grades b{display:block;font-size:.9rem;color:var(--T)}
+  .m-grades small{display:block;font-size:.8rem;color:var(--mut)}
+  .iso.p{background:#1d5fae}.iso.m{background:#d9a400;color:#1b1500}.iso.k{background:#c0392b}
+  .iso.n{background:#1a7a3f}.iso.s{background:#b8651d}.iso.h{background:#5d6b74}
+
+  /* Trust bar: four plain rows */
+  .trow{grid-template-columns:1fr!important}
+  .tcell{flex-direction:row!important;align-items:center!important;gap:.9rem!important;padding:1rem 1.25rem!important}
+  .tct{font-size:.95rem}
+  .tcs{font-size:.84rem}
+
+  /* Decoration that only works wide */
+  .ticker,.stwrap{display:none!important}
+
+  /* Problems: first four, then the rest on request */
+  .prob-list:not(.all) .prob-item:nth-child(n+5){display:none}
+  .prob-more{width:100%;min-height:50px;margin-top:1rem;background:var(--ink);color:#fff;border:0;border-radius:1px;font:inherit;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+
+  /* Products: six family tiles, no sideways scroller */
+  .pstrip{display:grid!important;grid-template-columns:1fr 1fr;gap:1px;overflow:visible!important;scroll-snap-type:none}
+  .psc{width:auto!important;padding:1rem .9rem!important;transform:none!important}
+  .pscnum{display:none}
+  .pscn{font-size:.95rem}
+  .pscs{font-size:.78rem}
+
+  /* Machlog: the feature list says it; drop the duplicate pills */
+  #machining-log .pill{display:none}
+
+  /* Industries: one column, no icon squares */
+  .solgrid{grid-template-columns:1fr!important}
+  .scico{display:none!important}
+  .solcard{padding:1.4rem 1.25rem!important}
+  .sct{font-size:1.05rem}
+
+  /* Blog: no empty picture blocks, just category and title */
+  .blog-cimg{height:auto!important;background:none!important;padding:1.1rem 1.1rem 0}
+  .blog-cimg::after{display:none}
+  .blog-ctag{position:static!important;display:inline-block}
+  .blog-title{font-size:1.1rem}
+
+  /* Contact: a maps button instead of an embedded map */
+  .ctmap{display:none}
+  .m-maps{display:flex;align-items:center;justify-content:center;gap:.5rem;min-height:50px;margin-top:1.2rem;background:var(--ink);color:#fff;text-decoration:none;font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border-radius:1px}
+
+  /* Footer: brand, contact, resources (the menu covers products and tools) */
+  .ftop .fcol:nth-child(2),.ftop .fcol:nth-child(3){display:none}
+  .ftop{grid-template-columns:1fr!important;gap:1.6rem!important}
+  .si2{gap:1rem!important;margin-bottom:2.25rem!important}
+  .pdey,.prob-num{display:none!important}
+  .prob-tag{margin-left:0!important}
+  .pscs{font-size:.82rem}
+  .pdbody{padding:1.75rem 1.25rem!important}
+  #blog{padding:3.5rem 1.25rem}
+  .ab-stat{padding:1.6rem .9rem}
+}
 </style>
 </head>
 <body>
@@ -929,6 +1025,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
       <a href="#solutions" class="btn btn-ink spk">Diagnose My Process</a>
       <a href="#calculators" class="btn btn-ol">Cutting Calculator →</a>
     </div>
+    <div class="m-only m-grades"><h2>Grades for every ISO group</h2><ul><li><span class="iso p" aria-hidden="true">P</span><span><b>TFX-P25</b><small>ISO P · Steel</small></span></li><li><span class="iso m" aria-hidden="true">M</span><span><b>TFX-M35</b><small>ISO M · Stainless steel</small></span></li><li><span class="iso k" aria-hidden="true">K</span><span><b>TFX-K20</b><small>ISO K · Cast iron</small></span></li><li><span class="iso n" aria-hidden="true">N</span><span><b>TFX-U15</b><small>ISO N · Aluminium</small></span></li><li><span class="iso s" aria-hidden="true">S</span><span><b>TFX-S30</b><small>ISO S · Titanium &amp; superalloys</small></span></li><li><span class="iso h" aria-hidden="true">H</span><span><b>TFX-H15</b><small>ISO H · Hardened steel (CBN)</small></span></li></ul></div>
     <div class="hpills">
       <span class="pill">ISO Carbide Grades</span>
       <span class="pill">Same-day Dispatch</span>
@@ -1290,6 +1387,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         </div>
 
       </div>
+    <button type="button" class="m-only prob-more" onclick="this.previousElementSibling.classList.add('all');this.remove()">Show all 10 problems</button>
     </div>
     <!-- ── Commitment ── -->
     <div class="ab-commit rv d5" style="background:rgba(0,151,178,.04);border-left:3px solid var(--teal)">
@@ -1956,6 +2054,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="cib"><div class="cil">Working Hours</div><div class="civ">Monday – Saturday<br>9:00 AM – 6:30 PM IST<br><span style="font-size:.72rem;color:var(--mut)">WhatsApp monitored beyond hours for urgent queries</span></div></div>
         <div class="cib"><div class="cil">Delivery Coverage</div><div class="civ">Pan-India delivery<br>Dispatch from Hubli, Karnataka<br><span style="font-size:.72rem;color:var(--mut)">Same-day dispatch from Hubli</span></div></div>
       </div>
+      <a class="m-only m-maps" href="https://maps.google.com/?q=54+Laxmi+Colony,+Vidyanagar,+Hubli+580021" target="_blank" rel="noopener">Open in Google Maps</a>
       <div class="ctmap">
         <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3843.8!2d75.1238!3d15.3645!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zVmlkeWFuYWdhciwgSHVibGk!5e0!3m2!1sen!2sin!4v1" allowfullscreen loading="lazy"></iframe>
       </div>
