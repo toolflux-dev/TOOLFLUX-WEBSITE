@@ -132,7 +132,7 @@ nav.on .nm a{color:var(--ink)}
 .si2{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:end;margin-bottom:5rem}
 
 /* ══ HERO ══ */
-#hero{position:relative;min-height:100vh;background:var(--off);overflow:hidden;display:grid;grid-template-columns:1fr 1fr}
+#hero{position:relative;min-height:min(100vh,900px);background:var(--off);overflow:hidden;display:grid;grid-template-columns:1fr 1fr}
 .hgeo{position:absolute;inset:0;overflow:hidden;pointer-events:none}
 .gc{position:absolute;border-radius:50%;border:1px solid rgba(0,151,178,.1);animation:gsp linear infinite}
 .geo1{width:600px;height:600px;top:-100px;right:-80px;animation-duration:40s}
@@ -753,6 +753,12 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 .ctsoc a:hover{border-color:var(--teal);color:var(--teal-dark);background:rgba(0,151,178,.06)}
 .ctsoc svg{width:15px;height:15px;flex-shrink:0}
 
+/* Hero: centre the diagram beside the headline (inline style pins it to the top) */
+@media(min-width:961px){.hright{align-items:center!important;padding-top:4.5rem!important}}
+@media(min-width:961px) and (max-width:1180px){.hright>div{zoom:.8}}
+/* Problem list: the tag steals the title width below ~1200px; drop it under the title */
+@media(max-width:1200px){.prob-hd{flex-wrap:wrap;gap:.35rem .75rem}.prob-title{flex:1 1 calc(100% - 80px);min-width:0;line-height:1.3}.prob-arr{order:2}.prob-tag{order:3;margin-left:calc(26px + .75rem)}}
+
 /* ═══════════════════════════════════════
    MOBILE BALANCE (phones, ≤600px)
 ═══════════════════════════════════════ */
@@ -785,7 +791,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
   /* Problem accordion: title gets the full line, tag drops beneath it */
   .prob-hd{flex-wrap:wrap;gap:.35rem .75rem}
-  .prob-title{flex:1 1 0;min-width:0;font-size:1rem;line-height:1.3}
+  .prob-title{flex:1 1 calc(100% - 80px);min-width:0;font-size:1rem;line-height:1.3}
   .prob-arr{order:2}
   .prob-tag{order:3;margin-left:calc(26px + .75rem)}
   .prob-body{padding-left:0}
