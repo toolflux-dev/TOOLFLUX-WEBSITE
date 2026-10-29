@@ -109,7 +109,7 @@ body { padding-top: 70px; }
 
 <div class="page-wrap">
   <aside class="toc">
-    <div class="toc-label">Contents</div>
+    <div class="toc-label" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',this.parentElement.classList.toggle('open'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">Contents</div>
     <ol>
       <li><a href="#acceptance">Acceptance of Terms</a></li>
       <li><a href="#about-us">About TOOLFLUX</a></li>

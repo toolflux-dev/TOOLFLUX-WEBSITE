@@ -197,6 +197,17 @@ body { padding-top: 70px; }
 @media (max-width: 600px) {
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* ═══ MOBILE VARIANT (≤600px) ═══ */
+@media (max-width: 600px) {
+  .hours-grid{display:none!important}
+  p,.md-val,.cs-sub{font-size:.95rem!important;line-height:1.6!important}
+  .m-hours{font-size:1rem;line-height:1.6;color:var(--T);font-weight:600;margin-bottom:.8rem}
+  .map-frame{display:none}
+  .wa-text span{font-size:.9rem;line-height:1.55}
+  .contact-hero p{font-size:1rem;line-height:1.6}
+  .form-note{font-size:.85rem!important}
+}
 </style>
 <link rel="canonical" href="https://www.toolflux.co.in/contact.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.toolflux.co.in/"},{"@type":"ListItem","position":2,"name":"Contact","item":"https://www.toolflux.co.in/contact.html"}]}</script>
@@ -333,7 +344,8 @@ body { padding-top: 70px; }
     <div class="cs-card">
       <div class="cs-card-head">Business Hours</div>
       <div class="cs-card-body">
-        <div class="hours-grid">
+        <p class="m-only m-hours">Monday to Saturday, 9:00 am &ndash; 6:00 pm<br>Sunday closed</p>
+      <div class="hours-grid">
           <span class="hg-day">Monday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
           <span class="hg-day">Tuesday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>
           <span class="hg-day">Wednesday</span><span class="hg-time">9:00 am &ndash; 6:00 pm</span>

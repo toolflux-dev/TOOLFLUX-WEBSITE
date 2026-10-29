@@ -131,6 +131,15 @@ footer .wm { font-family: var(--mono); font-weight: 800; letter-spacing: .16em; 
   main { padding: 2rem 1rem 3rem }
   .toc { padding: 0 1rem }
 }
+
+/* ═══ MOBILE VARIANT (≤600px) ═══ */
+@media (max-width: 600px) {
+  .toc:not(.open) .toc-grid{display:none}
+  .toc .lbl{display:flex!important;justify-content:space-between;align-items:center;min-height:48px;cursor:pointer;margin:0!important}
+  .toc .lbl::after{content:'+';font-size:1.3rem;font-weight:400;letter-spacing:0}
+  .toc.open .lbl::after{content:'\2013'}
+  main p,main li,article p,article li,section > p,section li{font-size:1rem}
+}
 </style>
 <link rel="canonical" href="https://www.toolflux.co.in/machlog-guide.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.toolflux.co.in/"},{"@type":"ListItem","position":2,"name":"Machlog App","item":"https://www.toolflux.co.in/machining-log.html"},{"@type":"ListItem","position":3,"name":"Machlog Guide","item":"https://www.toolflux.co.in/machlog-guide.html"}]}</script>
@@ -149,7 +158,7 @@ footer .wm { font-family: var(--mono); font-weight: 800; letter-spacing: .16em; 
 
 <div class="toc">
   <div class="toc-card">
-    <span class="lbl">Contents</span>
+    <span class="lbl" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',this.closest('.toc').classList.toggle('open'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">Contents</span>
     <div class="toc-grid">
       <a href="#s1"><span class="n">01</span> Getting started</a>
       <a href="#s2"><span class="n">02</span> Owner &amp; Operator modes</a>
