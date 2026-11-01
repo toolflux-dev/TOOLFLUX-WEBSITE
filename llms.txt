@@ -15,7 +15,7 @@
 
 ## Software
 
-- [Machlog](https://www.toolflux.co.in/machining-log.html): shop-floor software that tracks insert life and cost per component. Paid plans: Solo ₹299, Shop ₹799, Works ₹2,499 per month, with a 14-day free trial
+- [Machlog](https://www.toolflux.co.in/machining-log.html): shop-floor software that shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Paid plans: Solo ₹299, Shop ₹799, Works ₹2,499 per month, with a 14-day free trial
 - [Machlog instruction manual](https://www.toolflux.co.in/machlog-guide.html)
 
 ## Articles

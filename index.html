@@ -764,6 +764,11 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 /* Problem list: the tag steals the title width below ~1200px; drop it under the title */
 @media(max-width:1200px){.prob-hd{flex-wrap:wrap;gap:.35rem .75rem}.prob-title{flex:1 1 calc(100% - 80px);min-width:0;line-height:1.3}.prob-arr{order:2}.prob-tag{order:3;margin-left:calc(26px + .75rem)}}
 
+
+/* Product panels without a photo: show the range, not "coming soon" */
+.pdspec{display:flex;flex-direction:column;align-items:center;gap:.5rem;text-align:center;padding:0 1.5rem}
+.pdspec b{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:700;letter-spacing:-.03em;color:var(--teal-lt);line-height:1}
+.pdspec span{font-size:.82rem;color:rgba(255,255,255,.75);letter-spacing:.04em}
 /* ═══════════════════════════════════════
    MOBILE BALANCE (phones, ≤600px)
 ═══════════════════════════════════════ */
@@ -1007,7 +1012,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <li><a href="#about">About</a></li>
     <li><a href="#products">Products</a></li>
     <li><a href="#machining-log">Machlog</a></li>
-    <li class="ndd"><a href="#solutions" class="ndt">Solutions</a><ul class="ndm"><li><a href="#solutions">Solutions</a></li><li><a href="#calculators">Calculator</a></li><li><a href="#faq">FAQ</a></li><li><a href="#blog">Blog</a></li></ul></li>
+    <li class="ndd"><a href="#solutions" class="ndt">Solutions</a><ul class="ndm"><li><a href="#solutions">Industries</a></li><li><a href="#calculators">Calculator</a></li><li><a href="#faq">FAQ</a></li><li><a href="#blog">Blog</a></li></ul></li>
     <li><a href="#contact">Contact</a></li>
   </ul>
   <a href="https://wa.me/918660234766" class="n-cta spk" target="_blank">WhatsApp Us</a>
@@ -1027,7 +1032,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <h1>PRECISION<br><span class="tl">ENGINEERED</span><br><span class="w3">FOR YOU.</span></h1>
     <p class="hsub">We don't supply catalogues — we <strong>solve machining problems.</strong> Material, tolerance, cycle time, tool life. TOOLFLUX engineers work at your machine to deliver measurable results.</p>
     <div class="hctas">
-      <a href="#solutions" class="btn btn-ink spk">Diagnose My Process</a>
+      <a href="#problems" class="btn btn-ink spk">Diagnose My Process</a>
       <a href="#calculators" class="btn btn-ol">Cutting Calculator →</a>
     </div>
     <div class="m-only m-grades"><h2>Grades for every ISO group</h2><ul><li><span class="iso p" aria-hidden="true">P</span><span><b>TFX-P25</b><small>ISO P · Steel</small></span></li><li><span class="iso m" aria-hidden="true">M</span><span><b>TFX-M35</b><small>ISO M · Stainless steel</small></span></li><li><span class="iso k" aria-hidden="true">K</span><span><b>TFX-K20</b><small>ISO K · Cast iron</small></span></li><li><span class="iso n" aria-hidden="true">N</span><span><b>TFX-U15</b><small>ISO N · Aluminium</small></span></li><li><span class="iso s" aria-hidden="true">S</span><span><b>TFX-S30</b><small>ISO S · Titanium &amp; superalloys</small></span></li><li><span class="iso h" aria-hidden="true">H</span><span><b>TFX-H15</b><small>ISO H · Hardened steel (CBN)</small></span></li></ul></div>
@@ -1209,7 +1214,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="ab-probs-wrap">
       <div class="stag">What we solve</div>
       <p style="font-size:.82rem;font-weight:300;color:var(--mut);line-height:1.75;margin-bottom:1.6rem">Click any problem to see the root cause, exact fix, and expected improvement.</p>
-      <div class="prob-list prob-2col">
+      <div class="prob-list prob-2col" id="problems">
 
         <!-- 01 Chatter -->
         <div class="prob-item">
@@ -1465,7 +1470,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
   <!-- END MILLS -->
   <div class="pdet" id="pd-endmills">
-        <div class="pdimg" style="min-height:320px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.8rem"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(0,151,178,.3)" stroke-width="1.2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M8 6l4-4 4 4M9 10h6v12H9z"/></svg><span style="font-size:.52rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(0,151,178,.3)">Images Coming Soon</span></div>
+        <div class="pdimg" style="min-height:320px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.8rem"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(0,151,178,.3)" stroke-width="1.2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M8 6l4-4 4 4M9 10h6v12H9z"/></svg><span class="pdspec"><b>Ø1–25 mm</b><span>Square · Ball nose · Corner radius · Roughing</span></span></div>
 <div class="pdbody">
       <div class="pdey">02 · End Mills</div><div class="pdname">End Mills</div><div class="pdtag">Solid carbide. All metals. All profiles.</div>
       <div class="pdsubs">
@@ -1547,7 +1552,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 
   <!-- TURNING HOLDERS -->
   <div class="pdet" id="pd-turning">
-        <div class="pdimg" style="min-height:320px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.8rem"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(0,151,178,.3)" stroke-width="1.2"><rect x="3" y="8" width="18" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/></svg><span style="font-size:.52rem;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(0,151,178,.3)">Images Coming Soon</span></div>
+        <div class="pdimg" style="min-height:320px;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:.8rem"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="rgba(0,151,178,.3)" stroke-width="1.2"><rect x="3" y="8" width="18" height="8" rx="1"/><line x1="7" y1="8" x2="7" y2="16"/></svg><span class="pdspec"><b>4 holder types</b><span>External · Boring bars · Parting &amp; grooving · Threading</span></span></div>
 <div class="pdbody">
       <div class="pdey">05 · Turning Holders</div><div class="pdname">Turning Holders</div><div class="pdtag">External · Internal · Parting · Threading.</div>
       <div class="pdsubs">
@@ -1614,16 +1619,16 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
   <div class="si2 rv">
     <div>
       <div class="stag">03 · Machining Log App</div>
-      <h2 class="bh">OFFLINE<br><span class="tl">MACHINING</span><br><span class="w3">LOG APP.</span></h2>
+      <h2 class="bh">YOUR<br><span class="tl">PRODUCTION,</span><br><span class="w3">IN RUPEES.</span></h2>
     </div>
-    <p class="secb">Track every insert's life, log every shift, and know your real cost per component — automatically. No spreadsheets, no guesswork. Works even without internet, and it's free to try for 14 days.</p>
+    <p class="secb">Machlog shows you what every shift produced, what was rejected, and what each component really cost in tooling. Operators log at the machine in seconds, and it works without internet. Free to try for 14 days.</p>
   </div>
 
   <div class="rv d1" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem">
-    <span class="pill">Insert Life Tracking</span>
     <span class="pill">Cost Per Component</span>
+    <span class="pill">Shift Output</span>
+    <span class="pill">Rejections</span>
     <span class="pill">Works Offline</span>
-    <span class="pill">Owner Dashboard</span>
   </div>
 
   <div class="mlfeat rv d2">
@@ -2056,6 +2061,8 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
         <div class="cirule"></div>
         <div class="cib"><div class="cil">Address</div><div class="civ">54, Laxmi Colony<br>Vidyanagar, Hubli — 580021<br>Karnataka, India</div></div>
         <div class="cirule"></div>
+        <div class="cib"><div class="cil">GSTIN</div><div class="civ">29EQAPD9045L1ZH</div></div>
+        <div class="cirule"></div>
         <div class="cib"><div class="cil">Working Hours</div><div class="civ">Monday – Saturday<br>9:00 AM – 6:30 PM IST<br><span style="font-size:.72rem;color:var(--mut)">WhatsApp monitored beyond hours for urgent queries</span></div></div>
         <div class="cib"><div class="cil">Delivery Coverage</div><div class="civ">Pan-India delivery<br>Dispatch from Hubli, Karnataka<br><span style="font-size:.72rem;color:var(--mut)">Same-day dispatch from Hubli</span></div></div>
       </div>
@@ -2087,7 +2094,7 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
     <div class="fcol"><h5>Resources</h5><ul><li><a href="machlog-guide.html">Machlog Guide</a></li><li><a href="contact.html">Contact Page</a></li><li><a href="privacy.html">Privacy Policy</a></li><li><a href="terms.html">Terms &amp; Conditions</a></li></ul></div>
   </div>
   <div class="fbot">
-    <div class="fcopy">© 2026 TOOLFLUX · 54, Laxmi Colony, Vidyanagar, Hubli 580021 · <a href="#contact" style="color:inherit">Contact</a></div>
+    <div class="fcopy">© 2026 TOOLFLUX · 54, Laxmi Colony, Vidyanagar, Hubli 580021 · GSTIN 29EQAPD9045L1ZH · <a href="#contact" style="color:inherit">Contact</a></div>
     <div class="fsoc"><a href="https://www.linkedin.com/in/tool-flux-91203b322/" target="_blank" rel="noopener" aria-label="TOOLFLUX on LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-1 1.83-2.05 3.77-2.05C20.6 8.65 21 11.2 21 14.5V21h-4v-5.8c0-1.4-.03-3.2-1.95-3.2-1.95 0-2.25 1.52-2.25 3.1V21H9z"/></svg><span>LinkedIn</span></a><a href="https://www.instagram.com/toolflux.in/" target="_blank" rel="noopener" aria-label="TOOLFLUX on Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none"/></svg><span>Instagram</span></a><a href="https://www.youtube.com/@toolflux-92" target="_blank" rel="noopener" aria-label="TOOLFLUX on YouTube"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 7.2a3 3 0 0 0-2.1-2.1C19 4.6 12 4.6 12 4.6s-7 0-8.9.5A3 3 0 0 0 1 7.2 31 31 0 0 0 .5 12 31 31 0 0 0 1 16.8a3 3 0 0 0 2.1 2.1c1.9.5 8.9.5 8.9.5s7 0 8.9-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 23.5 12 31 31 0 0 0 23 7.2zM9.75 15.5v-7l6 3.5-6 3.5z"/></svg><span>YouTube</span></a></div>
   </div>
 </footer>

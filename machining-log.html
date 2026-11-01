@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOOLFLUX Machlog — Shop-Floor Software for Machine Shops | From ₹299/month</title>
-<meta name="description" content="Machlog tracks insert life, calculates real cost per component, and prints owner-ready efficiency reports. Free 14-day trial. Works offline on phone and PC.">
+<title>TOOLFLUX Machlog — Your Production in Rupees | From ₹299/month</title>
+<meta name="description" content="Machlog shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Operators log in seconds. 14-day free trial.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg"><script src="favicon-spin.js" defer></script>
 <style>
 :root{
@@ -279,6 +279,17 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
   .win-bar .url{display:none}
 }
 
+
+/* ═══ SETUP STEPS + BACKUP NOTE ═══ */
+.setup-steps{list-style:none;counter-reset:step;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;max-width:1100px;margin:0 auto;padding:0}
+.setup-steps li{counter-increment:step;background:rgba(255,255,255,.05);border-radius:var(--r);padding:1.4rem 1.3rem;display:flex;flex-direction:column;gap:.45rem}
+.setup-steps li::before{content:counter(step);width:2.1rem;height:2.1rem;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:.35rem}
+.setup-steps b{font-size:1.06rem;color:#fff}
+.setup-steps span{font-size:.94rem;color:rgba(255,255,255,.74);line-height:1.55}
+.setup-cta{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-top:2.2rem}
+.backup-note{margin-top:1.2rem;font-size:.86rem;color:rgba(255,255,255,.6);max-width:46ch;line-height:1.55}
+@media (max-width:860px){.setup-steps{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.setup-steps{grid-template-columns:1fr}.setup-cta .btn{width:100%;justify-content:center}}
 /* ═══ MOBILE VARIANT (≤600px) ═══ */
 @media (max-width: 600px) {
   section p,section li,.feat-p,.h-sub,.spot-b .p{font-weight:400!important}
@@ -288,7 +299,7 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <link rel="canonical" href="https://www.toolflux.co.in/machining-log.html">
 <meta property="og:type" content="website">
 <meta property="og:title" content="TOOLFLUX Machlog — Shop-Floor Software for Machine Shops | From ₹299/month">
-<meta property="og:description" content="Machlog tracks insert life, calculates real cost per component, and prints owner-ready efficiency reports. Free 14-day trial. Works offline on phone and PC.">
+<meta property="og:description" content="Machlog shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Operators log in seconds. 14-day free trial.">
 <meta property="og:url" content="https://www.toolflux.co.in/machining-log.html">
 <meta property="og:site_name" content="TOOLFLUX">
 <meta property="og:locale" content="en_IN">
@@ -298,7 +309,7 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <meta property="og:image:height" content="1200">
 <meta property="og:image:alt" content="TOOLFLUX carbide turning inserts">
 <meta name="twitter:image" content="https://www.toolflux.co.in/assets/img/turning-inserts.jpg">
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"TOOLFLUX Machlog","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, Windows","url":"https://www.toolflux.co.in/machining-log.html","description":"Machlog tracks insert life, calculates real cost per component, and prints owner-ready efficiency reports. Free 14-day trial. Works offline on phone and PC.","publisher":{"@id":"https://www.toolflux.co.in/#org"},"offers":[{"@type":"Offer","name":"Solo","price":299,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":299,"priceCurrency":"INR","billingDuration":"P1M"}},{"@type":"Offer","name":"Shop","price":799,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":799,"priceCurrency":"INR","billingDuration":"P1M"}},{"@type":"Offer","name":"Works","price":2499,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":2499,"priceCurrency":"INR","billingDuration":"P1M"}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"TOOLFLUX Machlog","applicationCategory":"BusinessApplication","operatingSystem":"Web, Android, Windows","url":"https://www.toolflux.co.in/machining-log.html","description":"Machlog shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Operators log in seconds. 14-day free trial.","publisher":{"@id":"https://www.toolflux.co.in/#org"},"offers":[{"@type":"Offer","name":"Solo","price":299,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":299,"priceCurrency":"INR","billingDuration":"P1M"}},{"@type":"Offer","name":"Shop","price":799,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":799,"priceCurrency":"INR","billingDuration":"P1M"}},{"@type":"Offer","name":"Works","price":2499,"priceCurrency":"INR","url":"https://www.toolflux.co.in/machining-log.html#pricing","priceSpecification":{"@type":"UnitPriceSpecification","price":2499,"priceCurrency":"INR","billingDuration":"P1M"}}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.toolflux.co.in/"},{"@type":"ListItem","position":2,"name":"Machlog App","item":"https://www.toolflux.co.in/machining-log.html"}]}</script>
 </head>
 <body>
@@ -309,25 +320,25 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <nav id="nav">
   <a href="index.html" class="navback">&#8592; toolflux.co.in</a>
   <a href="#hero" class="navlogo"><span class="dot"></span>MACHLOG</a>
-  <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-teal btn-sm">Download</a>
+  <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-sm">Start free</a>
 </nav>
 
 <!-- ══ HERO ══ -->
 <section id="hero">
   <div class="wrap">
     <div class="hero-eyebrow"><span class="lbl">TOOLFLUX Machlog · Shop-Floor Software · From ₹299/month</span></div>
-    <h1 class="h-title">Run your shop floor <span class="tl">from one screen.</span></h1>
-    <p class="h-sub">Machlog tracks every insert's life, logs every shift, calculates your real cost per component, and prints owner-ready reports — automatically. Built for Indian machine shops. Works even without internet.</p>
+    <h1 class="h-title">Your production, <span class="tl">in rupees.</span></h1>
+    <p class="h-sub">Machlog shows you what every shift produced, what was rejected, and what each component really cost in tooling. Operators log at the machine in seconds. Built for Indian machine shops, and it works without internet.</p>
     <div class="h-ctas">
-      <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-teal btn-lg">&#8595; Download the App</a>
-      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" class="btn btn-olw btn-lg">Open in Browser &#8594;</a>
+      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
+      <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-olw btn-lg">&#8595; Download for a shop PC</a>
     </div>
     <div class="h-note">Free for 14 days · No card required · Plans from ₹299/month</div>
     <div class="h-pills">
-      <span class="h-pill">Insert Life Tracking</span>
-      <span class="h-pill">Cost Per Component</span>
-      <span class="h-pill">Owner Reports</span>
-      <span class="h-pill">Works Offline</span>
+      <span class="h-pill">Cost per component</span>
+      <span class="h-pill">Shift output</span>
+      <span class="h-pill">Rejections</span>
+      <span class="h-pill">Works offline</span>
     </div>
   </div>
 
@@ -389,6 +400,26 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
           </div>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SETUP — four plain steps ══ -->
+<section class="feat setup" id="start">
+  <div class="wrap">
+    <div class="rv" style="text-align:center;max-width:820px;margin:0 auto 2.4rem">
+      <h2 class="feat-h">Set up in 30 seconds. <span class="tl">No card needed.</span></h2>
+      <p class="feat-p" style="margin:0 auto">Four steps, on the phone or PC you already have.</p>
+    </div>
+    <ol class="setup-steps rv d1">
+      <li><b>Open the app</b><span>Open it in Chrome on your phone or PC. Bookmark it, or add it to your home screen.</span></li>
+      <li><b>Name your workshop</b><span>Workshop name, your name, your main machine and your email.</span></li>
+      <li><b>Set your Owner PIN</b><span>4 to 8 digits. It keeps costs and reports away from operators.</span></li>
+      <li><b>Tap Start tracking</b><span>Your 14-day free trial starts, with every feature switched on.</span></li>
+    </ol>
+    <div class="setup-cta rv d2">
+      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
+      <a href="machlog-guide.html" class="btn btn-olw btn-lg">Read the setup guide</a>
     </div>
   </div>
 </section>
@@ -615,14 +646,17 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <section class="feat" data-glow="sync">
   <div class="wrap feat-grid rev">
     <div class="feat-copy rv">
-      <div class="feat-num">06 — WORKS OFFLINE</div>
-      <h2 class="feat-h">No internet? <span class="tl">No problem.</span></h2>
-      <p class="feat-p">The app runs entirely on the device — it never needs a connection to work. When one exists, every change reaches your cloud backup within seconds.</p>
-      <ul class="feat-list">
-        <li>Production entries, insert changes and edits sync instantly</li>
-        <li>Offline changes queue and retry automatically</li>
-        <li>Install it to the phone's home screen like a real app</li>
-      </ul>
+      <div class="feat-num">06 — YOUR DATA IS SAFE</div>
+        <h2 class="feat-h">Your numbers are <span class="tl">backed up.</span></h2>
+        <p class="feat-p">Every entry is saved on the device first, so the app works with no signal at all. It is then copied to your cloud sheet within seconds.</p>
+        <ul class="feat-list">
+          <li>Every production entry, insert change, edit and delete is copied to your cloud sheet</li>
+          <li>No signal? Changes wait and retry by themselves, even after the browser restarts</li>
+          <li>The Cloud Backup panel always shows where you stand: Backed up, Waiting or Offline</li>
+          <li>Keep your own copy any time: one-click Excel export, or a backup file for a pen drive</li>
+          <li>Trial ends before you subscribe? Nothing is deleted</li>
+        </ul>
+        <p class="backup-note">Clearing the browser's site data removes the copy on that device. The cloud sheet keeps everything that synced.</p>
     </div>
     <div class="feat-mk rv d2">
       <div class="frame">
@@ -685,16 +719,11 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <section id="finalcta">
   <div class="wrap">
     <div class="rv">
-      <h2>Your shop deserves better <span class="tl">than a paper sheet.</span></h2>
-      <p class="h-sub" style="margin-bottom:0">Three steps, thirty seconds, and you're tracking.</p>
-    </div>
-    <div class="steps3 rv d1">
-      <div class="step3"><div class="n">1</div><div class="t">Click Download below</div></div>
-      <div class="step3"><div class="n">2</div><div class="t">Open the file from your Downloads folder</div></div>
-      <div class="step3"><div class="n">3</div><div class="t">Set your workshop name and PIN — done</div></div>
+      <h2>Know what every shift <span class="tl">really cost you.</span></h2>
+      <p class="h-sub" style="margin-bottom:0">Start in your browser in 30 seconds. 14 days free, no card, and nothing is deleted if you stop.</p>
     </div>
     <div class="h-ctas rv d2">
-      <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-teal btn-lg">&#8595; Download the App</a>
+      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
       <a href="https://wa.me/918660234766" target="_blank" class="btn btn-olw btn-lg">WhatsApp Us a Question</a>
     </div>
   </div>
