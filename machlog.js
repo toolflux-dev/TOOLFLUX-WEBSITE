@@ -483,6 +483,10 @@ function getLicenseStatus() {
     }
   }
 
+  // Setup not finished yet: the trial starts when it is, so a brand-new
+  // visitor must never be told their subscription has ended.
+  if (!s.trialStartedAt && !s.company) return 'trial';
+
   if (s.trialStartedAt) {
     let ts = Date.parse(s.trialStartedAt);
     // Corrupt or future start date: self-heal to now rather than lock a
@@ -537,6 +541,7 @@ function requireActive() {
 }
 
 function trialBanner() {
+  if (!db.settings.company) return ''; // still on setup — nothing to sell yet
   if (hasOwnerPin() && !isOwner()) return ''; // operators don't see subscription info
   if (isOperatorDevice()) return '';
   if (isReadOnly()) {
@@ -566,7 +571,7 @@ function datalist(id, histKey) {
 const OWNER_SESSION_KEY = 'toolflux.machlog.owner';
 const PIN_ATTEMPT_KEY = 'toolflux.machlog.pinAttempts';
 const OWNER_TIMEOUT_MS = 15 * 60 * 1000;
-const OWNER_VIEWS = ['settings', 'inventory', 'report', 'newjob', 'paywall', 'dash'];
+const OWNER_VIEWS = ['settings', 'inventory', 'report', 'newjob', 'paywall', 'dash', 'start'];
 
 // Pure-JS synchronous SHA-256 — crypto.subtle is unavailable on some
 // file:// contexts and old shop-PC browsers, so no async, no dependencies.
@@ -659,6 +664,13 @@ function removeOperator(id) {
 function submitAddOperator(e) {
   e.preventDefault();
   if (!requireOwner() || !requireActive()) return;
+  if (needsPinForOperator()) {
+    const name = ((document.getElementById('team-op-name') || {}).value || '').trim();
+    if (!name) { toast('Enter an operator name', 'bad'); return; }
+    ui.pendingOperator = name;
+    openPinSetup(false, 'operator');
+    return;
+  }
   if (!canAddOperator()) {
     const lim = getDeviceLimit();
     toast(`${TIERS[getTier()].name} includes ${lim} operator phone${lim === 1 ? '' : 's'} — upgrade to add more`, 'warn', 6000);
@@ -822,7 +834,7 @@ function submitPinUnlock(e) {
   }
 }
 
-function openPinSetup(fromPrompt) {
+function openPinSetup(fromPrompt, reason) {
   closePinModal();
   const changing = hasOwnerPin();
   const modal = document.createElement('div');
@@ -831,7 +843,9 @@ function openPinSetup(fromPrompt) {
   modal.innerHTML = `
     <div class="pin-card">
       <div class="pin-title">${changing ? 'Change Owner PIN' : 'Create Owner PIN'}</div>
-      <div class="pin-sub">${fromPrompt
+      <div class="pin-sub">${reason === 'operator'
+        ? `Before ${esc(ui.pendingOperator || 'your operator')} joins, set an owner PIN. Operators log production but never see costs or prices. Your PIN unlocks them on this phone.`
+        : fromPrompt
         ? 'This update adds Operator Mode: the app now opens restricted — no costs, no editing history. Your PIN unlocks full Owner access.'
         : changing ? 'Set a new 4–8 digit PIN.' : 'Once set, the app opens in restricted Operator Mode. This PIN unlocks costs, reports and editing.'}</div>
       <form onsubmit="submitPinSetup(event)">
@@ -842,7 +856,7 @@ function openPinSetup(fromPrompt) {
         <div id="pin-err" class="pin-err"></div>
         <div class="pin-acts">
           <button type="submit" class="btn btn-pri" style="flex:1">${changing ? 'Change PIN' : 'Set PIN'}</button>
-          <button type="button" class="btn btn-ghost" style="flex:1" onclick="${fromPrompt ? 'dismissPinSetup()' : 'closePinModal()'}">${fromPrompt ? 'Not Now' : 'Cancel'}</button>
+          <button type="button" class="btn btn-ghost" style="flex:1" onclick="${fromPrompt ? 'dismissPinSetup()' : 'ui.pendingOperator=null;closePinModal()'}">${fromPrompt ? 'Not Now' : 'Cancel'}</button>
         </div>
       </form>
     </div>`;
@@ -863,6 +877,12 @@ function submitPinSetup(e) {
   unlockOwner(); // whoever sets the PIN is the owner — stay unlocked this session
   closePinModal();
   toast('Owner PIN set', 'ok');
+  const pending = ui.pendingOperator;
+  ui.pendingOperator = null;
+  if (pending) {
+    const op = addOperatorToTeam(pending);
+    if (op) toast(`${op.name} added — send them the link`, 'ok');
+  }
   render();
 }
 
@@ -1081,7 +1101,7 @@ function computeDashData() {
   out.jobRows.filter(r => r.status === 'paused').slice(0, 2).forEach(r => att.push({ sev: 'warn', msg: `${r.code} is paused`, go: `navigate('job',{jobId:'${r.jobId}'})` }));
   noLogToday.slice(0, 3).forEach(j => att.push({ sev: 'warn', msg: `${j.code} — no production logged today`, go: `navigate('job',{jobId:'${j.jobId}'})` }));
   out.invAlerts.filter(a => a.kind === 'warn').slice(0, 2).forEach(a => att.push({ sev: 'warn', msg: `${a.label}: ${a.item} (${a.qty} left)`, go: `navigate('inventory')` }));
-  if (!hasOwnerPin()) att.push({ sev: 'info', msg: 'Owner PIN not set — operators have full access', go: `openPinSetup()` });
+  if (!hasOwnerPin() && (db.settings.operators || []).length) att.push({ sev: 'info', msg: 'Owner PIN not set — operators have full access', go: `openPinSetup()` });
   if (!(db.jobs || []).length) att.push({ sev: 'info', msg: 'No jobs yet — create your first component job', go: `navigate('newjob')` });
   out.attention = att.slice(0, 8);
 
@@ -1100,10 +1120,10 @@ function fmtAgo(iso) {
 function vDashboard() {
   const d = computeDashData();
   setTabs(`
-    <button class="tab" aria-selected="true">Dashboard</button>
-    <button class="tab" onclick="navigate('jobs')">Jobs</button>
-    <button class="tab" onclick="navigate('inventory')">Inventory</button>
-    <button class="tab" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`);
+    <button class="tab tab-place" aria-selected="true">Dashboard</button>
+    <button class="tab tab-place" onclick="navigate('jobs')">Jobs</button>
+    <button class="tab tab-place" onclick="navigate('inventory')">Inventory</button>
+    <button class="tab tab-place" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`);
   setBarCrumb('Dashboard', true);
 
   const rejPct = d.totalProduced > 0 ? (d.totalRejected / d.totalProduced * 100) : 0;
@@ -1730,6 +1750,8 @@ function navigate(view, params = {}) {
     openPinDialog(() => navigate(view, params));
     return;
   }
+  closeSheet();
+  if (view !== 'settings') ui.teamFocus = false;
   ui.view = view;
   ui.jobId = params.jobId || null;
   ui.stationId = params.stationId || null;
@@ -1843,16 +1865,16 @@ function vJobs() {
     ['complete', 'Complete'],
     ['all', 'All'],
   ];
-  if (owner) tabs.push(['cpc', 'CPC Compare']);
+  if (owner) tabs.push(['cpc', 'Cost per piece']);
   const tabHtml = tabs.map(([key, lbl]) => {
     const count = key === 'cpc' ? null : key === 'all' ? db.jobs.length : db.jobs.filter(j => (j.status||'active') === key).length;
     const sel = filter === key ? 'aria-selected="true"' : '';
-    return `<button class="tab" ${sel} onclick="setJobFilter('${key}')">${lbl}${count ? `<span class="n">${count}</span>` : ''}</button>`;
+    return `<button class="tab${key === 'cpc' ? ' tab-place' : ''}" ${sel} onclick="setJobFilter('${key}')">${lbl}${count ? `<span class="n">${count}</span>` : ''}</button>`;
   }).join('');
-  setTabs((owner ? `<button class="tab" onclick="navigate('dash')">&#8962; Dashboard</button>` : '') + tabHtml
-    + `<button class="tab" onclick="navigate('shift')">Shift Proof</button>`
+  setTabs((owner ? `<button class="tab tab-place" onclick="navigate('dash')">&#8962; Dashboard</button>` : '') + tabHtml
+    + `<button class="tab tab-place" onclick="navigate('shift')">Shift Proof</button>`
     + (owner
-    ? `<button class="tab" onclick="navigate('inventory')">Inventory</button><button class="tab" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`
+    ? `<button class="tab tab-place" onclick="navigate('inventory')">Inventory</button><button class="tab tab-place" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`
     : ''));
   setBarCrumb('', false);
 
@@ -3107,42 +3129,168 @@ function vSetup() {
       </div>
       <div class="setup-form-side">
         <div class="setup-form-inner">
-          <h2 class="setup-form-hd">Set up your workshop</h2>
-          <p class="setup-form-sub">Takes 30 seconds. Works offline from day one.</p>
+          <h1 class="setup-form-hd">Set up your workshop</h1>
+          <p class="setup-form-sub">Two questions. Free for 14 days, no card needed.</p>
           <form id="setup-form" onsubmit="submitSetup(event)">
             <div class="field">
-              <label for="setup-co">Workshop / Company Name <span class="req">*</span></label>
-              <input id="setup-co" placeholder="e.g. Sharma Engineering Works" required autocomplete="off">
+              <label for="setup-co">Workshop name <span class="req">*</span></label>
+              <input id="setup-co" placeholder="e.g. Sharma Engineering Works" required autocomplete="organization">
             </div>
             <div class="field">
-              <label for="setup-op">Your Name</label>
-              <input id="setup-op" placeholder="e.g. Raj" autocomplete="off">
+              <label for="setup-op">Your name</label>
+              <input id="setup-op" placeholder="e.g. Raj" autocomplete="given-name">
             </div>
-            <div class="field">
-              <label for="setup-mc">Primary Machine</label>
-              <input id="setup-mc" placeholder="e.g. VMC-01" autocomplete="off">
-            </div>
-            <div class="field setup-email-field">
-              <label for="setup-email">Email <span class="setup-email-note">(for license activation)</span></label>
-              <input id="setup-email" type="email" placeholder="e.g. workshop@example.com" autocomplete="email">
-            </div>
-            <div class="setup-pin-row">
-              <div class="field">
-                <label for="setup-pin">Owner PIN <span class="req">*</span></label>
-                <input id="setup-pin" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="4&#8211;8 digits" required autocomplete="new-password">
-              </div>
-              <div class="field">
-                <label for="setup-pin2">Confirm PIN <span class="req">*</span></label>
-                <input id="setup-pin2" type="password" inputmode="numeric" pattern="[0-9]{4,8}" minlength="4" maxlength="8" placeholder="Repeat" required autocomplete="new-password">
-              </div>
-            </div>
-            <div class="setup-pin-note">The app opens in restricted Operator Mode for the shop floor. Your PIN unlocks costs, reports and editing.</div>
-            <button type="submit" class="btn btn-pri btn-lg setup-submit">Start Tracking &#8594;</button>
+            <button type="submit" class="btn btn-pri btn-lg setup-submit">Continue &#8594;</button>
+            <div class="setup-pin-note">Next you set up your first job. You add operators and an owner PIN later, when you need them.</div>
           </form>
         </div>
       </div>
     </div>`;
 }
+
+// ── First job (first run) ─────────────────────────────────────────
+// A new owner's home until a job exists: one part, the tool cutting it,
+// and optionally the pieces made so far — one screen instead of three.
+function ownerHome() {
+  if (isOperatorDevice()) return 'jobs';
+  if (!db.settings.company) return 'setup';
+  return (db.jobs || []).length ? 'dash' : 'start';
+}
+
+// Builds a job with one operation, one station with inserts loaded, and an
+// optional first batch. Returns the job, or null when code or cost is missing.
+function createFirstJob(f) {
+  const code = String(f.code || '').trim().toUpperCase();
+  const cost = parseFloat(f.cost) || 0;
+  if (!code || cost <= 0) return null;
+  const opType = OP_MAP[f.opType] ? f.opType : 'turning';
+  const cat = toolCategory(opType);
+  const corners = cat === 'solid' ? 1 : Math.max(1, parseInt(f.corners) || 4);
+  const inCutter = cat === 'milling' ? Math.max(1, parseInt(f.inCutter) || 1) : 1;
+  const operator = String(f.operator || db.settings.defaultOperator || '').trim();
+  const machine = String(f.machine || '').trim();
+  const now = isoNow();
+  const opId = uid();
+  const job = {
+    id: uid(), componentCode: code, componentDesc: '', customer: String(f.customer || '').trim(),
+    createdBy: operator, notes: '', createdAt: now, status: 'active',
+    operations: [{ id: opId, name: 'Op-1', sequence: 1, stations: [{
+      id: uid(), name: String(f.name || '').trim() || opLabel(opType), opType, machine,
+      insertGrade: '', insertBrand: '', insertDesig: String(f.insert || '').trim(), toolHolder: '',
+      insertsInCutter: inCutter, cuttingCornersPerInsert: corners, insertCostPer: cost,
+      cutterDiameter: null, inventoryItemId: null,
+      insertSets: [{ id: uid(), loadedAt: now, loadedBy: operator, status: 'active',
+        corners: [{ num: 1, startedAt: now, endedAt: null, componentsMade: 0, status: 'active' }] }],
+    }] }],
+    productionLog: [],
+  };
+  db.jobs.push(job);
+  const qty = Math.min(9999, Math.max(0, parseInt(f.firstQty) || 0));
+  if (qty > 0) {
+    applyProductionEntry(job, { id: uid(), timestamp: now, operationId: opId, operator, machine,
+      cycleTimeMins: 0, qty, qtyGood: qty, rejections: [], notes: '', events: [], by: operator });
+  }
+  addHistory('componentCodes', code);
+  addHistory('customers', job.customer);
+  addHistory('insertDesigs', job.operations[0].stations[0].insertDesig);
+  addHistory('machines', machine);
+  if (machine) db.settings.defaultMachine = machine;
+  saveDB();
+  return job;
+}
+
+function startOpChanged() {
+  const cat = toolCategory(($('#fs-op') || {}).value);
+  const corners = $('#fs-corners-f'), cutter = $('#fs-incutter-f');
+  if (corners) corners.style.display = cat === 'solid' ? 'none' : '';
+  if (cutter) cutter.style.display = cat === 'milling' ? '' : 'none';
+  const lbl = $('#fs-cost-lbl');
+  if (lbl) lbl.textContent = cat === 'solid' ? 'Cost of the tool (₹)' : 'Cost of one insert (₹)';
+}
+
+function vStart() {
+  setTabs('');
+  setBarCrumb('First job', true);
+  const who = esc(db.settings.defaultOperator || '');
+  return `
+    <div class="start-wrap">
+      <h1 class="start-h">Set up your first job</h1>
+      <p class="start-sub">One part and the tool cutting it. You can add more tools to it later.</p>
+      <form id="start-form" class="start-form" onsubmit="submitStart(event)" novalidate>
+        <fieldset class="start-sec">
+          <legend>The part</legend>
+          <div class="field">
+            <label for="fs-code">Part or drawing number <span class="req">*</span></label>
+            <input id="fs-code" list="dl-codes" placeholder="e.g. FLG-2210" autocapitalize="characters" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="fs-cust">Customer or PO <span class="opt">optional</span></label>
+            <input id="fs-cust" list="dl-custs" placeholder="e.g. Kirloskar PO 4471" autocomplete="off">
+          </div>
+        </fieldset>
+        <fieldset class="start-sec">
+          <legend>The tool cutting it</legend>
+          <div class="field">
+            <label for="fs-op">Operation</label>
+            <select id="fs-op" onchange="startOpChanged()">${opSelectOptions('turning')}</select>
+          </div>
+          <div class="field">
+            <label for="fs-insert">Insert <span class="opt">optional</span></label>
+            <input id="fs-insert" list="dl-desigs" placeholder="e.g. CNMG 120408 TFX-P25" autocomplete="off">
+          </div>
+          <div class="start-row">
+            <div class="field">
+              <label for="fs-cost" id="fs-cost-lbl">Cost of one insert (₹)</label>
+              <input id="fs-cost" type="number" inputmode="decimal" min="1" step="any" placeholder="e.g. 420" required>
+            </div>
+            <div class="field" id="fs-corners-f">
+              <label for="fs-corners">Corners per insert</label>
+              <input id="fs-corners" type="number" inputmode="numeric" min="1" max="20" value="4">
+            </div>
+          </div>
+          <div class="field" id="fs-incutter-f" style="display:none">
+            <label for="fs-incutter">Inserts in the cutter</label>
+            <input id="fs-incutter" type="number" inputmode="numeric" min="1" max="40" value="1">
+          </div>
+          <div class="field">
+            <label for="fs-mach">Machine <span class="opt">optional</span></label>
+            <input id="fs-mach" list="dl-machs" placeholder="e.g. LT-01" value="${esc(db.settings.defaultMachine || '')}" autocomplete="off">
+          </div>
+        </fieldset>
+        <fieldset class="start-sec">
+          <legend>Pieces made so far <span class="opt">optional</span></legend>
+          <div class="field">
+            <label for="fs-qty">Good pieces off this tool today</label>
+            <input id="fs-qty" type="number" inputmode="numeric" min="0" max="9999" placeholder="0">
+          </div>
+          <input id="fs-who" type="hidden" value="${who}">
+        </fieldset>
+        <div id="fs-err" class="start-err" role="alert"></div>
+        <button type="submit" class="btn btn-pri btn-lg start-go">Start tracking &#8594;</button>
+        <button type="button" class="start-skip" onclick="skipStart()">Skip for now — look around first</button>
+      </form>
+    </div>`;
+}
+
+function submitStart(e) {
+  e.preventDefault();
+  if (!requireOwner() || !requireActive()) return;
+  const v = id => (($('#' + id) || {}).value || '');
+  const err = $('#fs-err');
+  if (!v('fs-code').trim()) { if (err) err.textContent = 'Enter the part or drawing number.'; $('#fs-code').focus(); return; }
+  if (!(parseFloat(v('fs-cost')) > 0)) { if (err) err.textContent = 'Enter what one insert costs — cost per piece is worked out from it.'; $('#fs-cost').focus(); return; }
+  const job = createFirstJob({
+    code: v('fs-code'), customer: v('fs-cust'), opType: v('fs-op'), insert: v('fs-insert'),
+    cost: v('fs-cost'), corners: v('fs-corners'), inCutter: v('fs-incutter'), machine: v('fs-mach'),
+    firstQty: v('fs-qty'), operator: v('fs-who'),
+  });
+  if (!job) return;
+  syncNow();
+  toast(`${job.componentCode} is being tracked`, 'ok');
+  navigate('job', { jobId: job.id });
+}
+
+function skipStart() { ui.skipStart = true; navigate('jobs'); }
 
 // ── Inventory ─────────────────────────────────────────────────────
 const INV_CATS = [
@@ -3404,7 +3552,7 @@ function vSettings() {
       </div>
     </div>
     <div class="panel">
-      <div class="panel-hd"><span class="lbl">Operators (Team)</span><div class="hr"></div><span class="lbl muted">${(db.settings.operators||[]).length}</span></div>
+      <div class="panel-hd" id="team"><span class="lbl">Operators (Team)</span><div class="hr"></div><span class="lbl muted">${(db.settings.operators||[]).length}</span></div>
       <div class="panel-bd">
         <div style="font-size:.75rem;color:var(--mut);margin-bottom:.75rem;line-height:1.55">Add an operator, then send them their link on WhatsApp. They open it on their phone and it launches straight into the shop-floor screen — locked to Operator Mode, no PIN, no setup.</div>
         ${canAddOperator() ? `
@@ -3454,6 +3602,126 @@ function vSettings() {
     </div>`;
 }
 
+// ── Phone navigation ──────────────────────────────────────────────
+// Phones get a bottom bar of the few places people actually go; the top strip
+// keeps only the current screen's own tabs (the job filters, a back link).
+function bottomNavItems() {
+  if (isOperatorDevice()) return [
+    { key: 'jobs', label: 'Jobs', go: "navigate('jobs')" },
+    { key: 'log', label: 'Log', go: 'openLogSheet()' },
+    { key: 'shift', label: 'Shift proof', go: "navigate('shift')" },
+  ];
+  return [
+    { key: 'jobs', label: 'Jobs', go: "navigate('jobs')" },
+    { key: 'log', label: 'Log', go: 'openLogSheet()' },
+    { key: 'dash', label: 'Dashboard', go: "navigate('dash')" },
+    { key: 'team', label: 'Team', go: 'openTeam()' },
+    { key: 'more', label: 'More', go: 'openMoreSheet()' },
+  ];
+}
+
+function bottomNavKey() {
+  const v = ui.view;
+  if (v === 'jobs' || v === 'job' || v === 'station' || v === 'newjob') return 'jobs';
+  if (v === 'dash') return 'dash';
+  if (v === 'shift') return isOperatorDevice() ? 'shift' : 'more';
+  if (v === 'settings' && ui.teamFocus) return 'team';
+  return 'more';
+}
+
+function renderBottomNav() {
+  if (window.__pendingNudge && ui.view !== 'setup' && ui.view !== 'start') {
+    const k = window.__pendingNudge; window.__pendingNudge = null;
+    setTimeout(() => showInstallNudge(k), 1200);
+  }
+  const el = document.getElementById('bnav');
+  if (!el) return;
+  const hide = ui.view === 'setup' || ui.view === 'start' || ui.view === 'paywall';
+  el.hidden = hide;
+  document.body.classList.toggle('has-bnav', !hide);
+  if (hide) { el.innerHTML = ''; return; }
+  const cur = bottomNavKey();
+  el.innerHTML = bottomNavItems().map(i =>
+    `<button type="button" class="bnav-i" onclick="${i.go}"${i.key === cur ? ' aria-current="page"' : ''}>${esc(i.label)}</button>`
+  ).join('');
+}
+
+// Jobs someone can log against right now, most recently worked first.
+function logTargets() {
+  const last = j => {
+    const log = j.productionLog || [];
+    const t = log.length ? Date.parse(log[log.length - 1].timestamp) : 0;
+    return Math.max(t || 0, Date.parse(j.createdAt) || 0);
+  };
+  return (db.jobs || []).filter(j => (j.status || 'active') === 'active').sort((a, b) => last(b) - last(a));
+}
+
+function openLogSheet() {
+  const jobs = logTargets();
+  if (!jobs.length) {
+    toast(isOperatorDevice() ? 'No active jobs yet — ask the owner to add one' : 'No active jobs — add one first', 'warn');
+    if (!isOperatorDevice()) navigate(ownerHome() === 'start' ? 'start' : 'newjob');
+    return;
+  }
+  if (jobs.length === 1) { navigate('job', { jobId: jobs[0].id, logOpen: true }); focusQtyMobile(); return; }
+  openSheet('Log production for', jobs.map(j => `
+    <button type="button" class="sheet-i" onclick="closeSheet();navigate('job',{jobId:'${j.id}',logOpen:true});focusQtyMobile()">
+      <span class="sheet-i-t">${esc(j.componentCode)}</span>
+      <span class="sheet-i-s">${esc([j.componentDesc, j.customer].filter(Boolean).join(' · ') || 'Active job')}</span>
+    </button>`).join(''));
+}
+
+function openTeam() {
+  if (!isOwner()) { openPinDialog(() => openTeam()); return; }
+  ui.teamFocus = true;
+  navigate('settings');
+  setTimeout(() => { const t = document.getElementById('team'); if (t) t.scrollIntoView({ block: 'start' }); }, 30);
+}
+
+function openMoreSheet() {
+  const owner = isOwner();
+  const items = [
+    ['Inventory', "navigate('inventory')"],
+    ['Cost per piece', "ui.tab='cpc';navigate('jobs')"],
+    ['Shift proof', "navigate('shift')"],
+    ['Settings', "ui.teamFocus=false;navigate('settings')"],
+    ['Plan & billing', "navigate('paywall')"],
+  ];
+  if (owner && hasOwnerPin()) items.push(['Lock — switch to Operator Mode', 'lockOwner()']);
+  openSheet('More', items.map(([t, go]) =>
+    `<button type="button" class="sheet-i" onclick="closeSheet();${go}"><span class="sheet-i-t">${t}</span></button>`).join(''));
+}
+
+function openSheet(title, body) {
+  closeSheet();
+  const o = document.createElement('div');
+  o.id = 'sheet';
+  o.className = 'sheet-overlay';
+  o.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+      <div class="sheet-hd"><span>${esc(title)}</span><button type="button" class="sheet-x" onclick="closeSheet()" aria-label="Close">Close</button></div>
+      <div class="sheet-bd">${body}</div>
+    </div>`;
+  o.addEventListener('click', e => { if (e.target === o) closeSheet(); });
+  document.body.appendChild(o);
+  const first = o.querySelector('.sheet-i');
+  if (first) first.focus();
+}
+
+function closeSheet() { const o = document.getElementById('sheet'); if (o) o.remove(); }
+
+// The on-screen keyboard pushes a fixed bottom bar up over the field being
+// typed in; hide the bar while a field has focus.
+document.addEventListener('focusin', e => {
+  if (e.target && e.target.matches && e.target.matches('input, textarea, select')) document.body.classList.add('typing');
+});
+document.addEventListener('focusout', () => document.body.classList.remove('typing'));
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+// ── Operators need an owner PIN first ────────────────────────────
+// The PIN is asked for when the first operator is added: that is when there
+// is someone on the shop floor to keep costs and editing away from.
+function needsPinForOperator() { return !isOperatorDevice() && !hasOwnerPin(); }
+
 // ── render ─────────────────────────────────────────────────────────
 function setTabs(html) {
   const el = $('#tabs');
@@ -3501,7 +3769,13 @@ function render() {
     // reading its data and the paywall is only shown when explicitly opened.
     const showPaywall = ui.view === 'paywall' && !isOperatorDevice();
 
+    // An owner with no jobs yet gets the first-job screen instead of an empty
+    // dashboard — unless they chose to look around first.
+    if ((ui.view === 'dash' || ui.view === 'jobs') && !isOperatorDevice() && isOwner()
+        && db.settings.company && !(db.jobs || []).length && !ui.skipStart) ui.view = 'start';
+
     if (ui.view === 'setup')       html = vSetup();
+    else if (ui.view === 'start')  html = vStart();
     else if (!isOwner() && OWNER_VIEWS.includes(ui.view)) html = vOperatorLocked(false);
     else if (showPaywall)          html = vPaywall();
     else if (ui.view === 'jobs')   html = vJobs();
@@ -3519,13 +3793,15 @@ function render() {
     html = `<div style="padding:2rem;color:var(--bad)">Render error: ${esc(e.message)}<br><pre style="font-size:.7rem;margin-top:.5rem">${esc(e.stack)}</pre></div>`;
   }
   view.innerHTML = html;
+  renderBottomNav();
   syncModeChip();
   // One-time migration prompt: existing installs get asked to create their PIN
   const needsPinPrompt = !isOperatorDevice() && ui.view !== 'setup' && db.settings.company && !hasOwnerPin() && !db.settings.pinPromptShown;
   if (needsPinPrompt && !document.getElementById('pin-modal')) {
     setTimeout(() => openPinSetup(true), 400);
-  } else if (ui.view !== 'setup' && db.settings.company && !db.settings.tutorialSeen
-      && !document.getElementById('pin-modal') && !document.getElementById('tut-overlay') && !window.__tutScheduled) {
+  } else if (false) {
+    // The 11-card walkthrough no longer opens by itself: new owners learn on
+    // the first-job screen, and the tour stays one tap away in Settings.
     // First-run (or first-open-after-update) walkthrough — waits for the PIN
     // flow to resolve first so the two overlays never stack.
     window.__tutScheduled = true;
@@ -3985,26 +4261,27 @@ function confirmDeleteStation(jobId, stationId) {
   navigate('job', { jobId });
 }
 
-function submitSetup(e) {
-  e.preventDefault();
-  const co = $('#setup-co').value.trim();
-  if (!co) return;
-  const pin1 = (($('#setup-pin') || {}).value || '').trim();
-  const pin2 = (($('#setup-pin2') || {}).value || '').trim();
-  if (!/^\d{4,8}$/.test(pin1)) { toast('Owner PIN must be 4–8 digits', 'bad'); return; }
-  if (pin1 !== pin2) { toast('PINs do not match', 'bad'); return; }
+// Finish first-run setup. The owner PIN is no longer asked for here: it is
+// set when the first operator is added (needsPinForOperator), which is the
+// moment there is someone on the shop floor to keep costs away from.
+function completeSetup({ company, owner }) {
+  const co = String(company || '').trim();
+  if (!co) return false;
   db.settings.company = co;
-  db.settings.defaultOperator = $('#setup-op').value.trim();
-  db.settings.defaultMachine = $('#setup-mc').value.trim();
-  db.settings.email = (($('#setup-email') || {}).value || '').trim().toLowerCase();
-  db.settings.ownerPinHash = pinHash(pin1);
-  db.settings.pinPromptShown = true;
-  unlockOwner(); // person completing setup is the owner — stay unlocked this session
+  db.settings.defaultOperator = String(owner || '').trim();
+  db.settings.pinPromptShown = true; // no PIN prompt on top of the first job
+  db.settings.tutorialSeen = true;   // the first-job screen teaches by doing
   if (!db.settings.trialStartedAt) db.settings.trialStartedAt = new Date().toISOString();
   addHistory('operators', db.settings.defaultOperator);
-  addHistory('machines', db.settings.defaultMachine);
   saveDB();
-  navigate('dash');
+  return true;
+}
+
+function submitSetup(e) {
+  e.preventDefault();
+  const ok = completeSetup({ company: ($('#setup-co') || {}).value, owner: ($('#setup-op') || {}).value });
+  if (!ok) { toast('Enter your workshop name', 'bad'); return; }
+  navigate(ownerHome());
 }
 
 function submitSettings(e) {
@@ -4395,6 +4672,7 @@ loadDB();
 handleJoinFromUrl(); // adopt an invite link before the first render
 if (isOperatorDevice()) ui.view = 'jobs';   // operator home — no setup, no paywall
 else if (!db.settings.company) ui.view = 'setup';
+else if (!(db.jobs || []).length && isOwner()) ui.view = 'start'; // first run: straight to the first job
 else if (hasOwnerPin() && isOwner()) ui.view = 'dash'; // Owner Home when session still unlocked
 render();
 
@@ -4446,6 +4724,8 @@ window.addEventListener('beforeinstallprompt', e => {
 
 function showInstallNudge(kind) {
   if (isStandalone() || nudgeDismissed() || document.getElementById('install-nudge')) return;
+  // Never cover the setup or first-job form; offer it once they are done.
+  if (ui.view === 'setup' || ui.view === 'start') { window.__pendingNudge = kind; return; }
   const card = document.createElement('div');
   card.id = 'install-nudge';
   card.className = 'install-nudge';

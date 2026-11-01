@@ -1160,6 +1160,100 @@ table.rt { width: 100%; border-collapse: collapse; margin-bottom: 1mm }
   .station-tile { width: 132px }
   .qty-inp { font-size: 2.4rem; min-height: 64px }
 }
+
+/* ─── readable labels ─── */
+/* Small labels were 8-10px; nothing goes below 11px on a desktop and 12px on
+   a phone (gloves, glare). Tracking eases as the size comes up. */
+.lbl, .tab, .btn-sm, .hint, .hero-meta, .hero-num-lbl, .st-sub, .job-meta, .job-count-lbl,
+.jc-stat-l, .s-sub, .s-unit, .dash-st, .trend-lbl, .trend-val, .perf-eff, .perf-hero-lbl,
+.st-cpc-prov, .pt-l, .proof-install, .inv-tbl th, .ev-st-sub, .st-corner-lbl, .bar-app {
+  font-size: max(.7rem, 11px); letter-spacing: .08em;
+}
+.field label, .field .flbl { font-size: max(.72rem, 11.5px) }
+.opt { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--mut) }
+
+/* ─── first job ─── */
+.start-wrap { max-width: 560px; margin: .4rem auto 0 }
+.start-h { font-size: 1.5rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em; line-height: 1.15; margin: 0 0 .35rem }
+.start-sub { font-size: .9rem; color: var(--T); margin: 0 0 1.2rem; line-height: 1.5 }
+.start-sec { border: 0; margin: 0 0 1.1rem; padding: 1rem 1rem .3rem; background: var(--W); border: 1px solid var(--rule); border-radius: var(--r) }
+.start-sec legend { float: left; width: 100%; padding: 0; margin: 0 0 .75rem; font-size: .95rem; font-weight: 800; color: var(--navy); letter-spacing: 0; text-transform: none }
+.start-sec legend + * { clear: both }
+.start-row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem }
+.start-err { min-height: 1.2rem; font-size: .85rem; color: var(--bad); margin: -.3rem 0 .5rem }
+.start-err:empty { min-height: 0; margin: 0 }
+.start-go { width: 100%; min-height: 52px; font-size: .8rem }
+.start-skip { display: block; width: 100%; margin: .6rem 0 0; min-height: 44px; background: none; border: 0; color: var(--mut); font-size: .85rem; text-decoration: underline; text-underline-offset: 3px }
+.start-skip:hover { color: var(--navy) }
+
+#team { scroll-margin-top: 7.5rem } /* clear the sticky header when Team scrolls to it */
+/* ─── bottom navigation (phones) ─── */
+.bnav { display: none }
+.sheet-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(1,20,30,.45); display: flex; align-items: flex-end; justify-content: center }
+.sheet { width: 100%; max-width: 520px; background: var(--W); border-radius: 8px 8px 0 0; box-shadow: 0 -8px 30px rgba(1,20,30,.25); padding-bottom: env(safe-area-inset-bottom, 0); max-height: 80vh; overflow: auto }
+.sheet-hd { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem .5rem; font-size: .95rem; font-weight: 800; color: var(--navy) }
+.sheet-x { background: none; border: 0; color: var(--mut); font-size: .85rem; min-height: 44px; padding: 0 .4rem }
+.sheet-bd { padding: 0 .5rem .6rem }
+.sheet-i { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 52px; padding: .65rem .6rem; background: none; border: 0; border-top: 1px solid var(--off2); text-align: left; color: var(--navy) }
+.sheet-i:first-child { border-top: 0 }
+.sheet-i:hover, .sheet-i:focus-visible { background: var(--off) }
+.sheet-i-t { font-size: 1rem; font-weight: 700 }
+.sheet-i-s { font-size: .82rem; color: var(--mut); margin-top: .1rem }
+
+@media (max-width: 860px) {
+  .bnav:not([hidden]) {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+    background: var(--W); border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .bnav-i {
+    flex: 1; min-height: 58px; padding: 0 .2rem; background: none; border: 0;
+    border-top: 3px solid transparent; font-size: .8rem; font-weight: 700; color: var(--mut);
+  }
+  .bnav-i[aria-current=page] { color: var(--navy); border-top-color: var(--teal) }
+  body.typing .bnav { display: none }
+  body.has-bnav main { padding-bottom: 6.5rem }
+  body.has-bnav .install-nudge { bottom: calc(66px + env(safe-area-inset-bottom, 0)) }
+
+  /* places live in the bottom bar; the top strip keeps this screen's own tabs */
+  .tab-place { display: none }
+  .tab { font-size: .75rem; letter-spacing: .04em; padding: .75rem .7rem .65rem }
+
+  .lbl, .btn-sm, .hint, .hero-meta, .hero-num-lbl, .st-sub, .job-meta, .job-count-lbl,
+  .jc-stat-l, .s-sub, .s-unit, .dash-st, .trend-lbl, .trend-val, .perf-eff, .perf-hero-lbl,
+  .st-cpc-prov, .pt-l, .proof-install, .inv-tbl th, .ev-st-sub, .st-corner-lbl {
+    font-size: .75rem; letter-spacing: .03em;
+  }
+  .field label, .field .flbl { font-size: .8rem }
+
+  .start-h { font-size: 1.35rem }
+  .start-sec { padding: .9rem .85rem .2rem }
+}
+
+/* ─── setup on phones: the form comes first ─── */
+@media (max-width: 860px) {
+  /* one 16px page margin on phones and tablets */
+  main { padding-left: 1rem; padding-right: 1rem }
+  .setup-split { margin: -.9rem -1rem -5.5rem }
+}
+@media (max-width: 720px) {
+  .setup-form-side { order: -1; padding: 1.6rem 1.1rem 2rem }
+  .setup-brand { padding: 1.6rem 1.1rem 1.75rem }
+  .setup-form-hd { font-size: 1.35rem }
+  .setup-form-sub { font-size: .9rem; margin-bottom: 1.2rem }
+  .setup-pin-note { font-size: .82rem; margin: .8rem 0 0 }
+}
+.setup-pin-note { margin: .8rem 0 0 }
+
+/* ─── contrast & margins on the first-run screens ─── */
+.setup-trial-badge { color: oklch(0.80 0.03 220); font-size: max(.72rem, 11.5px) }
+.setup-spec-lbl, .setup-product-tag, .bar-clock .d, .perf-delta { font-size: max(.7rem, 11px) }
+.bar-crumb { color: var(--teal-d) }
+.start-sec { border-color: var(--off2) }
+@media (max-width: 860px) { .bar-top { padding-left: 1rem; padding-right: 1rem } }
+@media (max-width: 720px) {
+  .setup-form-side, .setup-brand { padding-left: 1.5rem; padding-right: 1.5rem }
+}
 </style>
 </head>
 <body>
@@ -1182,6 +1276,7 @@ table.rt { width: 100%; border-collapse: collapse; margin-bottom: 1mm }
   </header>
   <div id="trial-bar"></div>
   <main id="view"></main>
+  <nav id="bnav" class="bnav" aria-label="Main" hidden></nav>
 </div>
 <div id="print-area"></div>
 <div id="toasts" aria-live="polite"></div>
