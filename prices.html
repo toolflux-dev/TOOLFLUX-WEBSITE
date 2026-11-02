@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOOLFLUX Price List</title>
+<meta name="description" content="TOOLFLUX list prices for carbide inserts, end mills, drills, U-drills and holders. Browse by category or search a part number.">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f2f5f6">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="prices.css">
+</head>
+<body>
+<header class="topbar" id="top">
+  <div class="col">
+    <a class="brand" href="https://www.toolflux.co.in/" aria-label="TOOLFLUX home"><img src="assets/toolflux-logo.svg" alt="TOOLFLUX" width="86" height="28"><span>Price list</span></a>
+    <label class="search" id="searchBox">
+      <span class="sr">Search part number or description</span>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.75"/><path d="m10.5 10.5 3.5 3.5" stroke-linecap="round"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Part number, size or grade, e.g. CNMG 120408">
+      <button class="clear" type="button" id="clearQ" aria-label="Clear search"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" style="margin:auto"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+    </label>
+    <nav class="top-links" aria-label="Contact">
+      <a href="https://wa.me/918660234766" target="_blank" rel="noopener">WhatsApp</a>
+    </nav>
+  </div>
+</header>
+
+<main class="col">
+  <div class="title-row">
+    <div>
+      <h1>Price list</h1>
+      <p class="sub" id="sub"><span class="skeleton" style="width:280px"></span></p>
+    </div>
+    <p class="stamp" id="stamp"></p>
+  </div>
+
+  <div id="notice"></div>
+  <div class="cats" id="cats" role="group" aria-label="Category"></div>
+
+  <div class="filters">
+    <div class="chips" id="subs" role="group" aria-label="Type"></div>
+    <span class="spacer"></span>
+    <label class="sr" for="listSel">Price list</label>
+    <select class="input" id="listSel" hidden></select>
+    <label class="sr" for="sortSel">Sort</label>
+    <select class="input" id="sortSel">
+      <option value="code">Part number A–Z</option>
+      <option value="price">Price, low to high</option>
+      <option value="-price">Price, high to low</option>
+    </select>
+  </div>
+
+  <section class="panel" aria-labelledby="ledgerTitle">
+    <div class="ledger-head">
+      <h2 id="ledgerTitle">All items</h2>
+      <span class="meta" id="showing" aria-live="polite"></span>
+    </div>
+    <table>
+      <thead><tr>
+        <th scope="col">Part number</th>
+        <th scope="col">Description</th>
+        <th scope="col" class="iso-col">ISO</th>
+        <th scope="col" class="specs-col">Specifications</th>
+        <th scope="col" class="n">List price</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="emptyBox"></div>
+    <div class="ledger-foot" id="foot" hidden>
+      <button class="btn" type="button" id="more">Show 100 more</button>
+      <button class="btn ghost" type="button" id="printBtn">Print this list</button>
+    </div>
+  </section>
+
+  <p class="note-line" id="notes"></p>
+  <p class="note-line">Need stock, a quote or the right grade? <a href="https://wa.me/918660234766" target="_blank" rel="noopener">WhatsApp +91 86602 34766</a> or <a href="mailto:toolflux@gmail.com">toolflux@gmail.com</a>.</p>
+</main>
+
+<script src="prices-core.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const PAGE = 100;
+  const params = new URLSearchParams(location.search);
+  const src = /^[\w\-\/]+$/.test(params.get('src') || '') ? params.get('src') : 'pricelists';
+  const S = { items: [], lists: [], cat: '', sub: '', list: '', q: '', sort: 'code', shown: PAGE };
+
+  // ---- state in the URL hash, so a filtered view can be shared ----
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    S.cat = h.get('cat') || ''; S.sub = h.get('sub') || ''; S.q = h.get('q') || ''; S.list = h.get('list') || '';
+    $('q').value = S.q; $('searchBox').classList.toggle('has', !!S.q);
+  }
+  function writeHash() {
+    const h = new URLSearchParams();
+    if (S.cat) h.set('cat', S.cat); if (S.sub) h.set('sub', S.sub); if (S.q) h.set('q', S.q); if (S.list) h.set('list', S.list);
+    const s = h.toString();
+    history.replaceState(null, '', s ? '#' + s : location.pathname + location.search);
+  }
+
+  const inList = it => !S.list || it.list === S.list;
+  const inCat = it => !S.cat || it.cat === S.cat;
+  const inSub = it => !S.sub || it.sub === S.sub;
+  const inQ = it => !S.q || PL.matches(it, S.q);
+
+  function render() {
+    const base = S.items.filter(it => inList(it) && inQ(it));
+    // Category cards count what the search leaves, so a card never promises rows that are not there.
+    const counts = {};
+    base.forEach(it => counts[it.cat] = (counts[it.cat] || 0) + 1);
+    const present = PL.CATEGORIES.filter(c => S.items.some(it => it.cat === c.id && inList(it)));
+    $('cats').innerHTML = [`<button class="cat" type="button" data-cat="" aria-pressed="${!S.cat}"><span class="l">All items</span><span class="v num">${PL.fmtCount(base.length)}</span></button>`]
+      .concat(present.map(c => `<button class="cat" type="button" data-cat="${c.id}" aria-pressed="${S.cat === c.id}"><span class="l">${PL.esc(c.name)}</span><span class="v num">${PL.fmtCount(counts[c.id] || 0)}</span></button>`)).join('');
+    // One row of equal cards up to six; beyond that two even rows, so no card is left alone.
+    const nCards = present.length + 1;
+    $('cats').style.setProperty('--cols', nCards <= 6 ? nCards : Math.ceil(nCards / 2));
+
+    const inCatRows = base.filter(inCat);
+    const subCounts = {};
+    inCatRows.forEach(it => { if (it.sub) subCounts[it.sub] = (subCounts[it.sub] || 0) + 1; });
+    const subs = Object.keys(subCounts).sort((a, b) => subCounts[b] - subCounts[a]);
+    $('subs').innerHTML = S.cat && subs.length > 1
+      ? [`<button class="chip" type="button" data-sub="" aria-pressed="${!S.sub}">All</button>`]
+          .concat(subs.map(s => `<button class="chip" type="button" data-sub="${PL.esc(s)}" aria-pressed="${S.sub === s}">${PL.esc(s)} <span class="n num">${subCounts[s]}</span></button>`)).join('')
+      : '';
+
+    let rows = inCatRows.filter(inSub);
+    const sorters = {
+      code: (a, b) => PL.rank(a, S.q) - PL.rank(b, S.q) || a.code.localeCompare(b.code, 'en', { numeric: true }),
+      price: (a, b) => (a.price ?? Infinity) - (b.price ?? Infinity),
+      '-price': (a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity),
+    };
+    rows.sort(sorters[S.sort]);
+
+    const cat = PL.CAT_BY_ID[S.cat];
+    $('ledgerTitle').textContent = S.q ? `Results for “${S.q}”` + (cat ? ' in ' + cat.name : '') : cat ? cat.name + (S.sub ? ' · ' + S.sub : '') : 'All items';
+    const n = Math.min(S.shown, rows.length);
+    $('showing').textContent = rows.length ? (n < rows.length ? `1–${PL.fmtCount(n)} of ${PL.fmtCount(rows.length)}` : `${PL.fmtCount(rows.length)} item${rows.length === 1 ? '' : 's'}`) : '';
+    $('rows').innerHTML = rows.slice(0, n).map(rowHTML).join('');
+    $('foot').hidden = !rows.length;
+    $('more').hidden = n >= rows.length;
+    $('more').textContent = `Show ${Math.min(PAGE, rows.length - n)} more`;
+    $('emptyBox').innerHTML = rows.length ? '' : `<p class="empty">${S.q
+      ? `No part matches “${PL.esc(S.q)}”${cat ? ' in ' + PL.esc(cat.name) + '. <a href="#" data-act="allcats">Search all categories</a>' : '. Try fewer characters, or the size alone (e.g. 120408)'}.`
+      : 'Nothing listed here yet.'}</p>`;
+  }
+
+  function rowHTML(it) {
+    const specs = Object.entries(it.specs || {});
+    const specHTML = specs.map(([k, v]) => `<span>${PL.esc(k)} ${PL.highlight(v, S.q)}</span>`).join('');
+    const price = PL.fmtPrice(it.price, it.currency);
+    const isoTxt = it.iso ? it.iso.split('').map(c => `<i style="background:var(--iso-${c})"></i>`).join('') + PL.esc(it.iso) : '<span class="dash">–</span>';
+    return `<tr>
+      <td class="code">${PL.highlight(it.code, S.q)}</td>
+      <td class="desc">${PL.highlight(it.desc, S.q)}${it.sub ? `<span class="where">${S.cat ? '' : PL.esc((PL.CAT_BY_ID[it.cat] || {}).name) + ' · '}${PL.esc(it.sub)}</span>` : ''}${specs.length ? `<span class="specs-inline specs">${specHTML}</span>` : ''}</td>
+      <td class="iso-col"><span class="iso" title="${it.iso ? it.iso.split('').map(c => PL.ISO[c]).join(', ') : ''}">${isoTxt}</span></td>
+      <td class="specs specs-col">${specHTML || '<span class="dash">–</span>'}</td>
+      <td class="n price">${price ? price + `<small>/${PL.esc(it.unit)}</small>` : '<span class="dash">On request</span>'}</td>
+    </tr>`;
+  }
+
+  // ---- events ----
+  let qTimer;
+  $('q').addEventListener('input', e => {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => { S.q = e.target.value.trim(); S.shown = PAGE; S.sub = ''; $('searchBox').classList.toggle('has', !!S.q); writeHash(); render(); }, 120);
+  });
+  $('q').addEventListener('keydown', e => { if (e.key === 'Escape') $('clearQ').click(); });
+  $('clearQ').addEventListener('click', () => { $('q').value = ''; S.q = ''; S.shown = PAGE; $('searchBox').classList.remove('has'); writeHash(); render(); $('q').focus(); });
+  $('cats').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; S.cat = b.dataset.cat; S.sub = ''; S.shown = PAGE; writeHash(); render(); });
+  $('subs').addEventListener('click', e => { const b = e.target.closest('[data-sub]'); if (!b) return; S.sub = b.dataset.sub; S.shown = PAGE; writeHash(); render(); });
+  $('emptyBox').addEventListener('click', e => { if (e.target.dataset.act === 'allcats') { e.preventDefault(); S.cat = ''; writeHash(); render(); } });
+  $('sortSel').addEventListener('change', e => { S.sort = e.target.value; render(); });
+  $('listSel').addEventListener('change', e => { S.list = e.target.value; S.shown = PAGE; writeHash(); render(); });
+  $('more').addEventListener('click', () => { S.shown += PAGE; render(); });
+  $('printBtn').addEventListener('click', () => { S.shown = Infinity; render(); window.print(); });
+  window.addEventListener('scroll', () => $('top').classList.toggle('scrolled', scrollY > 4), { passive: true });
+  document.addEventListener('keydown', e => { if (e.key === '/' && document.activeElement !== $('q')) { e.preventDefault(); $('q').focus(); } });
+
+  // ---- load ----
+  function skeleton() {
+    $('rows').innerHTML = Array.from({ length: 6 }, () => `<tr><td class="code"><span class="skeleton" style="width:110px"></span></td><td class="desc"><span class="skeleton" style="width:60%"></span></td><td class="iso-col"></td><td class="specs-col"><span class="skeleton" style="width:140px"></span></td><td class="n price"><span class="skeleton" style="width:72px"></span></td></tr>`).join('');
+  }
+  async function start() {
+    readHash(); skeleton();
+    try {
+      const data = await PL.loadAll(src);
+      // Owner preview: a draft saved by prices-admin.html in this browser, shown before it is published.
+      if (params.get('draft') === '1') {
+        try {
+          const d = JSON.parse(localStorage.getItem('tfx-pl-draft') || 'null');
+          if (d && d.items) {
+            data.lists = data.lists.filter(l => l.id !== d.id).concat(d);
+            data.items = data.items.filter(it => it.list !== d.id).concat(d.items.map(r => { const it = PL.cleanItem(r); it.list = d.id; it.currency = d.currency || 'INR'; return PL.indexItem(it); }));
+            $('notice').innerHTML = `<p class="notice">Preview of the unpublished draft “${PL.esc(d.title)}”. Customers do not see it until you publish.</p>`;
+          }
+        } catch (e) { /* no draft */ }
+      }
+      S.items = data.items; S.lists = data.lists;
+      if (!S.items.length) {
+        $('sub').textContent = 'Prices are being prepared.';
+        $('rows').innerHTML = ''; render(); $('cats').innerHTML = ''; document.querySelector('.filters').hidden = true;
+        $('emptyBox').innerHTML = '<p class="empty">The price list is being updated. For prices today, <a href="https://wa.me/918660234766" target="_blank" rel="noopener">message us on WhatsApp</a>.</p>';
+        return;
+      }
+      const catCount = new Set(S.items.map(i => i.cat)).size;
+      $('sub').textContent = `${PL.fmtCount(S.items.length)} items in ${catCount} categor${catCount === 1 ? 'y' : 'ies'} · list prices in ₹`;
+      const latest = S.lists.map(l => l.effective || '').sort().pop();
+      $('stamp').textContent = latest ? 'Prices effective ' + PL.fmtDate(latest) : '';
+      if (S.lists.length > 1) {
+        $('listSel').hidden = false;
+        $('listSel').innerHTML = '<option value="">All price lists</option>' + S.lists.map(l => `<option value="${PL.esc(l.id)}">${PL.esc(l.title)}</option>`).join('');
+        $('listSel').value = S.list;
+      }
+      const notes = [...new Set(S.lists.map(l => (l.note || '').trim()).filter(Boolean))];
+      $('notes').textContent = notes.join(' ');
+      $('notes').hidden = !notes.length;
+      render();
+    } catch (err) {
+      $('rows').innerHTML = '';
+      $('sub').textContent = '';
+      $('emptyBox').innerHTML = `<p class="empty">Couldn’t load the price list. Check your connection and <a href="" onclick="location.reload();return false">try again</a>.</p>`;
+      console.error(err);
+    }
+  }
+  start();
+})();
+</script>
+</body>
+</html>
