@@ -32,7 +32,8 @@ const STEP_RE = /\.(step|stp)$/i;
 fs.mkdirSync(BASE, { recursive: true });
 let config = Object.assign({ url: '', key: '', auto: true }, readJson(CONFIG, {}));
 let lastPull = { at: null, error: '', orders: [], delivered: [] };
-let autoState = { job: null, waiting: '', last: null }; // job: { orderId, part, startedAt }
+let autoState = { job: null, waiting: '', last: null, blocked: '' }; // job: { orderId, part, startedAt }
+const SIGN_IN_FIX = 'Claude Code on this PC is signed out. In a terminal run: "' + auto.findClaude() + '" setup-token, then follow DRAWING-TO-STEP-SETUP.md (Claude sign-in), then press Retry automatic.';
 
 // ───────── backend ─────────
 async function api(body) {
@@ -119,12 +120,12 @@ async function deliver(orderId, message) {
 // ───────── automatic modelling ─────────
 // One job at a time (Fusion is one app). Oldest queued order first.
 async function autoTick() {
-  if (!config.auto || autoState.job) return;
+  if (!config.auto || autoState.job || autoState.blocked) return;
   const next = lastPull.orders.filter(o => o.status === 'queued')
     .sort((a, b) => String(a.created).localeCompare(String(b.created)))[0];
   if (!next) { autoState.waiting = ''; return; }
   const h = await fusionHealth();
-  if (!h.ok) { autoState.waiting = 'Waiting for Fusion: ' + h.checks.filter(c => !c.ok).map(c => c.name + ' (' + c.fix + ')').join('; '); return; }
+  if (!h.ok) { autoState.waiting = 'Waiting: ' + h.checks.filter(c => !c.ok).map(c => c.name + ' (' + c.fix + ')').join('; '); return; }
   autoState.waiting = '';
   await runAuto(next);
 }
@@ -137,6 +138,16 @@ async function runAuto(o) {
     await api({ action: 'mark', orderId: o.orderId, status: 'modelling', note: 'automatic run started' });
     try { fs.unlinkSync(path.join(dir, 'model', 'VERDICT.json')); } catch (e) { /* none yet */ }
     const run = await auto.runJob(o, dir, BASE, __dirname);
+    if (run.signedOut) {
+      // Not the order's fault: put it back in the queue, pause, and tell Roo once.
+      autoState.blocked = SIGN_IN_FIX;
+      await api({ action: 'mark', orderId: o.orderId, status: 'queued', note: 'Automatic modelling paused: ' + SIGN_IN_FIX, notify: true });
+      autoState.job = null;
+      autoState.last = { at: new Date().toISOString(), orderId: o.orderId, result: 'paused', reason: 'Claude Code is signed out' };
+      console.log('[auto] paused: Claude Code is signed out');
+      await pull();
+      return;
+    }
     const verdictPath = path.join(dir, 'model', 'VERDICT.json');
     const verdictText = fs.existsSync(verdictPath) ? fs.readFileSync(verdictPath, 'utf8') : '';
     let d = auto.decide(verdictText, orderState(o).steps);
@@ -185,6 +196,12 @@ async function fusionHealth() {
   let claude = false;
   try { const c = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8')); claude = !!(c.mcpServers && c.mcpServers.fusion && /27182/.test(c.mcpServers.fusion.url || '')); } catch (e) { claude = false; }
   checks.push({ name: 'Claude Code knows the Fusion server', ok: claude, fix: 'Run: claude mcp add --transport http --scope user fusion http://127.0.0.1:27182/mcp (see DRAWING-TO-STEP-SETUP.md).' });
+  // The standalone Claude Code that models orders signs in separately from the Claude app.
+  let signedIn = !!process.env.CLAUDE_CODE_OAUTH_TOKEN;
+  if (!signedIn) signedIn = await new Promise(ok => execFile(auto.findClaude(), ['auth', 'status'], { timeout: 30000, windowsHide: true }, (e, out) => {
+    try { ok(!!JSON.parse(out).loggedIn); } catch (x) { ok(false); }
+  }));
+  checks.push({ name: 'Claude Code is signed in', ok: signedIn, fix: 'In a terminal run: "' + auto.findClaude() + '" auth login (see DRAWING-TO-STEP-SETUP.md, Claude sign-in).' });
   return { ok: checks.every(c => c.ok), checks };
 }
 
@@ -209,6 +226,7 @@ const server = http.createServer(async (req, res) => {
         config.auto = !!body.on; fs.writeFileSync(CONFIG, JSON.stringify(config, null, 2));
         if (config.auto) setTimeout(autoTick, 100);
         out = { ok: true, auto: config.auto }; break;
+      case '/api/unblock': autoState.blocked = ''; setTimeout(autoTick, 100); out = { ok: true }; break;
       case '/api/run': // put a held order back in the automatic queue
         out = await api({ action: 'mark', orderId: body.orderId, status: 'queued', note: 'sent back to automatic modelling' });
         await pull(); setTimeout(autoTick, 100); break;
@@ -299,7 +317,7 @@ async function render(){
   const os=s.pull.orders||[];
   if(s.config.url&&!os.length&&!s.pull.error)h+='<p class="empty">No orders waiting.</p>';
   const a=s.auto||{},ab=document.getElementById('ab');
-  ab.innerHTML='<span>Automatic modelling: <b>'+(s.config.auto?'ON':'OFF')+'</b></span>'+(a.job?'<span>Modelling <b>'+esc(a.job.orderId)+'</b> '+esc(a.job.part)+' since '+new Date(a.job.startedAt).toLocaleTimeString()+'</span>':'')+(a.waiting?'<span class="w">'+esc(a.waiting)+'</span>':'')+(a.last?'<span>Last: '+esc(a.last.orderId)+' '+esc(a.last.result)+(a.last.reason?' ('+esc(a.last.reason).slice(0,140)+')':'')+'</span>':'')+'<button class="q" id="autot" data-on="'+(s.config.auto?'0':'1')+'">'+(s.config.auto?'Pause automatic':'Turn automatic on')+'</button>';
+  ab.innerHTML='<span>Automatic modelling: <b>'+(s.config.auto?'ON':'OFF')+'</b></span>'+(a.job?'<span>Modelling <b>'+esc(a.job.orderId)+'</b> '+esc(a.job.part)+' since '+new Date(a.job.startedAt).toLocaleTimeString()+'</span>':'')+(a.waiting?'<span class="w">'+esc(a.waiting)+'</span>':'')+(a.blocked?'<span class="w"><b>Paused:</b> '+esc(a.blocked)+'</span><button class="q" id="unblock">Retry automatic</button>':'')+(a.last?'<span>Last: '+esc(a.last.orderId)+' '+esc(a.last.result)+(a.last.reason?' ('+esc(a.last.reason).slice(0,140)+')':'')+'</span>':'')+'<button class="q" id="autot" data-on="'+(s.config.auto?'0':'1')+'">'+(s.config.auto?'Pause automatic':'Turn automatic on')+'</button>';
   for(const o of os){const st=s.states[o.orderId]||{steps:[],drawings:[]};
     h+='<article class="o"><div class="pv">'+(st.preview?'<img alt="Model preview" src="/preview?o='+encodeURIComponent(o.orderId)+'&t='+Date.now()+'">':(o.status==='queued'?'Queued for automatic modelling':o.status==='modelling'?'Claude is modelling this in Fusion…':'No model yet'))+'</div><div class="b">'+
     '<div class="top"><h2>'+esc(o.part)+'</h2><span class="st '+esc(o.status)+'">'+esc(o.status)+'</span><span class="meta">'+esc(o.orderId)+' · '+esc(o.units)+(o.material?' · '+esc(o.material):'')+'</span></div>'+
@@ -319,6 +337,7 @@ async function render(){
 document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
   let r;
   if(b.id==='refresh'){b.disabled=true;r=await call('/api/pull');b.disabled=false;}
+  else if(b.id==='unblock'){r=await call('/api/unblock');}
   else if(b.id==='autot'){r=await call('/api/auto',{on:b.dataset.on==='1'});}
   else if(b.dataset.run){if(!confirm('Send '+b.dataset.run+' back to automatic modelling?'))return;r=await call('/api/run',{orderId:b.dataset.run});}
   else if(b.dataset.open){r=await call('/api/open',{orderId:b.dataset.open});}

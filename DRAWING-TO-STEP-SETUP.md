@@ -15,6 +15,12 @@ Free for every machine shop, fully automatic. A customer uploads a drawing on `d
 2. **The desk app** (`DRAWING-TO-STEP.cmd`). It checks for orders every 2 minutes and models them one at a time.
 If Fusion is not answering, the desk waits (banner: "Waiting for Fusion") and starts as soon as it is.
 
+## Claude sign-in (one time)
+The desk starts the **standalone Claude Code** to model orders. It signs in separately from the Claude app, and a desk job fails with "OAuth session expired" when it is signed out. The desk now checks this before every job (`node dts-desk.js --check-fusion`, line "Claude Code is signed in") and pauses with a banner instead of failing orders.
+- **Sign in:** in a terminal run `"%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\<version>\<hash>\claude.exe" auth login` and finish the browser sign-in as toolflux@gmail.com. Check with `... claude.exe auth status` (`"loggedIn": true`).
+- **Longer-lasting alternative:** `... claude.exe setup-token` creates a token valid for about a year. Store it as a Windows user variable `CLAUDE_CODE_OAUTH_TOKEN` (System Properties > Environment Variables), then restart the desk.
+- After signing in, press **Retry automatic** in the desk (or restart it); paused orders are still queued.
+
 ## How an order flows
 1. Customer presses **Send the drawing** → drawing saved to Drive, row in the [orders sheet](https://docs.google.com/spreadsheets/d/1FxonlXW6iH5d_UOD3S-DWmSrbGwznSQzCehIzcRqQN0), "Sit tight" email to the customer, "New order" email to Roo. Status **queued**.
 2. Desk downloads it to `Documents\Drawing to STEP\<order> <part>\`, marks it **modelling**, and starts Claude Code unattended (`claude -p`, only file, Fusion and `fusion/fx.js` tools allowed).
