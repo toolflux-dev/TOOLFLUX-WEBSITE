@@ -4,7 +4,7 @@
 (function (root) {
   'use strict';
 
-  var DTS_URL = ''; // ← Apps Script web-app URL (…/exec). Empty = ordering shows the WhatsApp fallback.
+  var DTS_URL = 'https://script.google.com/macros/s/AKfycbwM3b7QEqxiyLwP6eKD0HVWAg2ik1wwtnkV9XKrwEz9W4ySWXhNZiN-cLlcHmCPhoM/exec'; // Apps Script web app (dts-sync.gs). Empty = ordering shows the WhatsApp fallback.
   var WHATSAPP = 'https://wa.me/918660234766';
   var MAX_FILES = 3, MAX_FILE = 10 * 1024 * 1024, MAX_TOTAL = 15 * 1024 * 1024;
   var DRAWING = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
