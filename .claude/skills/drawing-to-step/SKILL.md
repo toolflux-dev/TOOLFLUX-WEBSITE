@@ -16,10 +16,11 @@ Orders live in `%USERPROFILE%\Documents\Drawing to STEP\<orderId> <part>\` (the 
 
 ## 1. Read before touching Fusion
 1. Read `BRIEF.md` and `order.json`: units, material, the customer's notes (e.g. "mid-tolerance", "ignore the keyway").
-2. Read every file in `drawing\` (PDF and images with the Read tool; a DXF is text). Zoom into crops where text is small. Multi-sheet orders: read every sheet before modelling.
+2. Read the drawing from **`drawing\_pages\`**: the desk renders every PDF page and image there before you start, as `<name>-pN.png` (whole sheet) and `<name>-pN-rRcC.png` (3 × 3 close-ups, 3× sharper). Read the overview first, then every close-up that holds dimensions, tolerances, sections or notes; small text is legible in the close-ups. (Only if `_pages` is missing, read the originals in `drawing\`; a DXF is text.) Multi-sheet orders: every sheet before modelling.
+   If `order.json` notes contain **"Customer answer"**, this order was asked a question before: use the answer (and any new files it lists).
 3. **Any drawing is accepted**: turned, prismatic, castings and forgings, assemblies, multi-sheet. An assembly becomes one design with one component (and body) per part, positioned as drawn; export the whole design as one STEP.
 4. Write `model\CHECK.md` **first**: `| # | feature | value | tol | view it comes from | measured | ✓/✗ |` covering every dimension and feature: hole counts, PCDs, angles, chamfers, fillets, threads, depths, draft angles, derived sizes (e.g. spigot height = overall − flange).
-5. **Missing or contradictory dimension, unreadable text, or a shape you cannot model faithfully?** Do not guess: HOLD with the exact question as the reason. A *minor reading* (e.g. which edges "outer edges" means) is not a hold: record it under **Assumptions**, model the most ordinary reading, and mention it in `customerNote`.
+5. **Missing or contradictory dimension, unreadable text, a sketch without the sizes you need?** Do not guess: finish with a **QUESTION** verdict, and the customer is emailed your question with a link to answer it. A *minor reading* (e.g. which edges "outer edges" means, an unstated general chamfer covered by the title-block note) is not a question: record it under **Assumptions**, model the most ordinary reading, and mention it in `customerNote`. Standards the drawing names (ISO 2768, DIN 3852, thread standards) are information you have: use them rather than asking.
 
 ## 2. Model (fusion execute tool or fx.js, featureType "script")
 - New document: `app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)`, parametric design, display units mm (or inch to match the drawing).
@@ -45,10 +46,12 @@ Copy `fusion/dts_library.py` to the order's `model\`, set its `ORDER` and `PART`
 Write `model\VERDICT.json`, exactly one of:
 ```json
 { "verdict": "PASS", "checks": "12/12", "assumptions": ["…"], "customerNote": "Threaded holes M8 are modelled at the 6.8 mm tap-drill size." }
-{ "verdict": "HOLD", "checks": "10/12", "reason": "Section A-A gives no depth for the Ø12 counterbore. Question for the customer: …" }
+{ "verdict": "QUESTION", "question": "Section A-A gives no depth for the Ø12 counterbore. What depth should it be, and is the bottom flat or drill-point?", "reason": "counterbore depth missing" }
+{ "verdict": "HOLD", "reason": "Fusion script error in the revolve I could not fix: …" }
 ```
-- PASS only if every check passed (`checks` is `N/N`), the STEP file exists in `model\`, and the preview matches the drawing. The desk then emails the STEP with `customerNote` (keep it short, factual, about the model only; omit if nothing to say).
-- Anything else is HOLD with a clear `reason` that Roo can act on in one read. The desk emails Roo and keeps the order.
+- **PASS** only if every check passed (`checks` is `N/N`), the STEP file exists in `model\`, and the preview matches the drawing. The desk emails the STEP with `customerNote` (short, factual, about the model only; omit if nothing to say).
+- **QUESTION** when the customer must supply something: missing or conflicting dimensions, unreadable text, an undimensioned feature. The desk emails `question` to the customer **word for word**, with an answer link; their answer re-queues the order. Write it for a machinist: name the feature and view, say exactly what you need, and offer a sensible option where there is one ("…or should we model the plain body without the pockets?"). One email, all questions in it. Polite, no internal details (no mention of Claude, Fusion, scripts or logs).
+- **HOLD** only for problems on our side (Fusion or tool errors, a shape our tools cannot build). The desk emails Roo, not the customer.
 
 ## Automatic runs
-The desk app starts you with `claude -p` for each queued order. Nobody is watching: never ask questions, never wait for input, never email or call the backend. If you get stuck (tool error you cannot fix, Fusion not answering, drawing unreadable), write a HOLD verdict and finish.
+The desk app starts you with `claude -p` for each queued order. Nobody is watching: never ask questions, never wait for input, never email or call the backend. If the drawing lacks information, write a QUESTION verdict; if you get stuck on our side (tool error you cannot fix, Fusion not answering), write a HOLD verdict. Then finish.

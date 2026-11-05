@@ -17,7 +17,7 @@ function load(opts = {}) {
   const sheet = {
     appendRow: r => rows.push(r.slice()), setFrozenRows() {},
     getDataRange: () => ({ getValues: () => rows.map(r => r.slice()) }),
-    getRange: (r, c) => ({ setValue: v => { rows[r - 1][c - 1] = v; } }),
+    getRange: (r, c) => ({ getValue: () => ((rows[r - 1] || [])[c - 1] ?? ''), setValue: v => { while (rows.length < r) rows.push([]); rows[r - 1][c - 1] = v; } }),
   };
   let ssSheet = null;
   const folders = {}; let fid = 0;
@@ -73,7 +73,7 @@ function load(opts = {}) {
 const b64 = s => Buffer.from(s).toString('base64');
 const order = (over = {}) => Object.assign({ action: 'create', name: 'Ravi', email: 'Ravi@Shop.in', phone: '98450 12345', part: 'Flange 014', units: 'mm',
   files: [{ name: 'flange.pdf', b64: b64('%PDF-1.4 test') }, { name: 'flange.dxf', b64: b64('0\nSECTION') }] }, over);
-const COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'];
+const COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free', 'question'];
 const col = n => COLS.indexOf(n);
 const K = 'desk-key-xyz';
 
@@ -168,4 +168,40 @@ test('spam guard: 6 uploads an hour per email', () => {
   const r = g.call(order());
   assert.equal(r.ok, false);
   assert.match(r.message, /Too many/);
+});
+
+test('ask: the customer gets the question with a private answer link; their answer re-queues the order', () => {
+  const g = load();
+  const c = g.call(order());
+  const before = g.mails.length;
+  assert.equal(g.call({ action: 'ask', key: 'wrong', orderId: c.orderId, question: 'x' }).error, 'forbidden');
+  const a = g.call({ action: 'ask', key: K, orderId: c.orderId, question: 'Section A-A gives no depth for the 12 mm counterbore. What depth should it be?' });
+  assert.equal(a.status, 'query');
+  const m = g.mails[before];
+  assert.equal(m.to, 'ravi@shop.in');
+  assert.match(m.subject, /^A question about your drawing/);
+  assert.match(m.htmlBody, /counterbore/);
+  const link = /href="([^"]+answer=[^"]+)"/.exec(m.htmlBody)[1];
+  const t = /[?&]t=([0-9a-f]+)/.exec(link)[1];
+  assert.match(link, /^https:\/\/www\.toolflux\.co\.in\/drawing-to-step\.html\?answer=DTS-/);
+  assert.equal(g.mails[before + 1].to, 'toolflux@gmail.com', 'Roo gets a copy');
+  assert.equal(g.rows[0][col('question')], 'question', 'header title added');
+
+  // wrong token, right token
+  assert.match(g.call({ action: 'question', orderId: c.orderId, t: 'deadbeef' }).message, /not valid/);
+  const q = g.call({ action: 'question', orderId: c.orderId, t });
+  assert.match(q.question, /counterbore/);
+  assert.match(g.call({ action: 'answer', orderId: c.orderId, t }).message, /Write an answer/);
+
+  const ans = g.call({ action: 'answer', orderId: c.orderId, t, text: '15 mm deep, flat bottom.', files: [{ name: 'section-AA.png', b64: b64('png') }] });
+  assert.equal(ans.ok, true);
+  const row = g.rows[1];
+  assert.equal(row[col('status')], 'queued');
+  assert.match(row[col('notes')], /Customer answer: 15 mm deep/);
+  assert.match(row[col('notes')], /counterbore/);
+  assert.equal(JSON.parse(row[col('files')]).length, 3, 'new file added to the order');
+  assert.equal(row[col('question')], '');
+  assert.match(g.mails[g.mails.length - 1].subject, /^Customer answered/);
+  assert.match(g.call({ action: 'answer', orderId: c.orderId, t, text: 'again' }).message, /already been answered/);
+  assert.equal(g.call({ action: 'queue', key: K }).orders[0].status, 'queued');
 });

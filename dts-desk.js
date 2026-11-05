@@ -137,6 +137,8 @@ async function runAuto(o) {
   try {
     await api({ action: 'mark', orderId: o.orderId, status: 'modelling', note: 'automatic run started' });
     try { fs.unlinkSync(path.join(dir, 'model', 'VERDICT.json')); } catch (e) { /* none yet */ }
+    const rendered = await auto.renderDrawings(dir);
+    if (!rendered.ok) console.log('[auto] drawing render failed (Claude will read the originals):', rendered.error);
     const run = await auto.runJob(o, dir, BASE, __dirname);
     if (run.signedOut) {
       // Not the order's fault: put it back in the queue, pause, and tell Roo once.
@@ -157,6 +159,10 @@ async function runAuto(o) {
       await pull();
       await deliver(o.orderId, d.message);
       outcome = { orderId: o.orderId, result: 'sent', checks: d.checks };
+    } else if (d.action === 'ask') {
+      // Missing or unclear information only the customer has: they get the question and an answer link.
+      await api({ action: 'ask', orderId: o.orderId, question: d.question });
+      outcome = { orderId: o.orderId, result: 'asked customer', reason: d.question };
     } else {
       await api({ action: 'mark', orderId: o.orderId, status: 'held', note: d.reason + ' Log: ' + path.join(dir, 'model', 'claude-run.log'), notify: true });
       outcome = { orderId: o.orderId, result: 'held', reason: d.reason };

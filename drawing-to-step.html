@@ -174,6 +174,12 @@ fieldset.cell{min-width:0}
 .summary a{color:var(--bad)}
 .work{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:56px;min-height:460px;padding:56px clamp(24px,6vw,96px);background:var(--bg)}
 .work[hidden],form.tb[hidden]{display:none}
+.answer{background:var(--bg);padding:40px clamp(20px,4vw,48px)}
+.answer[hidden]{display:none}
+.answer blockquote{font-size:var(--s-lead);line-height:1.5;max-width:62ch;margin:0 0 28px;padding:20px 24px;background:var(--surface);white-space:pre-wrap}
+.answer .cell{margin-bottom:3px;background:var(--surface)}
+.answer .cell input[type=file]{font-size:var(--s-small);padding-top:10px}
+
 .work .gear{width:clamp(120px,16vw,200px);height:auto}
 .work h3{font-size:var(--s-display);letter-spacing:-.03em;line-height:1;margin-bottom:24px;outline:none}
 .work p{font-size:var(--s-lead);max-width:36ch}
@@ -438,6 +444,14 @@ footer .r{text-align:right}
       </div>
     </form>
 
+    <div class="answer" id="answer" hidden>
+      <blockquote id="ans-q"></blockquote>
+      <form id="ans-form" novalidate>
+        <div class="cell full"><label for="ans-text">Your answer</label><textarea id="ans-text" rows="5" maxlength="3000" aria-describedby="ans-err"></textarea></div>
+        <div class="cell full"><label for="ans-file">A clearer drawing, a section or a sketch (optional)</label><input type="file" id="ans-file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.dxf,.dwg,application/pdf,image/*"></div>
+        <div class="payrow"><p id="ans-err">We model the part as soon as you send this, and email the STEP file.</p><button class="btn" id="ans-send" type="submit">Send the answer</button></div>
+      </form>
+    </div>
     <div class="work" id="sending" hidden>
       <svg class="gear" viewBox="-4 -4 505 492" aria-hidden="true">
         <g><path fill-rule="evenodd" clip-rule="evenodd" d="M0 261.5C0 248.5 0 235.5 0 222.5C0.723978 220.782 1.39064 218.948 2 217C13.7873 211.023 25.6206 205.19 37.5 199.5C40.5354 182.939 45.702 167.106 53 152C46.65 140.323 40.3167 128.657 34 117C41.9067 102.257 51.5733 88.757 63 76.5C76.5473 79.644 90.2139 81.811 104 83C115.542 72.123 128.208 62.79 142 55C144.704 41.409 147.037 27.742 149 14C164.196 7.488 179.863 2.821 196 0C205.364 9.03 214.364 18.363 223 28C239.155 27.208 255.322 27.375 271.5 28.5C272.333 28.333 273.167 28.167 274 28C282.636 18.363 291.636 9.03 301 0C317.253 2.694 332.919 7.527 348 14.5C350.16 27.113 351.993 39.779 353.5 52.5C353.965 53.931 354.799 55.097 356 56C360.168 58.25 364.168 60.75 368 63.5C333.176 69.607 300.843 82.107 271 101C211.618 94.785 164.452 115.619 129.5 163.5C101.682 208.853 98.6816 255.853 120.5 304.5C124.039 311.75 128.206 318.583 133 325C126.752 354.815 122.919 384.982 121.5 415.5C115.375 411.044 109.542 406.211 104 401C90.2139 402.189 76.5473 404.356 63 407.5C51.5733 395.243 41.9067 381.743 34 367C40.3261 355.349 46.6594 343.683 53 332C46.0386 316.782 40.8719 300.949 37.5 284.5C25.7429 278.705 13.9096 273.038 2 267.5C1.33128 265.369 0.664619 263.369 0 261.5Z" fill="#000000"/><path fill-rule="evenodd" clip-rule="evenodd" d="M433 76.5C445.023 88.377 455.023 101.877 463 117C456.683 128.657 450.35 140.323 444 152C450.961 167.218 456.128 183.051 459.5 199.5C471.379 205.19 483.213 211.023 495 217C495.764 219.069 496.264 221.236 496.5 223.5C497.167 235.833 497.167 248.167 496.5 260.5C496.314 262.9 495.814 265.234 495 267.5C483.09 273.038 471.257 278.705 459.5 284.5C456.128 300.949 450.961 316.782 444 332C450.341 343.683 456.674 355.349 463 367C455.093 381.743 445.427 395.243 434 407.5C420.453 404.356 406.786 402.189 393 401C381.146 411.841 368.313 421.341 354.5 429.5C352.173 442.777 350.006 456.111 348 469.5C333.051 476.87 317.385 481.71 301 484C291.636 474.97 282.636 465.64 274 456C273.167 455.833 272.333 455.667 271.5 455.5C255.322 456.625 239.155 456.792 223 456C214.364 465.64 205.364 474.97 196 484C179.733 481.58 164.066 476.91 149 470C141.138 428.44 141.804 386.94 151 345.5C188.823 379.163 232.489 390.663 282 380C327.472 367.845 359.972 340.345 379.5 297.5C399.287 244.341 391.954 195.341 357.5 150.5C349.268 141.598 340.434 133.431 331 126C321.116 119.557 310.783 113.89 300 109C329.238 92.857 360.571 84.524 394 84C407.194 81.793 420.194 79.293 433 76.5Z" fill="#0097B2"/><animateTransform attributeName="transform" type="rotate" from="0 248.5 242" to="360 248.5 242" dur="2.4s" repeatCount="indefinite"/></g>

@@ -52,6 +52,7 @@ function prompt(order, dir) {
     'Unattended run for TOOLFLUX Drawing to STEP. Nobody is watching: do not ask questions.',
     'Model order ' + order.orderId + ' (' + order.part + ').',
     'Order folder: ' + dir,
+    'Read the drawing from the images in drawing\\_pages (overview + close-ups). If order.json notes contain a "Customer answer", use it.',
     'Follow .claude/skills/drawing-to-step/SKILL.md from step 0 to the end, including the Automatic runs section.',
     'Your last action must be writing ' + path.join(dir, 'model', 'VERDICT.json') + '.',
     'Never email anyone and never call the backend; the desk app reads VERDICT.json and does the rest.',
@@ -68,6 +69,11 @@ function decide(verdictText, stepFiles) {
   let v = null;
   try { v = JSON.parse(verdictText); } catch (e) { return { action: 'hold', reason: verdictText ? 'VERDICT.json is not valid JSON.' : 'Claude finished without writing VERDICT.json.' }; }
   const verdict = String(v.verdict || '').toUpperCase();
+  if (verdict === 'QUESTION') {
+    const q = String(v.question || '').trim();
+    if (q.length >= 10) return { action: 'ask', question: q.slice(0, 3000) };
+    return { action: 'hold', reason: 'Verdict was QUESTION but no question was written.' };
+  }
   if (verdict !== 'PASS') return { action: 'hold', reason: String(v.reason || 'Claude held the order without a reason.').slice(0, 1500) };
   if (!stepFiles.length) return { action: 'hold', reason: 'Verdict was PASS but there is no .step file in model\\.' };
   const checks = String(v.checks || '');
@@ -110,4 +116,22 @@ function runJob(order, dir, base, cwd) {
   });
 }
 
-module.exports = { findClaude, buildArgs, decide, runJob, signedOut, ALLOWED_TOOLS, JOB_TIMEOUT_MS };
+// Render every drawing into drawing\_pages (fusion/render_drawings.py, PyMuPDF) so Claude can zoom
+// without a shell. Re-renders only when the set of drawing files changes (e.g. a customer answer added one).
+function renderDrawings(dir) {
+  const drawing = path.join(dir, 'drawing'), pages = path.join(drawing, '_pages'), mark = path.join(pages, '.rendered');
+  let names = [];
+  try { names = fs.readdirSync(drawing).filter(n => n !== '_pages').sort(); } catch (e) { return Promise.resolve({ ok: false, error: 'no drawing folder' }); }
+  const sig = names.join('|');
+  try { if (fs.readFileSync(mark, 'utf8') === sig) return Promise.resolve({ ok: true, skipped: true }); } catch (e) { /* not rendered yet */ }
+  const script = path.join(__dirname, 'fusion', 'render_drawings.py');
+  return new Promise(resolve => {
+    require('child_process').execFile(process.env.DTS_PYTHON || 'python', ['-I', script, dir], { timeout: 5 * 60 * 1000, windowsHide: true }, (e, out, err) => {
+      if (e) return resolve({ ok: false, error: String(err || e.message).slice(-500) });
+      try { fs.mkdirSync(pages, { recursive: true }); fs.writeFileSync(mark, sig); } catch (x) { /* next pull retries */ }
+      resolve({ ok: true, out: String(out).trim() });
+    });
+  });
+}
+
+module.exports = { findClaude, buildArgs, decide, runJob, signedOut, renderDrawings, ALLOWED_TOOLS, JOB_TIMEOUT_MS };
