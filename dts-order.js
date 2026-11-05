@@ -121,14 +121,36 @@
   // ── submit ──
   var payBtn = $('pay'), note = $('pay-note'), summary = $('summary');
   var noteDefault = note.textContent;
-  if (!DTS_URL && !demo) {
-    note.innerHTML = 'Online ordering opens shortly. Until then, WhatsApp the drawing to <a style="color:inherit" href="' + WHATSAPP + '">+91 86602 34766</a> and pay ₹79 by UPI.';
-    payBtn.textContent = 'Send on WhatsApp';
+  var mode = (DTS_URL || demo) ? 'free' : 'closed'; // free | paid | closed (WhatsApp)
+  var freeLine = doc.querySelector('[data-free-line]'), slipPay = doc.querySelector('[data-slip-pay]'), orderNote = doc.querySelector('[data-order-note]');
+  function setMode(m, left, limit) {
+    mode = m;
+    if (m === 'free') {
+      if (freeLine && left != null) freeLine.textContent = 'The first ' + limit + ' parts are free while we collect feedback. ' + left + ' of ' + limit + ' left.';
+      payBtn.textContent = 'Send the drawing';
+      return;
+    }
+    if (freeLine && left === 0) freeLine.hidden = true; // still shown on the WhatsApp fallback before the backend exists
+    if (m === 'paid') {
+      if (slipPay) slipPay.textContent = 'UPI, card, netbanking';
+      if (orderNote) orderNote.textContent = 'Fill it in like a title block. You pay on the next screen; we start once the payment goes through. Unpaid uploads are deleted after 3 days.';
+      note.textContent = noteDefault = 'Razorpay handles the payment: UPI, cards and netbanking. A receipt comes to your email.';
+      payBtn.textContent = 'Pay and send';
+    } else {
+      note.innerHTML = 'Online ordering opens shortly. Until then, WhatsApp the drawing to <a style="color:inherit" href="' + WHATSAPP + '">+91 86602 34766</a>.';
+      payBtn.textContent = 'Send on WhatsApp';
+    }
   }
+  if (mode === 'closed') setMode('closed');
+  else post({ action: 'info' }).then(function (i) {
+    if (!i || !i.ok) return;
+    if (i.freeLeft > 0) setMode('free', i.freeLeft, i.freeLimit);
+    else setMode(i.paid ? 'paid' : 'closed', 0);
+  }, function () { /* keep the free wording; submit reports any real problem */ });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (!DTS_URL && !demo) { location.href = WHATSAPP + '?text=' + encodeURIComponent('Drawing to STEP order: ' + ($('part').value || 'part drawing')); return; }
+    if (mode === 'closed') { location.href = WHATSAPP + '?text=' + encodeURIComponent('Drawing to STEP order: ' + ($('part').value || 'part drawing')); return; }
     if (pending) { return openCheckout(pending); }
     var errs = [];
     var fe = checkFiles(files); fileErr.textContent = fe; if (fe) errs.push(['file', fe]);
@@ -169,10 +191,12 @@
         files: packed.map(function (f) { return { name: f.name, b64: f.b64 }; })
       });
       if (!res.ok) throw userErr(res.message || 'The upload did not go through. Try again, or WhatsApp us the drawing.');
+      if (res.free) return done(res, true);
+      if (mode === 'free') note.textContent = 'Your free part is already used, so this one is paid. The payment window is opening.';
       pending = res;
       openCheckout(res);
     } catch (err) {
-      busy(false, 'Pay ₹79 and send');
+      busy(false, mode === 'paid' ? 'Pay and send' : 'Send the drawing');
       note.textContent = err.user ? err.message : 'The connection dropped during upload. Nothing was charged. Try again.';
     }
   }
@@ -226,13 +250,13 @@
       rz.on('payment.failed', function () { /* Razorpay shows its own retry; dismiss lands in notPaid */ });
       rz.open();
     }, function () {
-      busy(false, 'Pay ₹79');
+      busy(false, 'Pay now');
       note.textContent = 'The payment window did not load. Check the connection and press Pay again. Your drawing is saved.';
     });
   }
 
   function notPaid(o) {
-    busy(false, 'Pay ₹79');
+    busy(false, 'Pay now');
     note.textContent = 'Payment not finished. Your drawing is saved under order ' + o.orderId + '. Press Pay to try again; unpaid orders are deleted after 3 days.';
   }
 
@@ -247,17 +271,17 @@
       await wait(2500 * (i + 1));
       try { var s = await post({ action: 'status', orderId: o.orderId, email: o.email }); if (s.ok && s.status !== 'awaiting_payment') return done(o); } catch (e) { /* retry */ }
     }
-    busy(false, 'Pay ₹79');
+    busy(false, 'Pay now');
     note.innerHTML = 'We could not confirm the payment yet. If money left your account, it is safe: WhatsApp <a style="color:inherit" href="' + WHATSAPP + '?text=' + encodeURIComponent('Payment check for ' + o.orderId) + '">your order number ' + o.orderId + '</a> and we will check it.';
   }
 
-  function done(o) {
+  function done(o, free) {
     pending = null;
     var box = doc.createElement('div');
     box.className = 'done'; box.setAttribute('role', 'status'); box.tabIndex = -1;
-    box.innerHTML = '<h3>Paid. We have your drawing.</h3>' +
-      '<p>Order <span class="oid"></span>. A confirmation is on its way to <b class="em"></b>.</p>' +
-      '<p>We read the drawing and model the part next. If anything is unclear, we will email you before modelling. The STEP file comes to the same address.</p>' +
+    box.innerHTML = '<h3>' + (free ? 'We have your drawing.' : 'Paid. We have your drawing.') + '</h3>' +
+      '<p>Order <span class="oid"></span>' + (free ? ' is one of our free launch parts' : '') + '. A confirmation is on its way to <b class="em"></b>.</p>' +
+      '<p>If anything on the drawing is unclear, we will email you first. The STEP file comes to the same address.' + (free ? ' Once you have tried it, two lines of feedback would help us a lot.' : '') + '</p>' +
       '<p><button type="button" class="btn btn-quiet" id="again">Send another drawing</button></p>';
     box.querySelector('.oid').textContent = o.orderId;
     box.querySelector('.em').textContent = o.email;
@@ -291,9 +315,12 @@
   var demoState = {};
   async function fakeBackend(b) {
     await wait(600);
+    var freeLeft = Number((/[?&]free=(\d+)/.exec(location.search) || [0, 3])[1]);
+    if (b.action === 'info') return { ok: true, freeLeft: freeLeft, freeLimit: 25, paid: !/[?&]nopay=1/.test(location.search) };
     if (b.action === 'create') {
       if (/fail-upload/.test(b.notes)) return { ok: false, error: 'invalid', message: 'Demo: upload refused.' };
       var id = 'DTS-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-DEMO';
+      if (freeLeft > 0) return { ok: true, free: true, orderId: id, email: b.email, freeLeft: freeLeft - 1 };
       demoState[id] = 'awaiting_payment';
       return { ok: true, orderId: id, rzpOrderId: 'order_demo', keyId: 'rzp_test_demo', amount: 7900, name: b.name, email: b.email, phone: b.phone };
     }
@@ -306,7 +333,7 @@
   FakeRzp.prototype.open = function () {
     var o = this.o;
     setTimeout(function () {
-      var pay = /fail-pay/.test($('notes').value) ? false : root.confirm('Demo checkout: pay ₹79 for ' + o.description + '?');
+      var pay = /fail-pay/.test($('notes').value) ? false : root.confirm('Demo checkout: pay for ' + o.description + '?');
       if (pay) o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: 'pay_demo', razorpay_signature: 'sig_demo' });
       else o.modal.ondismiss();
     }, 200);

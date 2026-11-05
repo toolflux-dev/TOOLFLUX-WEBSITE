@@ -4,7 +4,9 @@
  * The customer page (drawing-to-step.html) and the desk app on Roo's PC
  * (dts-desk.js) both talk to this one script.
  *
- *   create   customer  saves the drawing to Drive, opens a Razorpay order (₹79)
+ *   info     customer  how many free launch parts are left
+ *   create   customer  saves the drawing to Drive; a free launch order is accepted at once,
+ *                       otherwise a Razorpay order is opened
  *   verify   customer  checks the Razorpay checkout signature, marks the order paid
  *   status   customer  re-checks an order (asks Razorpay if the browser lost the reply)
  *   queue    desk      lists paid / in-progress orders
@@ -23,9 +25,11 @@
  *   DESK_KEY                     shared secret for the desk app (setup() makes it)
  *   ROOT_FOLDER_ID, SHEET_ID     made by setup()
  *   OWNER_EMAIL                  optional, defaults to toolflux@gmail.com
+ *   FREE_LIMIT                   optional, free launch parts (default 25; 0 = paid from the start)
  */
 
 var PRICE_PAISE = 7900;          // ₹79
+var FREE_DEFAULT = 25;           // first 25 parts free while collecting feedback, one per customer
 var MAX_FILES = 3;
 var MAX_FILE_BYTES = 10 * 1024 * 1024;
 var MAX_TOTAL_BYTES = 15 * 1024 * 1024;
@@ -35,7 +39,7 @@ var DELIVER_EXT = ['step', 'stp', 'pdf', 'png', 'jpg'];
 var STATUSES = ['awaiting_payment', 'paid', 'modelling', 'review', 'query', 'delivered', 'refunded', 'expired'];
 var DESK_STATUSES = ['modelling', 'review', 'query', 'refunded', 'paid'];
 var COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units',
-  'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log'];
+  'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'];
 var SHEET_NAME = 'Orders';
 
 // ───────────────────────────── entry points ─────────────────────────────
@@ -50,6 +54,7 @@ function doPost(e) {
   catch (err) { return json_({ ok: false, error: 'bad_json' }); }
   try {
     switch (body.action) {
+      case 'info':    return json_({ ok: true, freeLeft: freeLeft_(), freeLimit: freeLimit_(), paid: paidReady_() });
       case 'create':  return json_(createOrder_(body));
       case 'verify':  return json_(verifyPayment_(body));
       case 'status':  return json_(orderStatus_(body));
@@ -74,6 +79,8 @@ function createOrder_(b) {
   var o = cleanOrder_(b);
   var files = checkFiles_(b.files);
   throttle_(o.email);
+  if (!paidReady_() && (freeLeft_() <= 0 || hadFree_(o.email, o.phone)))
+    throw new Error('user:Your free part is already used, and online payment is not open yet. WhatsApp us the drawing to order more.');
 
   var orderId = newOrderId_();
   var root = DriveApp.getFolderById(prop_('ROOT_FOLDER_ID'));
@@ -85,22 +92,54 @@ function createOrder_(b) {
   });
   folder.createFile('order.txt', orderText_(orderId, o), 'text/plain');
 
+  var row = {
+    created: new Date(), orderId: orderId, name: o.name, email: o.email, phone: o.phone, company: o.company,
+    part: o.part, units: o.units, material: o.material, notes: o.notes, files: JSON.stringify(saved),
+    folderId: folder.getId(), paymentId: '', paidAt: '', deliveredAt: '', free: ''
+  };
+
+  // Free launch: decided under the lock so two customers can never take the last free place.
+  var free = withLock_(function () {
+    if (freeLeft_() <= 0 || hadFree_(o.email, o.phone)) return false;
+    sheet_().appendRow(rowFrom_(Object.assign(row, { status: 'paid', rzpOrderId: '', paymentId: 'FREE', paidAt: new Date(),
+      amount: 0, free: 'yes', log: stamp_('created, free launch order') })));
+    return true;
+  });
+  if (free) {
+    notifyNewOrder_(findOrder_(orderId).data, 'FREE');
+    return { ok: true, free: true, orderId: orderId, email: o.email, freeLeft: freeLeft_() };
+  }
+
   var rzp = razorpay_('post', '/v1/orders', {
     amount: PRICE_PAISE, currency: 'INR', receipt: orderId,
     notes: { order: orderId, part: o.part.slice(0, 200) }
   });
-
   withLock_(function () {
-    sheet_().appendRow(rowFrom_({
-      created: new Date(), orderId: orderId, status: 'awaiting_payment', name: o.name, email: o.email,
-      phone: o.phone, company: o.company, part: o.part, units: o.units, material: o.material, notes: o.notes,
-      files: JSON.stringify(saved), folderId: folder.getId(), rzpOrderId: rzp.id, paymentId: '',
-      paidAt: '', deliveredAt: '', amount: PRICE_PAISE / 100, log: stamp_('created')
-    }));
+    sheet_().appendRow(rowFrom_(Object.assign(row, { status: 'awaiting_payment', rzpOrderId: rzp.id,
+      amount: PRICE_PAISE / 100, log: stamp_('created') })));
   });
 
   return { ok: true, orderId: orderId, rzpOrderId: rzp.id, keyId: prop_('RZP_KEY_ID'), amount: PRICE_PAISE,
     name: o.name, email: o.email, phone: o.phone };
+}
+
+function paidReady_() {
+  var p = PropertiesService.getScriptProperties();
+  return !!(p.getProperty('RZP_KEY_ID') && p.getProperty('RZP_KEY_SECRET'));
+}
+function freeLimit_() {
+  var v = PropertiesService.getScriptProperties().getProperty('FREE_LIMIT');
+  return v === null || v === '' ? FREE_DEFAULT : Math.max(0, Number(v) || 0);
+}
+function freeLeft_() {
+  var used = allOrders_().filter(function (r) { return r.data.free === 'yes'; }).length;
+  return Math.max(0, freeLimit_() - used);
+}
+function hadFree_(email, phone) {
+  var digits = String(phone).replace(/\D/g, '').slice(-10);
+  return allOrders_().some(function (r) {
+    return r.data.free === 'yes' && (r.data.email.toLowerCase() === email || String(r.data.phone).replace(/\D/g, '').slice(-10) === digits);
+  });
 }
 
 function verifyPayment_(b) {
@@ -224,7 +263,11 @@ function markPaid_(row, paymentId) {
     return true;
   });
   if (!first) return;
-  var d = findOrder_(row.data.orderId).data;
+  notifyNewOrder_(findOrder_(row.data.orderId).data, paymentId);
+}
+
+function notifyNewOrder_(d, paymentId) {
+  var free = d.free === 'yes';
   try {
     MailApp.sendEmail({
       to: d.email, replyTo: ownerEmail_(), name: 'TOOLFLUX Drawing to STEP',
@@ -233,7 +276,7 @@ function markPaid_(row, paymentId) {
     });
     MailApp.sendEmail({
       to: ownerEmail_(), name: 'Drawing to STEP',
-      subject: '₹79 paid · ' + d.orderId + ' · ' + d.part,
+      subject: (free ? 'FREE order (' + freeLeft_() + ' free left)' : '₹79 paid') + ' · ' + d.orderId + ' · ' + d.part,
       body: orderText_(d.orderId, d) + '\nPayment: ' + paymentId + '\nDrive: https://drive.google.com/drive/folders/' + d.folderId
     });
   } catch (err) { Logger.log('mail failed: ' + err); }
@@ -362,10 +405,10 @@ function orderText_(orderId, o) {
 function receiptMail_(d) {
   return mailShell_(
     '<p>Hello ' + esc_(d.name) + ',</p>' +
-    '<p>We have your drawing for <b>' + esc_(d.part) + '</b> and your payment of ₹79. ' +
+    '<p>We have your drawing for <b>' + esc_(d.part) + '</b>' + (d.free === 'yes' ? ', and this part is free: it is one of our first launch orders.' : ' and your payment.') + ' ' +
     'Your order number is <b>' + esc_(d.orderId) + '</b>.</p>' +
-    '<p>We model the part in Fusion 360, check it against your drawing, and email the STEP file to this address. ' +
-    'If anything on the drawing is unclear, we will ask before we model it.</p>' +
+    '<p>We check the model against your drawing and email the STEP file to this address. ' +
+    'If anything on the drawing is unclear, we will ask first.</p>' +
     '<p>Questions: reply to this email or WhatsApp +91 86602 34766.</p>');
 }
 
@@ -377,7 +420,8 @@ function deliveryMail_(d, names, message) {
     (message ? '<p>' + esc_(message).replace(/\n/g, '<br>') + '</p>' : '') +
     '<p>In Mastercam: File › Open, set the file type to STEP, and pick the attachment. ' +
     'Please check the critical dimensions against your drawing before you cut metal. ' +
-    'If something does not match, reply to this email with the dimension and we will correct it.</p>');
+    'If something does not match, reply to this email with the dimension and we will correct it.</p>' +
+    (d.free === 'yes' ? '<p>This part was free because we are collecting feedback. Two lines would help a lot: did the model work in Mastercam, and what should we do better?</p>' : ''));
 }
 
 function mailShell_(inner) {

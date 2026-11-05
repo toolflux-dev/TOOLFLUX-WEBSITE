@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Drawing to STEP: 3D models for Mastercam, ₹79 per part | TOOLFLUX</title>
-<meta name="description" content="Upload the 2D drawing of one part. TOOLFLUX models it in Fusion 360, checks it against your drawing and emails you a STEP file that opens in Mastercam. ₹79 per part.">
+<title>Drawing to STEP: 3D models for Mastercam | TOOLFLUX</title>
+<meta name="description" content="Upload the 2D drawing of one part and get back a STEP file that opens in Mastercam, checked against your drawing. The first 25 parts are free.">
 <link rel="canonical" href="https://www.toolflux.co.in/drawing-to-step.html">
-<meta property="og:title" content="Drawing to STEP: your 2D drawing as a 3D model, ₹79">
-<meta property="og:description" content="Upload a part drawing, pay ₹79, get a STEP file for Mastercam by email.">
+<meta property="og:title" content="Drawing to STEP: your 2D drawing as a 3D model">
+<meta property="og:description" content="Upload a part drawing, get a STEP file for Mastercam by email. The first 25 parts are free.">
 <meta property="og:url" content="https://www.toolflux.co.in/drawing-to-step.html">
 <meta property="og:image" content="https://www.toolflux.co.in/assets/dts/flange-iso.webp">
 <meta property="og:type" content="website">
@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Service","name":"Drawing to STEP","serviceType":"2D drawing to 3D CAD model conversion",
- "description":"A machine shop uploads the 2D drawing of one part; TOOLFLUX models it in Fusion 360 and emails a STEP file for CAM programming.",
+ "description":"A machine shop uploads the 2D drawing of one part; TOOLFLUX emails back a STEP file for CAM programming, checked against the drawing.",
  "provider":{"@type":"LocalBusiness","name":"TOOLFLUX","url":"https://www.toolflux.co.in/","telephone":"+91-8660234766","address":{"@type":"PostalAddress","addressLocality":"Hubli","addressRegion":"Karnataka","addressCountry":"IN"}},
  "areaServed":"IN","offers":{"@type":"Offer","price":"79","priceCurrency":"INR","description":"One simple part (prismatic or turned), one drawing sheet"}}
 </script>
@@ -72,7 +72,8 @@ p{max-width:62ch}
 .hero .grid{align-items:center;row-gap:48px}
 .hero-text{grid-column:1/7}
 .hero h1{font-size:var(--s-display);margin-bottom:36px}
-.hero .lead{margin-bottom:36px;max-width:34ch}
+.hero .lead{margin-bottom:14px;max-width:34ch}
+.launch{margin-bottom:36px;font-weight:500;color:var(--accent)}
 .hero-act{display:flex;flex-wrap:wrap;align-items:center;gap:1.2rem 1.6rem}
 .hero-fig{grid-column:7/13;position:relative}
 .sheet{background:var(--surface);aspect-ratio:420/297;width:100%}
@@ -288,10 +289,11 @@ footer .r{text-align:right}
   <div class="wrap grid">
     <div class="hero-text">
       <h1 id="h1" class="rise">Your drawing, as a STEP file.</h1>
-      <p class="lead rise" style="--i:1">Upload the 2D drawing of one part. We model it in Fusion 360, check it against your drawing, and email you a STEP file that opens in Mastercam. ₹79 per part.</p>
+      <p class="lead rise" style="--i:1">Upload the 2D drawing of one part. We email back a STEP file that opens in Mastercam, checked against your drawing.</p>
+      <p class="launch rise" style="--i:1" data-free-line>The first 25 parts are free while we collect feedback.</p>
       <div class="hero-act rise" style="--i:2">
         <a class="btn" href="#order">Upload a drawing</a>
-        <a href="#price">What ₹79 covers</a>
+        <a href="#price">What is included</a>
       </div>
     </div>
     <figure class="hero-fig rise" style="--i:2">
@@ -307,22 +309,22 @@ footer .r{text-align:right}
     <div class="how-text">
       <h2 id="how-h">Paper in, solid out</h2>
       <p class="rise" style="--i:1">Your customer sends a PDF. Mastercam wants a solid. Drawing the model yourself takes an evening you would rather spend on the machine.</p>
-      <p class="rise" style="--i:2">Send us the drawing instead. A person reads every dimension, models the part, and checks it before anything is emailed back.</p>
+      <p class="rise" style="--i:2">Send us the drawing instead. Every dimension is read, and the model is checked against your drawing before anything is emailed back.</p>
     </div>
     <div class="slip rise" style="--i:1" role="group" aria-label="The order, step by step">
       <h3>On your side</h3>
       <ol>
         <li><span>Upload the drawing</span><i></i><span>PDF or photo</span></li>
-        <li><span>Pay</span><i></i><span>UPI, card, netbanking</span></li>
+        <li><span>Pay</span><i></i><span data-slip-pay>free for the first 25</span></li>
       </ol>
       <h3>On ours</h3>
       <ol>
-        <li><span>Read every dimension and note</span><i></i><span>by a person</span></li>
+        <li><span>Read every dimension and note</span><i></i><span>all of them</span></li>
         <li><span>Ask you if something is unclear</span><i></i><span>by email</span></li>
-        <li><span>Model the part</span><i></i><span>Fusion 360</span></li>
+        <li><span>Build the 3D model</span><i></i><span>as drawn</span></li>
         <li><span>Check it against the drawing</span><i></i><span>before it leaves</span></li>
       </ol>
-      <div class="total"><span>STEP file in your inbox</span><span>₹79</span></div>
+      <div class="total"><span>STEP file in your inbox</span><span>for Mastercam</span></div>
     </div>
   </div>
 </section>
@@ -334,7 +336,7 @@ footer .r{text-align:right}
         <h2 id="work-h">One part, start to finish</h2>
         <a class="rise" style="--i:1" href="assets/dts/TFX-DEMO-014-spigot-flange.step" download>Download this STEP file (21 KB)</a>
       </div>
-      <p class="note rise" style="--i:2">A demo flange we drew and then modelled the same way we model yours. Open the STEP in Mastercam and measure it.</p>
+      <p class="note rise" style="--i:2">A demo part, drawn and modelled to show the result. Download the STEP, open it in Mastercam and measure it.</p>
     </div>
     <div class="run" tabindex="0" aria-label="Views of the demo flange">
       <figure class="frame rise" style="--r:1.6">
@@ -364,15 +366,15 @@ footer .r{text-align:right}
 <section id="price" aria-labelledby="price-h">
   <div class="wrap grid">
     <div class="price-side">
-      <h2 id="price-h">What ₹79 covers</h2>
-      <div class="shot rise" style="--i:1"><img src="assets/dts/flange-low.webp" width="1100" height="686" alt="The demo flange, a typical ₹79 part" loading="lazy"></div>
+      <h2 id="price-h">What is included</h2>
+      <div class="shot rise" style="--i:1"><img src="assets/dts/flange-low.webp" width="1100" height="686" alt="The demo flange, a typical single part" loading="lazy"></div>
     </div>
     <div class="menu">
       <div>
         <h3 class="rise">Included</h3>
         <dl>
-          <div class="rise" style="--i:1"><dt><span>One part</span><span>₹79</span></dt><dd>A single turned or prismatic part from one drawing sheet: shafts, bushes, flanges, plates, brackets, blocks.</dd></div>
-          <div class="rise" style="--i:2"><dt><span>STEP file</span><span>included</span></dt><dd>Opens in Mastercam, SolidWorks, Fusion 360 and any CAM that reads STEP.</dd></div>
+          <div class="rise" style="--i:1"><dt><span>One part</span><span>₹79</span></dt><dd>A single turned or prismatic part from one drawing sheet: shafts, bushes, flanges, plates, brackets, blocks. The first 25 parts are free, one per customer.</dd></div>
+          <div class="rise" style="--i:2"><dt><span>STEP file</span><span>included</span></dt><dd>Opens in Mastercam, SolidWorks, NX and any CAM that reads STEP.</dd></div>
           <div class="rise" style="--i:3"><dt><span>Questions before modelling</span><span>included</span></dt><dd>If a dimension is missing or two views disagree, we email you instead of guessing.</dd></div>
           <div class="rise" style="--i:4"><dt><span>Corrections</span><span>included</span></dt><dd>If our model does not match your drawing, reply with the dimension and we fix it.</dd></div>
         </dl>
@@ -394,7 +396,7 @@ footer .r{text-align:right}
   <div class="wrap">
     <div class="order-head">
       <h2 id="order-h">Send your drawing</h2>
-      <p>Fill it in like a title block. You pay ₹79 on the next screen. We start once the payment goes through; unpaid uploads are deleted after 3 days.</p>
+      <p data-order-note>Fill it in like a title block. The first 25 parts are free, one per customer, and we will ask how the model worked for you.</p>
     </div>
     <form class="tb" id="tb" novalidate>
       <div class="summary" id="summary" role="alert" tabindex="-1" hidden>
@@ -422,8 +424,8 @@ footer .r{text-align:right}
         <div class="cell full"><label for="notes">Notes for the modeller</label><textarea id="notes" name="notes" maxlength="1500" rows="3"></textarea></div>
       </div>
       <div class="payrow" id="payrow">
-        <p id="pay-note">Razorpay handles the payment: UPI, cards and netbanking. A receipt comes to your email.</p>
-        <button class="btn" id="pay" type="submit">Pay ₹79 and send</button>
+        <p id="pay-note">Free launch order. A confirmation comes to your email, and the STEP file follows.</p>
+        <button class="btn" id="pay" type="submit">Send the drawing</button>
       </div>
     </form>
     <noscript><p style="margin-top:20px">Ordering needs JavaScript. Or WhatsApp the drawing to <a href="https://wa.me/918660234766">+91 86602 34766</a>.</p></noscript>
@@ -435,14 +437,14 @@ footer .r{text-align:right}
     <div class="faq-side"><h2 id="faq-h">Questions</h2></div>
     <div class="faq-text">
       <p class="rise"><b>Which files can I send?</b> A PDF of the drawing, or a clear, straight photo of the paper. Add the DXF or DWG too if you have it. We read dimensions from the drawing, so a CAD file on its own is not enough.</p>
-      <p class="rise"><b>Will it open in Mastercam?</b> Yes. STEP is the standard way to move solids between CAD and CAM. In Mastercam use File, Open and choose STEP as the file type. The same file opens in SolidWorks, Fusion 360, NX and most CAM software.</p>
+      <p class="rise"><b>Will it open in Mastercam?</b> Yes. STEP is the standard way to move solids between CAD and CAM. In Mastercam use File, Open and choose STEP as the file type. The same file opens in SolidWorks, NX and most CAM software.</p>
       <p class="rise"><b>Which size is modelled when there is a tolerance?</b> The nominal size, as drawn. If you want mid-tolerance sizes for programming, say so in the notes and we will model them that way.</p>
       <p class="rise"><b>What happens to threads?</b> Threaded holes are modelled at the tap-drill size with the thread noted in the email, because thread data does not travel inside a STEP file.</p>
       <p class="rise"><b>What if the drawing is unclear?</b> We email you a question before we model. A missing dimension is never guessed.</p>
       <p class="rise"><b>How long does it take?</b> Orders are modelled in the order they are paid, Monday to Saturday. If a job is waiting on the machine, WhatsApp us your order number.</p>
       <p class="rise"><b>Who sees my drawing?</b> Only us. It is kept in our own storage to make your model and is not shared or reused. Ask and we delete it.</p>
-      <p class="rise"><b>What if you cannot model it?</b> If the part turns out to be outside what ₹79 covers, we tell you before starting and refund the ₹79 if you do not want a quote.</p>
-      <p class="rise"><b>Do I get a bill?</b> Razorpay emails a payment receipt, and our confirmation email carries your order number.</p>
+      <p class="rise"><b>What if the part is bigger than one simple part?</b> We tell you before starting, and refund you in full if you do not want a quote.</p>
+      <p class="rise"><b>Why are the first parts free?</b> We are opening the service with 25 free parts to hear what works for machine shops and what does not. One free part per customer; after that each part is paid, with a Razorpay receipt by email.</p>
       <p class="rise"><b>Can I send more than one part?</b> Place one order per part, or send a batch on WhatsApp for a quote.</p>
     </div>
   </div>
@@ -453,7 +455,7 @@ footer .r{text-align:right}
     <div class="c-say"><h2 id="contact-h">Bigger than one part?</h2><p class="rise" style="--i:1">Assemblies, castings or every part of a new job: send the drawings over and we will quote.</p></div>
     <div class="c-pic rise" style="--i:1"><img src="assets/dts/flange-top.webp" width="1100" height="1100" alt="Top view of a modelled flange" loading="lazy"></div>
     <div class="c-links rise" style="--i:2">
-      <h3>Talk to the person who models it</h3>
+      <h3>Talk to us directly</h3>
       <a href="https://wa.me/918660234766?text=Drawing%20to%20STEP%20enquiry">WhatsApp +91 86602 34766</a>
       <a href="mailto:toolflux@gmail.com?subject=Drawing%20to%20STEP%20enquiry">toolflux@gmail.com</a>
       <p class="small muted">TOOLFLUX, Vidyanagar, Hubli. Monday to Saturday, 9 to 6.</p>

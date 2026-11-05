@@ -1,6 +1,6 @@
 # Drawing to STEP: setup and daily use
 
-Customer uploads a drawing on `drawing-to-step.html`, pays ₹79 (Razorpay), the drawing lands on this PC, Claude models it in Fusion 360, Roo approves, and the STEP is emailed from toolflux@gmail.com.
+Customer uploads a drawing on `drawing-to-step.html`, pays ₹79 by Razorpay (the first 25 parts are free), the drawing lands on this PC, Claude models it in Fusion 360, Roo approves, and the STEP is emailed from toolflux@gmail.com.
 
 | Piece | File | Runs where |
 | --- | --- | --- |
@@ -20,6 +20,12 @@ Customer uploads a drawing on `drawing-to-step.html`, pays ₹79 (Razorpay), the
 7. **Test end to end with Razorpay test mode:** upload a drawing on the live page, pay with a test card, see it in the desk, deliver a STEP to your own email. Then switch Script Properties to the **live** keys and redeploy (Manage deployments ▸ edit ▸ New version, so the URL stays the same).
 
 No webhook is needed: the payment is confirmed by the signature Razorpay hands the page, and any order still showing "awaiting payment" is re-checked with Razorpay's API when the desk refreshes and before the nightly cleanup.
+
+## Free launch (first 25 parts)
+The first 25 orders are free, one per customer (matched by email or phone). They skip payment and arrive in the desk like paid orders, marked FREE in your email. After the 25th, the page switches itself to paid ordering.
+- You can launch free **before** setting up Razorpay (skip step 3). With no Razorpay keys, once the free parts are gone the page sends customers to WhatsApp instead of taking payment.
+- Change the number with the Script Property `FREE_LIMIT` (`0` = paid from the start).
+- Free customers get a feedback request in the delivery email.
 
 ## Daily use
 

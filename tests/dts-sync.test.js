@@ -12,7 +12,8 @@ const SECRET = 'rzp_secret_test_123';
 const signed = buf => Array.from(buf, b => (b > 127 ? b - 256 : b)); // Apps Script bytes are signed
 
 function load(opts = {}) {
-  const props = Object.assign({ RZP_KEY_ID: 'rzp_test_KEY', RZP_KEY_SECRET: SECRET, DESK_KEY: 'desk-key-xyz', ROOT_FOLDER_ID: 'root', SHEET_ID: 'sheet' }, opts.props);
+  const props = Object.assign({ RZP_KEY_ID: 'rzp_test_KEY', RZP_KEY_SECRET: SECRET, DESK_KEY: 'desk-key-xyz', ROOT_FOLDER_ID: 'root', SHEET_ID: 'sheet', FREE_LIMIT: '0' }, opts.props);
+  for (const k of Object.keys(props)) if (props[k] === undefined) delete props[k];
   const rows = [];
   const sheet = {
     appendRow: r => rows.push(r.slice()), setFrozenRows() {},
@@ -74,7 +75,7 @@ const b64 = s => Buffer.from(s).toString('base64');
 const order = (over = {}) => Object.assign({ action: 'create', name: 'Ravi', email: 'Ravi@Shop.in', phone: '98450 12345', part: 'Flange 014', units: 'mm',
   files: [{ name: 'flange.pdf', b64: b64('%PDF-1.4 test') }, { name: 'flange.dxf', b64: b64('0\nSECTION') }] }, over);
 const sig = (o, p) => crypto.createHmac('sha256', SECRET).update(o + '|' + p).digest('hex');
-const col = name => ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log'].indexOf(name);
+const col = name => ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'].indexOf(name);
 
 test('create saves files, opens a ₹79 Razorpay order, records awaiting_payment', () => {
   const g = load();
@@ -195,4 +196,47 @@ test('one email can open at most 6 orders an hour', () => {
   const r = g.call(order());
   assert.equal(r.ok, false);
   assert.match(r.message, /Too many/);
+});
+
+test('free launch: first parts are free, one per customer, then paid', () => {
+  const g = load({ props: { FREE_LIMIT: '2' } });
+  assert.deepEqual(g.call({ action: 'info' }), { ok: true, freeLeft: 2, freeLimit: 2, paid: true });
+  const a = g.call(order());
+  assert.equal(a.free, true);
+  assert.equal(g.fetches.length, 0, 'no Razorpay order for a free part');
+  const rowA = g.rows.find(r => r[col('orderId')] === a.orderId);
+  assert.equal(rowA[col('status')], 'paid');
+  assert.equal(rowA[col('free')], 'yes');
+  assert.equal(rowA[col('amount')], 0);
+  assert.equal(g.mails.length, 2);
+  assert.match(g.mails[0].htmlBody, /free/);
+  assert.doesNotMatch(g.mails[0].htmlBody, /Fusion/);
+  assert.match(g.mails[1].subject, /^FREE order \(1 free left\)/);
+
+  const again = g.call(order({ email: 'other@shop.in' })); // same phone, new email
+  assert.equal(again.free, undefined, 'same phone does not get a second free part');
+  assert.ok(again.rzpOrderId);
+
+  const b = g.call(order({ email: 'b@works.in', phone: '9000000001' }));
+  assert.equal(b.free, true);
+  assert.equal(g.call({ action: 'info' }).freeLeft, 0);
+  const c = g.call(order({ email: 'c@works.in', phone: '9000000002' }));
+  assert.equal(c.free, undefined, 'after the limit everyone pays');
+
+  // free orders are work in the desk, and their delivery asks for feedback
+  const q = g.call({ action: 'queue', key: 'desk-key-xyz' });
+  assert.deepEqual(q.orders.map(o => o.orderId).sort(), [a.orderId, b.orderId].sort());
+  g.call({ action: 'deliver', key: 'desk-key-xyz', orderId: a.orderId, files: [{ name: 'p.step', b64: b64('ISO-10303-21;') }] });
+  assert.match(g.mails[g.mails.length - 1].htmlBody, /feedback/);
+});
+
+test('free launch without Razorpay keys: a second part is refused before anything is stored', () => {
+  const g = load({ props: { FREE_LIMIT: '5', RZP_KEY_ID: undefined, RZP_KEY_SECRET: undefined } });
+  assert.equal(g.call({ action: 'info' }).paid, false);
+  assert.equal(g.call(order()).free, true);
+  const folders = Object.keys(g.folders).length;
+  const r = g.call(order());
+  assert.equal(r.ok, false);
+  assert.match(r.message, /free part is already used/);
+  assert.equal(Object.keys(g.folders).length, folders, 'no Drive folder for a refused order');
 });
