@@ -245,6 +245,47 @@
     });
   }
 
+  // ── answer mode: the customer opened the link from our "A question about your drawing" email ──
+  var qs = new URLSearchParams(location.search);
+  var ansId = qs.get('answer'), ansT = qs.get('t');
+  if (ansId && ansT && online && $('answer')) startAnswer();
+
+  async function startAnswer() {
+    var panel = $('answer'), heading = $('order-h');
+    form.hidden = true; if (orderNote) orderNote.hidden = true;
+    heading.textContent = 'Answer our question';
+    panel.hidden = false;
+    $('order').scrollIntoView({ block: 'start' });
+    var qEl = $('ans-q'), err = $('ans-err');
+    qEl.textContent = 'Loading the question…';
+    var q;
+    try { q = await post({ action: 'question', orderId: ansId, t: ansT }); } catch (e) { q = null; }
+    if (!q || !q.ok) { qEl.textContent = (q && q.message) || 'The question could not be loaded. Reply to our email instead.'; $('ans-form').hidden = true; return; }
+    qEl.textContent = (q.part ? q.part + ' (' + q.orderId + '): ' : '') + q.question;
+    $('ans-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var text = $('ans-text').value.trim(), picked = Array.prototype.slice.call($('ans-file').files || []);
+      if (!text && !picked.length) { err.textContent = 'Write an answer or attach a file.'; $('ans-text').focus(); return; }
+      var fe = picked.length ? checkFiles(picked.map(function (f) { return { name: f.name, size: f.size }; })) : '';
+      if (fe && !/PDF or photo of the drawing/.test(fe)) { err.textContent = fe; return; }
+      $('ans-send').disabled = true;
+      panel.hidden = true; form.hidden = true;
+      stage('send');
+      try {
+        var packed = [];
+        for (var i = 0; i < picked.length; i++) packed.push(await pack({ file: picked[i], name: picked[i].name, size: picked[i].size }));
+        var res = await post({ action: 'answer', orderId: ansId, t: ansT, text: text, files: packed.map(function (f) { return { name: f.name, b64: f.b64 }; }) });
+        if (!res || !res.ok) throw userErr((res && res.message) || 'The answer did not go through. Try again, or reply to our email.');
+        stage('done', { email: res.email, orderId: res.orderId });
+        workSmall.textContent = 'Thanks for answering. Order ' + res.orderId + ' is being modelled again with your answer. Check the spam folder if nothing arrives.';
+      } catch (x) {
+        work.hidden = true; panel.hidden = false; form.hidden = true;
+        $('ans-send').disabled = false;
+        err.textContent = x.user ? x.message : 'The connection dropped while sending. Press Send the answer again.';
+      }
+    });
+  }
+
   // text/plain keeps it a simple request: Apps Script cannot answer a CORS preflight.
   async function post(body) {
     if (demo) return fakeBackend(body);
@@ -260,6 +301,9 @@
       if (/[?&]fail=1/.test(location.search)) return { ok: false, error: 'invalid', message: 'Demo: the upload was refused.' };
       return { ok: true, orderId: 'DTS-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-DEMO', email: b.email };
     }
+    if (b.action === 'question') return b.t === 'bad' ? { ok: false, message: 'This answer link is not valid. Reply to the email instead.' }
+      : { ok: true, orderId: b.orderId, part: 'Spigot flange', question: 'Section A-A gives no depth for the Ø12 counterbore.\nWhat depth should it be, and is the bottom flat or drill-point?' };
+    if (b.action === 'answer') return { ok: true, orderId: b.orderId, email: 'you@yourshop.in' };
     return { ok: true };
   }
 })(typeof window !== 'undefined' ? window : globalThis);

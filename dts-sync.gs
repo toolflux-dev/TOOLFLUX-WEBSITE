@@ -27,7 +27,8 @@ var OPEN = ['queued', 'paid', 'modelling', 'held', 'query', 'review'];   // 'pai
 var DESK_STATUSES = ['queued', 'modelling', 'held', 'query'];
 // Column order is fixed: the live sheet already uses it. rzpOrderId/paymentId/amount/free are no longer filled.
 var COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units',
-  'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'];
+  'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free', 'question'];
+var PAGE_URL = 'https://www.toolflux.co.in/drawing-to-step.html';
 var SHEET_NAME = 'Orders';
 
 // ───────────────────────────── entry points ─────────────────────────────
@@ -45,6 +46,9 @@ function doPost(e) {
       case 'info':    return json_({ ok: true, open: true });
       case 'create':  return json_(createOrder_(body));
       case 'status':  return json_(orderStatus_(body));
+      case 'question': return json_(getQuestion_(body));
+      case 'answer':  return json_(answerQuestion_(body));
+      case 'ask':     requireDesk_(body); return json_(deskAsk_(body));
       case 'queue':   requireDesk_(body); return json_(deskQueue_());
       case 'file':    requireDesk_(body); return json_(deskFile_(body));
       case 'mark':    requireDesk_(body); return json_(deskMark_(body));
@@ -125,6 +129,89 @@ function deskFile_(b) {
   if (!hit) throw new Error('user:File is not part of this order.');
   var blob = DriveApp.getFileById(hit.id).getBlob();
   return { ok: true, name: hit.name, mime: blob.getContentType(), b64: Utilities.base64Encode(blob.getBytes()) };
+}
+
+// ── asking the customer (Roo, 2026-11-06: missing dimensions => email the customer, their answer re-queues) ──
+
+// Answer links carry a token so only the person who got the email can answer.
+function answerToken_(orderId) {
+  return hex_(Utilities.computeHmacSha256Signature('answer|' + orderId, prop_('DESK_KEY'))).slice(0, 20);
+}
+
+function deskAsk_(b) {
+  var question = str_(b.question, 3000);
+  if (!question) throw new Error('user:No question to ask.');
+  var d = withLock_(function () {
+    var row = findOrder_(str_(b.orderId, 40));
+    if (!row) throw new Error('user:Order not found.');
+    if (row.data.status === 'delivered') throw new Error('user:Order is already delivered.');
+    setCells_(row, { status: 'query', question: question, log: row.data.log + '\n' + stamp_('asked customer: ' + question.slice(0, 300)) });
+    return findOrder_(row.data.orderId).data;
+  });
+  var link = PAGE_URL + '?answer=' + encodeURIComponent(d.orderId) + '&t=' + answerToken_(d.orderId) + '#order';
+  MailApp.sendEmail({ to: d.email, replyTo: ownerEmail_(), name: 'TOOLFLUX Drawing to STEP',
+    subject: 'A question about your drawing: ' + d.part + ' (' + d.orderId + ')', htmlBody: questionMail_(d, question, link) });
+  try {
+    MailApp.sendEmail({ to: ownerEmail_(), name: 'Drawing to STEP', subject: 'Asked the customer · ' + d.orderId + ' · ' + d.part,
+      body: 'The customer was asked:\n\n' + question + '\n\n' + orderText_(d.orderId, d) });
+  } catch (err) { Logger.log('mail failed: ' + err); }
+  return { ok: true, orderId: d.orderId, status: 'query' };
+}
+
+function openQuestion_(b) {
+  var row = findOrder_(str_(b.orderId, 40));
+  if (!row || !safeEqual_(str_(b.t, 40), answerToken_(row.data.orderId))) throw new Error('user:This answer link is not valid. Reply to the email instead.');
+  if (row.data.status !== 'query') throw new Error('user:This question has already been answered. Sit tight: the STEP file is on its way.');
+  return row;
+}
+
+function getQuestion_(b) {
+  var d = openQuestion_(b).data;
+  return { ok: true, orderId: d.orderId, part: d.part, question: String(d.question || '') };
+}
+
+function answerQuestion_(b) {
+  var row = openQuestion_(b);
+  var text = str_(b.text, 3000);
+  var files = (b.files && b.files.length) ? checkAnswerFiles_(b.files) : [];
+  if (!text && !files.length) throw new Error('user:Write an answer or attach a file.');
+  var folder = DriveApp.getFolderById(row.data.folderId);
+  var saved = files.map(function (f) {
+    var df = folder.createFile(Utilities.newBlob(f.bytes, f.mime, f.name));
+    return { id: df.getId(), name: f.name, size: f.bytes.length };
+  });
+  var d = withLock_(function () {
+    var fresh = findOrder_(row.data.orderId);
+    var stamp = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyyy-MM-dd HH:mm');
+    var notes = String(fresh.data.notes || '') + '\n\nQuestion (' + stamp + '): ' + fresh.data.question + '\nCustomer answer: ' + (text || '(see attached files)') +
+      (saved.length ? '\nNew files: ' + saved.map(function (f) { return f.name; }).join(', ') : '');
+    setCells_(fresh, { status: 'queued', notes: notes.trim().slice(0, 45000), question: '',
+      files: JSON.stringify(safeJson_(fresh.data.files, []).concat(saved)),
+      log: fresh.data.log + '\n' + stamp_('customer answered; queued again') });
+    return findOrder_(fresh.data.orderId).data;
+  });
+  try {
+    MailApp.sendEmail({ to: ownerEmail_(), name: 'Drawing to STEP', subject: 'Customer answered · ' + d.orderId + ' · ' + d.part,
+      body: 'Answer: ' + (text || '(files only)') + (saved.length ? '\nFiles: ' + saved.map(function (f) { return f.name; }).join(', ') : '') + '\n\nThe order is queued for modelling again.' });
+  } catch (err) { Logger.log('mail failed: ' + err); }
+  return { ok: true, orderId: d.orderId, email: d.email };
+}
+
+// Answers may be a sketch, a clearer scan or a CAD file; same types and size limits as orders.
+function checkAnswerFiles_(list) {
+  if (list.length > MAX_FILES) throw new Error('user:Attach at most ' + MAX_FILES + ' files.');
+  var total = 0;
+  return list.map(function (f) {
+    var name = String(f.name || 'file').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
+    var ext = name.split('.').pop().toLowerCase();
+    if (DRAWING_EXT.indexOf(ext) < 0 && CAD_EXT.indexOf(ext) < 0) throw new Error('user:' + name + ' is not a PDF, image, DXF or DWG.');
+    var bytes = Utilities.base64Decode(String(f.b64 || ''));
+    if (!bytes.length) throw new Error('user:' + name + ' is empty.');
+    if (bytes.length > MAX_FILE_BYTES) throw new Error('user:' + name + ' is over 10 MB.');
+    total += bytes.length;
+    if (total > MAX_TOTAL_BYTES) throw new Error('user:Files are over 25 MB together.');
+    return { name: name, bytes: bytes, mime: mimeFor_(ext) };
+  });
 }
 
 function deskMark_(b) {
@@ -237,6 +324,9 @@ function sheet_() {
   var ss = SpreadsheetApp.openById(prop_('SHEET_ID'));
   var sh = ss.getSheetByName(SHEET_NAME);
   if (!sh) { sh = ss.insertSheet(SHEET_NAME); sh.appendRow(COLS); sh.setFrozenRows(1); }
+  // Columns added after launch get their header title the first time they are needed.
+  var last = COLS.length;
+  if (sh.getRange(1, last).getValue() !== COLS[last - 1]) sh.getRange(1, last).setValue(COLS[last - 1]);
   return sh;
 }
 
@@ -274,6 +364,15 @@ function orderText_(orderId, o) {
     'Part: ' + o.part + '\nUnits: ' + o.units + (o.material ? '\nMaterial: ' + o.material : '') + '\n' +
     'Customer: ' + o.name + (o.company ? ' (' + o.company + ')' : '') + '\nEmail: ' + o.email + '\nPhone: ' + o.phone + '\n' +
     (o.notes ? '\nNotes:\n' + o.notes + '\n' : '');
+}
+
+function questionMail_(d, question, link) {
+  return mailShell_(
+    '<p>Hello ' + esc_(d.name) + ',</p>' +
+    '<p>We are modelling <b>' + esc_(d.part) + '</b> (order ' + esc_(d.orderId) + ') and need one thing from you before the STEP file can be exact:</p>' +
+    '<blockquote style="margin:16px 0;padding:12px 16px;background:#f1f5f6;border-left:3px solid #007a91">' + esc_(question).replace(/\n/g, '<br>') + '</blockquote>' +
+    '<p><a href="' + link + '" style="display:inline-block;background:#007a91;color:#fff;padding:10px 18px;text-decoration:none">Answer the question</a></p>' +
+    '<p>You can write the answer and attach a clearer drawing or a sketch there. As soon as you send it, we model the part and email the STEP file. You can also simply reply to this email.</p>');
 }
 
 function receiptMail_(d) {
