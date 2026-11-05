@@ -77,6 +77,12 @@ function decide(verdictText, stepFiles) {
   return { action: 'deliver', message: note, checks };
 }
 
+// The standalone Claude Code CLI keeps its own sign-in, separate from the Claude app. When it has
+// expired, every job fails the same way: that is not the order's fault, so the desk pauses instead.
+function signedOut(text) {
+  return /Failed to authenticate|OAuth (session|token) (has )?expired|not (logged|signed) in|Invalid API key|Please run \/login|authentication_error/i.test(String(text || ''));
+}
+
 // Start one modelling job. Resolves with { code, timedOut, log } when Claude exits.
 function runJob(order, dir, base, cwd) {
   return new Promise(resolve => {
@@ -91,15 +97,17 @@ function runJob(order, dir, base, cwd) {
     const cmd = fake ? process.execPath : exe;
     const args = fake ? [fake].concat(buildArgs(order, dir, base)) : buildArgs(order, dir, base);
     try {
-      child = spawn(cmd, args, { cwd, windowsHide: true, env: Object.assign({}, process.env, { DTS_ORDER: order.orderId, DTS_ORDER_DIR: dir }) });
+      child = spawn(cmd, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { DTS_ORDER: order.orderId, DTS_ORDER_DIR: dir }) });
     } catch (e) { log.end('spawn failed: ' + e.message + '\n'); return resolve({ code: -1, timedOut: false, error: e.message }); }
-    child.stdout.on('data', d => log.write(d));
-    child.stderr.on('data', d => log.write(d));
+    let tail = '';
+    const keep = d => { log.write(d); tail = (tail + d).slice(-4000); };
+    child.stdout.on('data', keep);
+    child.stderr.on('data', keep);
     let timedOut = false;
     const t = setTimeout(() => { timedOut = true; try { child.kill(); } catch (e) { /* gone */ } }, JOB_TIMEOUT_MS);
-    child.on('error', e => { clearTimeout(t); log.end('error: ' + e.message + '\n'); resolve({ code: -1, timedOut, error: e.message }); });
-    child.on('close', code => { clearTimeout(t); log.end('exit ' + code + (timedOut ? ' (timed out)' : '') + '\n'); resolve({ code, timedOut }); });
+    child.on('error', e => { clearTimeout(t); log.end('error: ' + e.message + '\n'); resolve({ code: -1, timedOut, error: e.message, signedOut: false, tail }); });
+    child.on('close', code => { clearTimeout(t); log.end('exit ' + code + (timedOut ? ' (timed out)' : '') + '\n'); resolve({ code, timedOut, signedOut: code !== 0 && signedOut(tail), tail }); });
   });
 }
 
-module.exports = { findClaude, buildArgs, decide, runJob, ALLOWED_TOOLS, JOB_TIMEOUT_MS };
+module.exports = { findClaude, buildArgs, decide, runJob, signedOut, ALLOWED_TOOLS, JOB_TIMEOUT_MS };

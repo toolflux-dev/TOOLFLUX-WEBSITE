@@ -117,6 +117,26 @@ test('autoTick waits for Fusion instead of starting a job that cannot work', asy
     await desk.pull();
     await desk.autoTick();
     assert.equal(calls.filter(c => c.action === 'mark').length, 0);
-    assert.match(desk._autoState().waiting, /Waiting for Fusion/);
+    assert.match(desk._autoState().waiting, /Waiting: /);
+  });
+});
+
+test('signed-out Claude: the order goes back to the queue, automatic pauses, Roo is told once', async () => {
+  assert.equal(auto.signedOut('Failed to authenticate: OAuth session expired and could not be refreshed'), true);
+  assert.equal(auto.signedOut('Traceback: RuntimeError in Fusion script'), false);
+  const f = path.join(tmp, 'fake-signed-out.js');
+  fs.writeFileSync(f, "console.error('Failed to authenticate: OAuth session expired and could not be refreshed'); process.exit(1);");
+  process.env.DTS_FAKE_CLAUDE = f;
+  const orders = [mk('DTS-E5'), mk('DTS-F6')];
+  await withBackend(orders, async calls => {
+    await desk.pull();
+    await desk.runAuto(orders[0]);
+    const marks = calls.filter(c => c.action === 'mark');
+    assert.equal(marks.pop().status, 'queued', 'order back in the queue, not held');
+    assert.equal(calls.filter(c => c.action === 'deliver').length, 0);
+    assert.match(desk._autoState().blocked, /signed out/);
+    const before = calls.length;
+    await desk.autoTick();
+    assert.equal(calls.length, before, 'paused: no new job starts');
   });
 });
