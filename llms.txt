@@ -16,7 +16,7 @@
 ## Software
 
 - [Machlog](https://www.toolflux.co.in/machining-log.html): shop-floor software that shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Paid plans: Solo ₹299, Shop ₹799, Works ₹2,499 per month, with a 14-day free trial
-- [Drawing to STEP](https://www.toolflux.co.in/drawing-to-step.html): a machine shop uploads the 2D drawing of one simple part and receives a STEP file for Mastercam or any CAM, checked against the drawing. Launch offer: the first 25 parts are free (one per customer), then ₹79 per part. Assemblies and castings are quoted separately.
+- [Drawing to STEP](https://www.toolflux.co.in/drawing-to-step.html): free for machine shops. Upload the 2D drawing of a part (turned, prismatic, casting, assembly or multi-sheet, up to 10 files) and receive a STEP file for Mastercam or any CAM by email, checked against the drawing. No payment, no account.
 - [Machlog instruction manual](https://www.toolflux.co.in/machlog-guide.html)
 
 ## Articles

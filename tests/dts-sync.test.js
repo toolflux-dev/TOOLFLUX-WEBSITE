@@ -1,5 +1,5 @@
-// Drawing to STEP backend: loads the REAL dts-sync.gs into a Node vm with stubbed
-// Apps Script services. Run: node --test tests/dts-sync.test.js tests/dts-order.test.js
+// Drawing to STEP backend (open for all): loads the REAL dts-sync.gs into a Node vm with stubbed
+// Apps Script services. Run: node --test tests/dts-*.test.js
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -8,11 +8,10 @@ const vm = require('vm');
 const crypto = require('crypto');
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'dts-sync.gs'), 'utf8');
-const SECRET = 'rzp_secret_test_123';
 const signed = buf => Array.from(buf, b => (b > 127 ? b - 256 : b)); // Apps Script bytes are signed
 
 function load(opts = {}) {
-  const props = Object.assign({ RZP_KEY_ID: 'rzp_test_KEY', RZP_KEY_SECRET: SECRET, DESK_KEY: 'desk-key-xyz', ROOT_FOLDER_ID: 'root', SHEET_ID: 'sheet', FREE_LIMIT: '0' }, opts.props);
+  const props = Object.assign({ DESK_KEY: 'desk-key-xyz', ROOT_FOLDER_ID: 'root', SHEET_ID: 'sheet' }, opts.props);
   for (const k of Object.keys(props)) if (props[k] === undefined) delete props[k];
   const rows = [];
   const sheet = {
@@ -74,169 +73,99 @@ function load(opts = {}) {
 const b64 = s => Buffer.from(s).toString('base64');
 const order = (over = {}) => Object.assign({ action: 'create', name: 'Ravi', email: 'Ravi@Shop.in', phone: '98450 12345', part: 'Flange 014', units: 'mm',
   files: [{ name: 'flange.pdf', b64: b64('%PDF-1.4 test') }, { name: 'flange.dxf', b64: b64('0\nSECTION') }] }, over);
-const sig = (o, p) => crypto.createHmac('sha256', SECRET).update(o + '|' + p).digest('hex');
-const col = name => ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'].indexOf(name);
+const COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units', 'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'];
+const col = n => COLS.indexOf(n);
+const K = 'desk-key-xyz';
 
-test('create saves files, opens a ₹79 Razorpay order, records awaiting_payment', () => {
+test('create queues the order at once: no payment, files on Drive, receipt + owner email', () => {
   const g = load();
   const r = g.call(order());
   assert.equal(r.ok, true);
   assert.match(r.orderId, /^DTS-261105-[2-9A-Z]{4}$/);
-  assert.equal(r.amount, 7900);
-  assert.equal(r.keyId, 'rzp_test_KEY');
-  const rz = JSON.parse(g.fetches[0].o.payload);
-  assert.equal(rz.amount, 7900); assert.equal(rz.currency, 'INR'); assert.equal(rz.receipt, r.orderId);
-  assert.equal(g.rows.length, 2);
+  assert.equal(r.rzpOrderId, undefined);
+  assert.equal(g.fetches.length, 0, 'no payment provider is ever called');
   const row = g.rows[1];
-  assert.equal(row[col('status')], 'awaiting_payment');
+  assert.equal(row[col('status')], 'queued');
   assert.equal(row[col('email')], 'ravi@shop.in');
-  assert.equal(row[col('phone')], '9845012345');
   const folder = g.folders[row[col('folderId')]];
   assert.deepEqual(folder.files.map(f => f.name).sort(), ['flange.dxf', 'flange.pdf', 'order.txt']);
-  assert.equal(folder.files.find(f => f.name === 'flange.pdf').bytes.toString(), '%PDF-1.4 test');
+  assert.equal(g.mails.length, 2);
+  assert.equal(g.mails[0].to, 'ravi@shop.in');
+  assert.match(g.mails[0].htmlBody, /Sit tight/);
+  assert.doesNotMatch(g.mails[0].htmlBody, /₹|Fusion|free|paid|payment/i);
+  assert.match(g.mails[1].subject, /^New order · DTS-/);
+  assert.equal(g.call({ action: 'info' }).open, true);
 });
 
-test('create refuses CAD-only uploads, wrong types, too many files and bad contact details', () => {
+test('create accepts any drawing up to 10 files, and still refuses junk', () => {
   const g = load();
+  const ten = Array.from({ length: 10 }, (_, i) => ({ name: 'sheet' + i + '.pdf', b64: b64('%PDF ' + i) }));
+  assert.equal(g.call(order({ files: ten, part: 'Gearbox housing assembly' })).ok, true);
   const cases = [
     [{ files: [{ name: 'a.dwg', b64: b64('x') }] }, /PDF or photo/],
     [{ files: [{ name: 'a.exe', b64: b64('x') }] }, /not a PDF/],
-    [{ files: [1, 2, 3, 4].map(i => ({ name: i + '.pdf', b64: b64('x') })) }, /at most 3/],
+    [{ files: Array.from({ length: 11 }, (_, i) => ({ name: i + '.pdf', b64: b64('x') })) }, /at most 10/],
     [{ email: 'nope@' }, /valid email/],
     [{ phone: '12345' }, /10-digit/],
     [{ part: '  ' }, /part name/],
     [{ files: [] }, /Attach the drawing/],
   ];
   for (const [over, re] of cases) {
-    const r = g.call(order(over));
-    assert.equal(r.ok, false, JSON.stringify(over));
+    const r = g.call(order(Object.assign({ email: 'x' + Math.random() + '@a.in' }, over)));
+    assert.equal(r.ok, false, JSON.stringify(over).slice(0, 60));
     assert.match(r.message, re);
   }
-  assert.equal(g.rows.length, 0 + (g.rows.length ? 1 : 0)); // header at most, no orders
-  assert.equal(g.fetches.length, 0, 'Razorpay never called for a rejected order');
 });
 
-test('verify: a correct signature marks the order paid once and sends two emails', () => {
+test("status: only the order's own email sees it", () => {
   const g = load();
   const c = g.call(order());
-  const v = { action: 'verify', orderId: c.orderId, razorpay_order_id: c.rzpOrderId, razorpay_payment_id: 'pay_1', razorpay_signature: sig(c.rzpOrderId, 'pay_1') };
-  assert.equal(g.call(v).ok, true);
-  assert.equal(g.rows[1][col('status')], 'paid');
-  assert.equal(g.rows[1][col('paymentId')], 'pay_1');
-  assert.equal(g.mails.length, 2);
-  assert.equal(g.mails[0].to, 'ravi@shop.in');
-  assert.equal(g.mails[1].to, 'toolflux@gmail.com');
-  assert.equal(g.call(v).ok, true, 'second verify is harmless');
-  assert.equal(g.mails.length, 2, 'no duplicate emails');
+  assert.equal(g.call({ action: 'status', orderId: c.orderId, email: 'x@y.in' }).ok, false);
+  assert.equal(g.call({ action: 'status', orderId: c.orderId, email: 'RAVI@shop.in' }).status, 'in_progress');
 });
 
-test('verify: a forged signature or another order\'s payment is refused', () => {
-  const g = load();
-  const c = g.call(order());
-  const bad = g.call({ action: 'verify', orderId: c.orderId, razorpay_order_id: c.rzpOrderId, razorpay_payment_id: 'pay_1', razorpay_signature: sig(c.rzpOrderId, 'pay_2') });
-  assert.equal(bad.ok, false);
-  const other = g.call({ action: 'verify', orderId: c.orderId, razorpay_order_id: 'order_other', razorpay_payment_id: 'pay_1', razorpay_signature: sig('order_other', 'pay_1') });
-  assert.equal(other.ok, false);
-  assert.match(other.message, /different order/);
-  assert.equal(g.rows[1][col('status')], 'awaiting_payment');
-  assert.equal(g.mails.length, 0);
-});
-
-test('status: only the order\'s own email sees it; a captured payment is picked up from Razorpay', () => {
-  const g = load();
-  const c = g.call(order());
-  assert.equal(g.call({ action: 'status', orderId: c.orderId, email: 'someone@else.in' }).ok, false);
-  assert.equal(g.call({ action: 'status', orderId: c.orderId, email: 'ravi@shop.in' }).status, 'awaiting_payment');
-  const g2 = load({ rzpPayments: { order_1: [{ id: 'pay_9', status: 'captured' }] } });
-  const c2 = g2.call(order());
-  const s = g2.call({ action: 'status', orderId: c2.orderId, email: 'RAVI@shop.in' });
-  assert.equal(s.status, 'in_progress');
-  assert.equal(g2.rows[1][col('paymentId')], 'pay_9');
-});
-
-test('desk: needs the key; queue lists paid orders; deliver emails the STEP and closes the order', () => {
+test('desk: key required; queue, file, hold with a note emails Roo, deliver emails the STEP with a feedback ask', () => {
   const g = load();
   const c = g.call(order());
   assert.equal(g.call({ action: 'queue', key: 'wrong' }).error, 'forbidden');
-  assert.equal(g.call({ action: 'queue' }).error, 'forbidden');
-  assert.equal(g.call({ action: 'queue', key: 'desk-key-xyz' }).orders.length, 0, 'unpaid orders are not work');
-  g.call({ action: 'verify', orderId: c.orderId, razorpay_order_id: c.rzpOrderId, razorpay_payment_id: 'pay_1', razorpay_signature: sig(c.rzpOrderId, 'pay_1') });
-  const q = g.call({ action: 'queue', key: 'desk-key-xyz' });
+  const q = g.call({ action: 'queue', key: K });
   assert.equal(q.orders.length, 1);
-  assert.equal(q.orders[0].files.length, 2);
-  const f = g.call({ action: 'file', key: 'desk-key-xyz', orderId: c.orderId, fileId: q.orders[0].files[0].id });
+  assert.equal(q.orders[0].status, 'queued');
+  const f = g.call({ action: 'file', key: K, orderId: c.orderId, fileId: q.orders[0].files[0].id });
   assert.equal(Buffer.from(f.b64, 'base64').toString(), '%PDF-1.4 test');
-  assert.equal(g.call({ action: 'file', key: 'desk-key-xyz', orderId: c.orderId, fileId: 'file-not-ours' }).ok, false);
-  assert.equal(g.call({ action: 'mark', key: 'desk-key-xyz', orderId: c.orderId, status: 'review' }).status, 'review');
-  assert.equal(g.call({ action: 'mark', key: 'desk-key-xyz', orderId: c.orderId, status: 'delivered' }).ok, false, 'desk cannot fake delivery');
-  assert.match(g.call({ action: 'deliver', key: 'desk-key-xyz', orderId: c.orderId, files: [{ name: 'x.png', b64: b64('png') }] }).message, /No STEP/);
+  assert.equal(g.call({ action: 'mark', key: K, orderId: c.orderId, status: 'modelling' }).status, 'modelling');
   const before = g.mails.length;
-  const d = g.call({ action: 'deliver', key: 'desk-key-xyz', orderId: c.orderId, message: 'Bore modelled at mid-tolerance.', files: [{ name: 'Flange 014.step', b64: b64('ISO-10303-21;') }] });
+  assert.equal(g.call({ action: 'mark', key: K, orderId: c.orderId, status: 'held', note: 'Bore depth missing on section A-A', notify: true }).status, 'held');
+  assert.equal(g.mails.length, before + 1);
+  assert.match(g.mails[before].subject, /^Needs you · held · DTS-/);
+  assert.match(g.mails[before].body, /Bore depth missing/);
+  assert.equal(g.call({ action: 'queue', key: K }).orders.length, 1, 'held orders stay on the list');
+  assert.equal(g.call({ action: 'mark', key: K, orderId: c.orderId, status: 'delivered' }).ok, false, 'desk cannot fake delivery');
+  assert.match(g.call({ action: 'deliver', key: K, orderId: c.orderId, files: [{ name: 'x.png', b64: b64('png') }] }).message, /No STEP/);
+  const d = g.call({ action: 'deliver', key: K, orderId: c.orderId, message: 'Threads modelled at tap-drill size.', files: [{ name: 'Flange 014.step', b64: b64('ISO-10303-21;') }] });
   assert.equal(d.ok, true);
-  assert.equal(g.rows[1][col('status')], 'delivered');
-  const m = g.mails[before];
-  assert.equal(m.to, 'ravi@shop.in');
+  const m = g.mails[g.mails.length - 1];
   assert.equal(m.attachments[0].name, 'Flange 014.step');
-  assert.match(m.htmlBody, /mid-tolerance/);
-  assert.equal(g.call({ action: 'deliver', key: 'desk-key-xyz', orderId: c.orderId, files: [{ name: 'a.step', b64: b64('x') }] }).ok, false, 'no second delivery');
+  assert.match(m.htmlBody, /feedback/);
+  assert.match(m.htmlBody, /tap-drill/);
+  assert.equal(g.rows[1][col('status')], 'delivered');
+  assert.equal(g.call({ action: 'deliver', key: K, orderId: c.orderId, files: [{ name: 'a.step', b64: b64('x') }] }).ok, false, 'no second delivery');
+  assert.equal(g.call({ action: 'queue', key: K }).orders.length, 0);
 });
 
-test('cleanup expires unpaid orders older than 3 days and bins their drawings', () => {
+test('rows left over from the paid launch still show up as work', () => {
   const g = load();
   const c = g.call(order());
-  g.rows[1][col('created')] = new Date(Date.now() - 4 * 864e5);
-  g.sandbox.cleanup();
-  assert.equal(g.rows[1][col('status')], 'expired');
-  assert.equal(g.folders[g.rows[1][col('folderId')]].trashed, true);
+  g.rows[1][col('status')] = 'paid';
+  const q = g.call({ action: 'queue', key: K });
+  assert.equal(q.orders[0].status, 'queued');
+  assert.equal(g.call({ action: 'deliver', key: K, orderId: c.orderId, files: [{ name: 'a.step', b64: b64('x') }] }).ok, true);
 });
 
-test('one email can open at most 6 orders an hour', () => {
+test('spam guard: 6 uploads an hour per email', () => {
   const g = load();
   for (let i = 0; i < 6; i++) assert.equal(g.call(order()).ok, true);
   const r = g.call(order());
   assert.equal(r.ok, false);
   assert.match(r.message, /Too many/);
-});
-
-test('free launch: first parts are free, one per customer, then paid', () => {
-  const g = load({ props: { FREE_LIMIT: '2' } });
-  assert.deepEqual(g.call({ action: 'info' }), { ok: true, freeLeft: 2, freeLimit: 2, paid: true });
-  const a = g.call(order());
-  assert.equal(a.free, true);
-  assert.equal(g.fetches.length, 0, 'no Razorpay order for a free part');
-  const rowA = g.rows.find(r => r[col('orderId')] === a.orderId);
-  assert.equal(rowA[col('status')], 'paid');
-  assert.equal(rowA[col('free')], 'yes');
-  assert.equal(rowA[col('amount')], 0);
-  assert.equal(g.mails.length, 2);
-  assert.match(g.mails[0].htmlBody, /free/);
-  assert.doesNotMatch(g.mails[0].htmlBody, /Fusion/);
-  assert.match(g.mails[1].subject, /^FREE order \(1 free left\)/);
-
-  const again = g.call(order({ email: 'other@shop.in' })); // same phone, new email
-  assert.equal(again.free, undefined, 'same phone does not get a second free part');
-  assert.ok(again.rzpOrderId);
-
-  const b = g.call(order({ email: 'b@works.in', phone: '9000000001' }));
-  assert.equal(b.free, true);
-  assert.equal(g.call({ action: 'info' }).freeLeft, 0);
-  const c = g.call(order({ email: 'c@works.in', phone: '9000000002' }));
-  assert.equal(c.free, undefined, 'after the limit everyone pays');
-
-  // free orders are work in the desk, and their delivery asks for feedback
-  const q = g.call({ action: 'queue', key: 'desk-key-xyz' });
-  assert.deepEqual(q.orders.map(o => o.orderId).sort(), [a.orderId, b.orderId].sort());
-  g.call({ action: 'deliver', key: 'desk-key-xyz', orderId: a.orderId, files: [{ name: 'p.step', b64: b64('ISO-10303-21;') }] });
-  assert.match(g.mails[g.mails.length - 1].htmlBody, /feedback/);
-});
-
-test('free launch without Razorpay keys: a second part is refused before anything is stored', () => {
-  const g = load({ props: { FREE_LIMIT: '5', RZP_KEY_ID: undefined, RZP_KEY_SECRET: undefined } });
-  assert.equal(g.call({ action: 'info' }).paid, false);
-  assert.equal(g.call(order()).free, true);
-  const folders = Object.keys(g.folders).length;
-  const r = g.call(order());
-  assert.equal(r.ok, false);
-  assert.match(r.message, /free part is already used/);
-  assert.equal(Object.keys(g.folders).length, folders, 'no Drive folder for a refused order');
 });

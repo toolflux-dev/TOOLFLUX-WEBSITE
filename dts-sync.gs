@@ -1,43 +1,31 @@
 /**
- * Drawing to STEP — order backend (Google Apps Script web app).
+ * Drawing to STEP — order backend (Google Apps Script web app). Free for everyone.
  *
  * The customer page (drawing-to-step.html) and the desk app on Roo's PC
  * (dts-desk.js) both talk to this one script.
  *
- *   info     customer  how many free launch parts are left
- *   create   customer  saves the drawing to Drive; a free launch order is accepted at once,
- *                       otherwise a Razorpay order is opened
- *   verify   customer  checks the Razorpay checkout signature, marks the order paid
- *   status   customer  re-checks an order (asks Razorpay if the browser lost the reply)
- *   queue    desk      lists paid / in-progress orders
+ *   create   customer  saves the drawing to Drive, queues the order, emails a receipt
+ *   status   customer  where an order is (by order id + email)
+ *   queue    desk      lists orders still to be done
  *   file     desk      returns one drawing file (base64)
- *   mark     desk      sets an order's status (modelling, review, query, refunded)
+ *   mark     desk      sets an order's status (modelling, held, query, queued); notify:true emails Roo
  *   deliver  desk      saves the STEP to Drive and emails it to the customer
  *
- * Why no webhook: Apps Script cannot read request headers, so a Razorpay webhook
- * signature can't be checked here (see MACHLOG notes). The checkout handler's
- * signature arrives in the request BODY, which we can check, and `status` /
- * `queue` ask Razorpay directly for any order still waiting, so a payment is
- * never lost if the customer's browser closes before `verify` reaches us.
- *
- * Script Properties (set by setup() and by hand — see DRAWING-TO-STEP-SETUP.md):
- *   RZP_KEY_ID, RZP_KEY_SECRET   Razorpay API keys (live or test)
- *   DESK_KEY                     shared secret for the desk app (setup() makes it)
- *   ROOT_FOLDER_ID, SHEET_ID     made by setup()
+ * Script Properties (setup() makes them):
+ *   DESK_KEY                     shared secret for the desk app
+ *   ROOT_FOLDER_ID, SHEET_ID     Drive folder and order sheet
  *   OWNER_EMAIL                  optional, defaults to toolflux@gmail.com
- *   FREE_LIMIT                   optional, free launch parts (default 25; 0 = paid from the start)
  */
 
-var PRICE_PAISE = 7900;          // ₹79
-var FREE_DEFAULT = 25;           // first 25 parts free while collecting feedback, one per customer
-var MAX_FILES = 3;
+var MAX_FILES = 10;
 var MAX_FILE_BYTES = 10 * 1024 * 1024;
-var MAX_TOTAL_BYTES = 15 * 1024 * 1024;
+var MAX_TOTAL_BYTES = 25 * 1024 * 1024;
 var DRAWING_EXT = ['pdf', 'png', 'jpg', 'jpeg', 'webp'];
 var CAD_EXT = ['dxf', 'dwg'];
 var DELIVER_EXT = ['step', 'stp', 'pdf', 'png', 'jpg'];
-var STATUSES = ['awaiting_payment', 'paid', 'modelling', 'review', 'query', 'delivered', 'refunded', 'expired'];
-var DESK_STATUSES = ['modelling', 'review', 'query', 'refunded', 'paid'];
+var OPEN = ['queued', 'paid', 'modelling', 'held', 'query', 'review'];   // 'paid'/'review' = rows from the old paid launch
+var DESK_STATUSES = ['queued', 'modelling', 'held', 'query'];
+// Column order is fixed: the live sheet already uses it. rzpOrderId/paymentId/amount/free are no longer filled.
 var COLS = ['created', 'orderId', 'status', 'name', 'email', 'phone', 'company', 'part', 'units',
   'material', 'notes', 'files', 'folderId', 'rzpOrderId', 'paymentId', 'paidAt', 'deliveredAt', 'amount', 'log', 'free'];
 var SHEET_NAME = 'Orders';
@@ -54,9 +42,8 @@ function doPost(e) {
   catch (err) { return json_({ ok: false, error: 'bad_json' }); }
   try {
     switch (body.action) {
-      case 'info':    return json_({ ok: true, freeLeft: freeLeft_(), freeLimit: freeLimit_(), paid: paidReady_() });
+      case 'info':    return json_({ ok: true, open: true });
       case 'create':  return json_(createOrder_(body));
-      case 'verify':  return json_(verifyPayment_(body));
       case 'status':  return json_(orderStatus_(body));
       case 'queue':   requireDesk_(body); return json_(deskQueue_());
       case 'file':    requireDesk_(body); return json_(deskFile_(body));
@@ -69,7 +56,7 @@ function doPost(e) {
     if (msg === 'forbidden') return json_({ ok: false, error: 'forbidden' });
     if (msg.indexOf('user:') === 0) return json_({ ok: false, error: 'invalid', message: msg.slice(5) });
     Logger.log(err && err.stack || msg);
-    return json_({ ok: false, error: 'server', message: 'Something went wrong on our side. Nothing was charged.' });
+    return json_({ ok: false, error: 'server', message: 'Something went wrong on our side. Please try again, or WhatsApp us the drawing.' });
   }
 }
 
@@ -79,113 +66,54 @@ function createOrder_(b) {
   var o = cleanOrder_(b);
   var files = checkFiles_(b.files);
   throttle_(o.email);
-  if (!paidReady_() && (freeLeft_() <= 0 || hadFree_(o.email, o.phone)))
-    throw new Error('user:Your free part is already used, and online payment is not open yet. WhatsApp us the drawing to order more.');
 
   var orderId = newOrderId_();
   var root = DriveApp.getFolderById(prop_('ROOT_FOLDER_ID'));
   var folder = root.createFolder(orderId + ' · ' + o.part.slice(0, 40));
   var saved = files.map(function (f) {
-    var blob = Utilities.newBlob(f.bytes, f.mime, f.name);
-    var df = folder.createFile(blob);
+    var df = folder.createFile(Utilities.newBlob(f.bytes, f.mime, f.name));
     return { id: df.getId(), name: f.name, size: f.bytes.length };
   });
   folder.createFile('order.txt', orderText_(orderId, o), 'text/plain');
 
-  var row = {
-    created: new Date(), orderId: orderId, name: o.name, email: o.email, phone: o.phone, company: o.company,
-    part: o.part, units: o.units, material: o.material, notes: o.notes, files: JSON.stringify(saved),
-    folderId: folder.getId(), paymentId: '', paidAt: '', deliveredAt: '', free: ''
-  };
-
-  // Free launch: decided under the lock so two customers can never take the last free place.
-  var free = withLock_(function () {
-    if (freeLeft_() <= 0 || hadFree_(o.email, o.phone)) return false;
-    sheet_().appendRow(rowFrom_(Object.assign(row, { status: 'paid', rzpOrderId: '', paymentId: 'FREE', paidAt: new Date(),
-      amount: 0, free: 'yes', log: stamp_('created, free launch order') })));
-    return true;
-  });
-  if (free) {
-    notifyNewOrder_(findOrder_(orderId).data, 'FREE');
-    return { ok: true, free: true, orderId: orderId, email: o.email, freeLeft: freeLeft_() };
-  }
-
-  var rzp = razorpay_('post', '/v1/orders', {
-    amount: PRICE_PAISE, currency: 'INR', receipt: orderId,
-    notes: { order: orderId, part: o.part.slice(0, 200) }
-  });
   withLock_(function () {
-    sheet_().appendRow(rowFrom_(Object.assign(row, { status: 'awaiting_payment', rzpOrderId: rzp.id,
-      amount: PRICE_PAISE / 100, log: stamp_('created') })));
+    sheet_().appendRow(rowFrom_({
+      created: new Date(), orderId: orderId, status: 'queued', name: o.name, email: o.email, phone: o.phone,
+      company: o.company, part: o.part, units: o.units, material: o.material, notes: o.notes,
+      files: JSON.stringify(saved), folderId: folder.getId(), log: stamp_('received')
+    }));
   });
 
-  return { ok: true, orderId: orderId, rzpOrderId: rzp.id, keyId: prop_('RZP_KEY_ID'), amount: PRICE_PAISE,
-    name: o.name, email: o.email, phone: o.phone };
-}
+  var d = findOrder_(orderId).data;
+  try {
+    MailApp.sendEmail({ to: d.email, replyTo: ownerEmail_(), name: 'TOOLFLUX Drawing to STEP',
+      subject: 'Drawing received: ' + d.part + ' (' + d.orderId + ')', htmlBody: receiptMail_(d) });
+    MailApp.sendEmail({ to: ownerEmail_(), name: 'Drawing to STEP',
+      subject: 'New order · ' + d.orderId + ' · ' + d.part,
+      body: orderText_(d.orderId, d) + '\nDrive: https://drive.google.com/drive/folders/' + d.folderId });
+  } catch (err) { Logger.log('mail failed: ' + err); }
 
-function paidReady_() {
-  var p = PropertiesService.getScriptProperties();
-  return !!(p.getProperty('RZP_KEY_ID') && p.getProperty('RZP_KEY_SECRET'));
-}
-function freeLimit_() {
-  var v = PropertiesService.getScriptProperties().getProperty('FREE_LIMIT');
-  return v === null || v === '' ? FREE_DEFAULT : Math.max(0, Number(v) || 0);
-}
-function freeLeft_() {
-  var used = allOrders_().filter(function (r) { return r.data.free === 'yes'; }).length;
-  return Math.max(0, freeLimit_() - used);
-}
-function hadFree_(email, phone) {
-  var digits = String(phone).replace(/\D/g, '').slice(-10);
-  return allOrders_().some(function (r) {
-    return r.data.free === 'yes' && (r.data.email.toLowerCase() === email || String(r.data.phone).replace(/\D/g, '').slice(-10) === digits);
-  });
-}
-
-function verifyPayment_(b) {
-  var orderId = str_(b.orderId, 40);
-  var rOrder = str_(b.razorpay_order_id, 60);
-  var rPay = str_(b.razorpay_payment_id, 60);
-  var sig = str_(b.razorpay_signature, 200);
-  if (!orderId || !rOrder || !rPay || !sig) throw new Error('user:Payment details are missing.');
-
-  var expected = hex_(Utilities.computeHmacSha256Signature(rOrder + '|' + rPay, prop_('RZP_KEY_SECRET')));
-  if (!safeEqual_(expected, sig)) throw new Error('user:The payment could not be confirmed. If money left your account, WhatsApp us your order number.');
-
-  var row = findOrder_(orderId);
-  if (!row) throw new Error('user:Order not found.');
-  if (row.data.rzpOrderId !== rOrder) throw new Error('user:That payment belongs to a different order.');
-  markPaid_(row, rPay);
-  return { ok: true, orderId: orderId, status: 'paid' };
+  return { ok: true, orderId: orderId, email: o.email };
 }
 
 function orderStatus_(b) {
-  var orderId = str_(b.orderId, 40);
-  var email = str_(b.email, 120).toLowerCase();
-  var row = findOrder_(orderId);
-  if (!row || row.data.email.toLowerCase() !== email) return { ok: false, error: 'not_found' };
-  if (row.data.status === 'awaiting_payment') reconcile_(row);
-  row = findOrder_(orderId);
-  return { ok: true, orderId: orderId, status: publicStatus_(row.data.status) };
+  var row = findOrder_(str_(b.orderId, 40));
+  if (!row || row.data.email.toLowerCase() !== str_(b.email, 120).toLowerCase()) return { ok: false, error: 'not_found' };
+  var s = row.data.status;
+  return { ok: true, orderId: row.data.orderId, status: s === 'delivered' ? 'delivered' : 'in_progress' };
 }
 
 // ───────────────────────────── desk ─────────────────────────────
 
 function deskQueue_() {
   var rows = allOrders_();
-  var cutoff = Date.now() - 3 * 864e5;
-  rows.forEach(function (r) {
-    if (r.data.status === 'awaiting_payment' && new Date(r.data.created).getTime() > cutoff) reconcile_(r);
-  });
-  var open = allOrders_().filter(function (r) {
-    return ['paid', 'modelling', 'review', 'query'].indexOf(r.data.status) >= 0;
-  }).map(function (r) {
+  var open = rows.filter(function (r) { return OPEN.indexOf(r.data.status) >= 0; }).map(function (r) {
     var d = r.data;
-    return { orderId: d.orderId, status: d.status, created: d.created, paidAt: d.paidAt, name: d.name,
+    return { orderId: d.orderId, status: d.status === 'paid' ? 'queued' : d.status, created: d.created, name: d.name,
       email: d.email, phone: d.phone, company: d.company, part: d.part, units: d.units, material: d.material,
       notes: d.notes, files: safeJson_(d.files, []), folderUrl: 'https://drive.google.com/drive/folders/' + d.folderId };
   });
-  var recent = allOrders_().filter(function (r) { return r.data.status === 'delivered'; })
+  var recent = rows.filter(function (r) { return r.data.status === 'delivered'; })
     .slice(-15).map(function (r) { return { orderId: r.data.orderId, part: r.data.part, name: r.data.name, deliveredAt: r.data.deliveredAt }; });
   return { ok: true, orders: open, delivered: recent };
 }
@@ -193,8 +121,7 @@ function deskQueue_() {
 function deskFile_(b) {
   var row = findOrder_(str_(b.orderId, 40));
   if (!row) throw new Error('user:Order not found.');
-  var files = safeJson_(row.data.files, []);
-  var hit = files.filter(function (f) { return f.id === b.fileId; })[0];
+  var hit = safeJson_(row.data.files, []).filter(function (f) { return f.id === b.fileId; })[0];
   if (!hit) throw new Error('user:File is not part of this order.');
   var blob = DriveApp.getFileById(hit.id).getBlob();
   return { ok: true, name: hit.name, mime: blob.getContentType(), b64: Utilities.base64Encode(blob.getBytes()) };
@@ -203,32 +130,39 @@ function deskFile_(b) {
 function deskMark_(b) {
   var status = str_(b.status, 20);
   if (DESK_STATUSES.indexOf(status) < 0) throw new Error('user:Unknown status.');
-  return withLock_(function () {
+  var note = str_(b.note, 2000);
+  var d = withLock_(function () {
     var row = findOrder_(str_(b.orderId, 40));
     if (!row) throw new Error('user:Order not found.');
-    if (row.data.status === 'awaiting_payment' || row.data.status === 'delivered') throw new Error('user:Order is ' + row.data.status + '.');
-    setCells_(row, { status: status, log: row.data.log + '\n' + stamp_(status + (b.note ? ': ' + str_(b.note, 300) : '')) });
-    return { ok: true, orderId: row.data.orderId, status: status };
+    if (row.data.status === 'delivered') throw new Error('user:Order is already delivered.');
+    setCells_(row, { status: status, log: row.data.log + '\n' + stamp_(status + (note ? ': ' + note : '')) });
+    return row.data;
   });
+  if (b.notify) {
+    try {
+      MailApp.sendEmail({ to: ownerEmail_(), name: 'Drawing to STEP',
+        subject: 'Needs you · ' + status + ' · ' + d.orderId + ' · ' + d.part,
+        body: (note || '(no note)') + '\n\n' + orderText_(d.orderId, d) + '\nDrive: https://drive.google.com/drive/folders/' + d.folderId });
+    } catch (err) { Logger.log('mail failed: ' + err); }
+  }
+  return { ok: true, orderId: d.orderId, status: status };
 }
 
 function deskDeliver_(b) {
   var row = findOrder_(str_(b.orderId, 40));
   if (!row) throw new Error('user:Order not found.');
-  if (['paid', 'modelling', 'review', 'query'].indexOf(row.data.status) < 0) throw new Error('user:Order is ' + row.data.status + '.');
+  if (OPEN.indexOf(row.data.status) < 0) throw new Error('user:Order is ' + row.data.status + '.');
   var files = (b.files || []).map(function (f) {
     var name = String(f.name || '').replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
     var ext = name.split('.').pop().toLowerCase();
     if (DELIVER_EXT.indexOf(ext) < 0) throw new Error('user:Cannot send .' + ext + ' files.');
-    var bytes = Utilities.base64Decode(String(f.b64 || ''));
-    return { name: name, ext: ext, bytes: bytes };
+    return { name: name, ext: ext, bytes: Utilities.base64Decode(String(f.b64 || '')) };
   });
   if (!files.some(function (f) { return f.ext === 'step' || f.ext === 'stp'; })) throw new Error('user:No STEP file to send.');
   var total = files.reduce(function (s, f) { return s + f.bytes.length; }, 0);
   if (total > 20 * 1024 * 1024) throw new Error('user:Files are over 20 MB together; email them by hand.');
 
-  var folder = DriveApp.getFolderById(row.data.folderId);
-  var out = folder.createFolder('delivered');
+  var out = DriveApp.getFolderById(row.data.folderId).createFolder('delivered');
   var blobs = files.map(function (f) {
     var mime = (f.ext === 'step' || f.ext === 'stp') ? 'application/step' : (f.ext === 'pdf' ? 'application/pdf' : 'image/' + (f.ext === 'jpg' ? 'jpeg' : f.ext));
     var blob = Utilities.newBlob(f.bytes, mime, f.name);
@@ -237,71 +171,15 @@ function deskDeliver_(b) {
   });
 
   var d = row.data;
-  MailApp.sendEmail({
-    to: d.email,
-    replyTo: ownerEmail_(),
-    name: 'TOOLFLUX Drawing to STEP',
+  MailApp.sendEmail({ to: d.email, replyTo: ownerEmail_(), name: 'TOOLFLUX Drawing to STEP',
     subject: 'Your STEP model: ' + d.part + ' (' + d.orderId + ')',
-    htmlBody: deliveryMail_(d, files.map(function (f) { return f.name; }), str_(b.message, 2000)),
-    attachments: blobs
-  });
+    htmlBody: deliveryMail_(d, files.map(function (f) { return f.name; }), str_(b.message, 2000)), attachments: blobs });
 
   withLock_(function () {
     var fresh = findOrder_(d.orderId);
     setCells_(fresh, { status: 'delivered', deliveredAt: new Date(), log: fresh.data.log + '\n' + stamp_('delivered: ' + files.map(function (f) { return f.name; }).join(', ')) });
   });
   return { ok: true, orderId: d.orderId, status: 'delivered' };
-}
-
-// ───────────────────────────── payment ─────────────────────────────
-
-function markPaid_(row, paymentId) {
-  var first = withLock_(function () {
-    var fresh = findOrder_(row.data.orderId);
-    if (fresh.data.status !== 'awaiting_payment' && fresh.data.status !== 'expired') return false; // already paid: idempotent
-    setCells_(fresh, { status: 'paid', paymentId: paymentId, paidAt: new Date(), log: fresh.data.log + '\n' + stamp_('paid ' + paymentId) });
-    return true;
-  });
-  if (!first) return;
-  notifyNewOrder_(findOrder_(row.data.orderId).data, paymentId);
-}
-
-function notifyNewOrder_(d, paymentId) {
-  var free = d.free === 'yes';
-  try {
-    MailApp.sendEmail({
-      to: d.email, replyTo: ownerEmail_(), name: 'TOOLFLUX Drawing to STEP',
-      subject: 'Order received: ' + d.part + ' (' + d.orderId + ')',
-      htmlBody: receiptMail_(d)
-    });
-    MailApp.sendEmail({
-      to: ownerEmail_(), name: 'Drawing to STEP',
-      subject: (free ? 'FREE order (' + freeLeft_() + ' free left)' : '₹79 paid') + ' · ' + d.orderId + ' · ' + d.part,
-      body: orderText_(d.orderId, d) + '\nPayment: ' + paymentId + '\nDrive: https://drive.google.com/drive/folders/' + d.folderId
-    });
-  } catch (err) { Logger.log('mail failed: ' + err); }
-}
-
-// Ask Razorpay whether a waiting order was in fact paid.
-function reconcile_(row) {
-  if (!row.data.rzpOrderId) return;
-  var res;
-  try { res = razorpay_('get', '/v1/orders/' + row.data.rzpOrderId + '/payments'); }
-  catch (err) { Logger.log('reconcile failed: ' + err); return; }
-  var captured = (res.items || []).filter(function (p) { return p.status === 'captured'; })[0];
-  if (captured) markPaid_(row, captured.id);
-}
-
-function razorpay_(method, path, payload) {
-  var opts = {
-    method: method, muteHttpExceptions: true, contentType: 'application/json',
-    headers: { Authorization: 'Basic ' + Utilities.base64Encode(prop_('RZP_KEY_ID') + ':' + prop_('RZP_KEY_SECRET')) }
-  };
-  if (payload) opts.payload = JSON.stringify(payload);
-  var r = UrlFetchApp.fetch('https://api.razorpay.com' + path, opts);
-  var code = r.getResponseCode();
-  if (code < 200 || code >= 300) throw new Error('razorpay ' + code + ': ' + r.getContentText().slice(0, 300));
-  return JSON.parse(r.getContentText());
 }
 
 // ───────────────────────────── validation ─────────────────────────────
@@ -335,16 +213,16 @@ function checkFiles_(list) {
     return { name: name, bytes: bytes, mime: mimeFor_(ext) };
   });
   if (!hasDrawing) throw new Error('user:Include a PDF or photo of the drawing, not only a CAD file.');
-  if (total > MAX_TOTAL_BYTES) throw new Error('user:Files are over 15 MB together.');
+  if (total > MAX_TOTAL_BYTES) throw new Error('user:Files are over 25 MB together.');
   return files;
 }
 
-// At most 6 orders an hour from one email, so nobody can fill the Drive.
+// Spam guard only (Roo chose no customer limit): 6 uploads an hour per email.
 function throttle_(email) {
   var cache = CacheService.getScriptCache();
   var key = 'dts_' + hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, email)).slice(0, 20);
   var n = Number(cache.get(key) || 0);
-  if (n >= 6) throw new Error('user:Too many orders from this email in the last hour. WhatsApp us instead.');
+  if (n >= 6) throw new Error('user:Too many uploads from this email in the last hour. Please wait a little, or WhatsApp us.');
   cache.put(key, String(n + 1), 3600);
 }
 
@@ -358,11 +236,7 @@ function requireDesk_(b) {
 function sheet_() {
   var ss = SpreadsheetApp.openById(prop_('SHEET_ID'));
   var sh = ss.getSheetByName(SHEET_NAME);
-  if (!sh) {
-    sh = ss.insertSheet(SHEET_NAME);
-    sh.appendRow(COLS);
-    sh.setFrozenRows(1);
-  }
+  if (!sh) { sh = ss.insertSheet(SHEET_NAME); sh.appendRow(COLS); sh.setFrozenRows(1); }
   return sh;
 }
 
@@ -405,10 +279,8 @@ function orderText_(orderId, o) {
 function receiptMail_(d) {
   return mailShell_(
     '<p>Hello ' + esc_(d.name) + ',</p>' +
-    '<p>We have your drawing for <b>' + esc_(d.part) + '</b>' + (d.free === 'yes' ? ', and this part is free: it is one of our first launch orders.' : ' and your payment.') + ' ' +
-    'Your order number is <b>' + esc_(d.orderId) + '</b>.</p>' +
-    '<p>We check the model against your drawing and email the STEP file to this address. ' +
-    'If anything on the drawing is unclear, we will ask first.</p>' +
+    '<p>We have your drawing for <b>' + esc_(d.part) + '</b>. Your order number is <b>' + esc_(d.orderId) + '</b>.</p>' +
+    '<p>Sit tight: the STEP file will come to this address. If anything on the drawing is unclear, we will ask first.</p>' +
     '<p>Questions: reply to this email or WhatsApp +91 86602 34766.</p>');
 }
 
@@ -421,7 +293,7 @@ function deliveryMail_(d, names, message) {
     '<p>In Mastercam: File › Open, set the file type to STEP, and pick the attachment. ' +
     'Please check the critical dimensions against your drawing before you cut metal. ' +
     'If something does not match, reply to this email with the dimension and we will correct it.</p>' +
-    (d.free === 'yes' ? '<p>This part was free because we are collecting feedback. Two lines would help a lot: did the model work in Mastercam, and what should we do better?</p>' : ''));
+    '<p>Two lines of feedback would help us a lot: did the model open and work in Mastercam, and what should we do better?</p>');
 }
 
 function mailShell_(inner) {
@@ -429,9 +301,9 @@ function mailShell_(inner) {
     inner + '<p style="color:#2a4354">TOOLFLUX · Vidyanagar, Hubli · <a href="https://www.toolflux.co.in/drawing-to-step.html">toolflux.co.in</a></p></div>';
 }
 
-// ───────────────────────────── setup & upkeep ─────────────────────────────
+// ───────────────────────────── setup ─────────────────────────────
 
-/** Run once from the editor. Creates the Drive folder, the order sheet, the desk key and the cleanup trigger. */
+/** Run once from the editor. Creates the Drive folder, the order sheet and the desk key; removes old triggers. */
 function setup() {
   var p = PropertiesService.getScriptProperties();
   if (!p.getProperty('ROOT_FOLDER_ID')) p.setProperty('ROOT_FOLDER_ID', DriveApp.createFolder('Drawing to STEP orders').getId());
@@ -439,31 +311,14 @@ function setup() {
   if (!p.getProperty('DESK_KEY')) p.setProperty('DESK_KEY', Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, ''));
   sheet_();
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'cleanup') ScriptApp.deleteTrigger(t); });
-  ScriptApp.newTrigger('cleanup').timeBased().everyDays(1).atHour(3).create();
   Logger.log('DESK_KEY (paste into the desk app): ' + p.getProperty('DESK_KEY'));
   Logger.log('Orders sheet: https://docs.google.com/spreadsheets/d/' + p.getProperty('SHEET_ID'));
-  if (!p.getProperty('RZP_KEY_ID') || !p.getProperty('RZP_KEY_SECRET')) Logger.log('Still needed: RZP_KEY_ID and RZP_KEY_SECRET in Script Properties.');
 }
 
-/** Daily: unpaid orders older than 3 days are checked once more, then expired and their drawings binned. */
-function cleanup() {
-  var cutoff = Date.now() - 3 * 864e5;
-  allOrders_().forEach(function (r) {
-    if (r.data.status !== 'awaiting_payment' || new Date(r.data.created).getTime() > cutoff) return;
-    reconcile_(r);
-    var fresh = findOrder_(r.data.orderId);
-    if (fresh.data.status !== 'awaiting_payment') return;
-    try { DriveApp.getFolderById(fresh.data.folderId).setTrashed(true); } catch (err) { Logger.log(err); }
-    setCells_(fresh, { status: 'expired', log: fresh.data.log + '\n' + stamp_('expired unpaid, drawing deleted') });
-  });
-}
+/** Kept so the old daily trigger (from the paid launch) does nothing harmful if it still fires. */
+function cleanup() {}
 
 // ───────────────────────────── helpers ─────────────────────────────
-
-function publicStatus_(s) {
-  return { awaiting_payment: 'awaiting_payment', paid: 'in_progress', modelling: 'in_progress', review: 'in_progress',
-    query: 'question_sent', delivered: 'delivered', refunded: 'refunded', expired: 'expired' }[s] || s;
-}
 
 function newOrderId_() {
   var d = Utilities.formatDate(new Date(), 'Asia/Kolkata', 'yyMMdd');

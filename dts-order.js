@@ -1,12 +1,12 @@
-/* Drawing to STEP — order form: files, validation, upload, Razorpay, confirmation.
- * Backend: dts-sync.gs (Apps Script). Paste its /exec URL into DTS_URL after deploying.
- * On localhost, ?demo=1 runs the whole flow against a fake backend and a fake checkout. */
+/* Drawing to STEP — order form: files, validation, upload, the TOOLFLUX gear send screen.
+ * Free for everyone: no payment step. Backend: dts-sync.gs (Apps Script) at DTS_URL.
+ * On localhost, ?demo=1 runs the whole flow against a fake backend (add &fail=1 to see an upload error). */
 (function (root) {
   'use strict';
 
-  var DTS_URL = 'https://script.google.com/macros/s/AKfycbwM3b7QEqxiyLwP6eKD0HVWAg2ik1wwtnkV9XKrwEz9W4ySWXhNZiN-cLlcHmCPhoM/exec'; // Apps Script web app (dts-sync.gs). Empty = ordering shows the WhatsApp fallback.
+  var DTS_URL = 'https://script.google.com/macros/s/AKfycbwM3b7QEqxiyLwP6eKD0HVWAg2ik1wwtnkV9XKrwEz9W4ySWXhNZiN-cLlcHmCPhoM/exec'; // Apps Script web app (dts-sync.gs). Empty = the form sends people to WhatsApp.
   var WHATSAPP = 'https://wa.me/918660234766';
-  var MAX_FILES = 3, MAX_FILE = 10 * 1024 * 1024, MAX_TOTAL = 15 * 1024 * 1024;
+  var MAX_FILES = 10, MAX_FILE = 10 * 1024 * 1024, MAX_TOTAL = 25 * 1024 * 1024;
   var DRAWING = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
   var CAD = ['dxf', 'dwg'];
 
@@ -47,7 +47,7 @@
     }
   }
 
-  var api = { ext: ext, kind: kind, fmtSize: fmtSize, needsShrink: needsShrink, checkFiles: checkFiles, checkField: checkField };
+  var api = { ext: ext, kind: kind, fmtSize: fmtSize, needsShrink: needsShrink, checkFiles: checkFiles, checkField: checkField, MAX_FILES: MAX_FILES };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   // ───────── page ─────────
@@ -67,8 +67,8 @@
   if (!form) return;
   var $ = function (id) { return doc.getElementById(id); };
   var demo = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) && /[?&]demo=1/.test(location.search);
+  var reduced = !!(root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var files = [];      // { file, name, size, url }
-  var pending = null;  // created order awaiting payment
 
   // ── files ──
   var drop = $('drop'), input = $('file'), list = $('files'), fileErr = $('file-err');
@@ -119,39 +119,17 @@
   }
 
   // ── submit ──
-  var payBtn = $('pay'), note = $('pay-note'), summary = $('summary');
+  var sendBtn = $('pay'), note = $('pay-note'), summary = $('summary'), orderNote = doc.querySelector('[data-order-note]');
   var noteDefault = note.textContent;
-  var mode = (DTS_URL || demo) ? 'free' : 'closed'; // free | paid | closed (WhatsApp)
-  var freeLine = doc.querySelector('[data-free-line]'), slipPay = doc.querySelector('[data-slip-pay]'), orderNote = doc.querySelector('[data-order-note]');
-  function setMode(m, left, limit) {
-    mode = m;
-    if (m === 'free') {
-      if (freeLine && left != null) freeLine.textContent = 'The first ' + limit + ' parts are free while we collect feedback. ' + left + ' of ' + limit + ' left.';
-      payBtn.textContent = 'Send the drawing';
-      return;
-    }
-    if (freeLine && left === 0) freeLine.hidden = true; // still shown on the WhatsApp fallback before the backend exists
-    if (m === 'paid') {
-      if (slipPay) slipPay.textContent = 'UPI, card, netbanking';
-      if (orderNote) orderNote.textContent = 'Fill it in like a title block. You pay on the next screen; we start once the payment goes through. Unpaid uploads are deleted after 3 days.';
-      note.textContent = noteDefault = 'Razorpay handles the payment: UPI, cards and netbanking. A receipt comes to your email.';
-      payBtn.textContent = 'Pay and send';
-    } else {
-      note.innerHTML = 'Online ordering opens shortly. Until then, WhatsApp the drawing to <a style="color:inherit" href="' + WHATSAPP + '">+91 86602 34766</a>.';
-      payBtn.textContent = 'Send on WhatsApp';
-    }
+  var online = !!(DTS_URL || demo);
+  if (!online) {
+    note.innerHTML = 'Online sending opens shortly. Until then, WhatsApp the drawing to <a style="color:inherit" href="' + WHATSAPP + '">+91 86602 34766</a>.';
+    sendBtn.textContent = 'Send on WhatsApp';
   }
-  if (mode === 'closed') setMode('closed');
-  else post({ action: 'info' }).then(function (i) {
-    if (!i || !i.ok) return;
-    if (i.freeLeft > 0) setMode('free', i.freeLeft, i.freeLimit);
-    else setMode(i.paid ? 'paid' : 'closed', 0);
-  }, function () { /* keep the free wording; submit reports any real problem */ });
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    if (mode === 'closed') { location.href = WHATSAPP + '?text=' + encodeURIComponent('Drawing to STEP order: ' + ($('part').value || 'part drawing')); return; }
-    if (pending) { return openCheckout(pending); }
+    if (!online) { location.href = WHATSAPP + '?text=' + encodeURIComponent('Drawing to STEP: ' + ($('part').value || 'part drawing')); return; }
     var errs = [];
     var fe = checkFiles(files); fileErr.textContent = fe; if (fe) errs.push(['file', fe]);
     ['part', 'name', 'email', 'phone'].forEach(function (id) { var m = showErr(id, checkField(id, $(id).value)); if (m) errs.push([id, m]); });
@@ -171,54 +149,50 @@
     summary.hidden = false; summary.focus();
   }
 
-  function busy(on, text) {
-    payBtn.disabled = on; form.setAttribute('aria-busy', on ? 'true' : 'false');
-    if (text) payBtn.textContent = text;
+  function busy(on) {
+    sendBtn.disabled = on; form.setAttribute('aria-busy', on ? 'true' : 'false');
   }
 
   // ── the TOOLFLUX gear panel that replaces the form once the customer presses Send ──
   var work = $('sending'), workTitle = $('work-title'), workLine = $('work-line'), workSmall = $('work-small');
   var gearSvg = work && work.querySelector('svg'), gearSpin = work && work.getElementsByTagName('animateTransform')[0];
-  if (gearSvg && root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches && gearSvg.pauseAnimations) gearSvg.pauseAnimations();
+  if (gearSvg && reduced && gearSvg.pauseAnimations) gearSvg.pauseAnimations();
   function stage(kind, info) {
     info = info || {};
     if (!work) return;
     if (orderNote) orderNote.hidden = kind !== 'form';
     if (kind === 'form') { work.hidden = true; form.hidden = false; return; }
-    var t = {
-      send:    ['Sending your drawing', 'Keep this page open for a moment.', info.size ? info.size + ' on its way to TOOLFLUX' : ''],
-      pay:     ['Waiting for payment', 'Finish the payment in the Razorpay window.', ''],
-      confirm: ['Confirming payment', 'Almost there. Keep this page open.', ''],
-      done:    ['Sit tight.', 'Your STEP file will arrive by email at ', '']
-    }[kind];
-    workTitle.textContent = t[0];
-    workLine.textContent = t[1];
-    if (kind === 'done') {
-      var b = doc.createElement('b'); b.textContent = info.email || 'your email'; workLine.appendChild(b); workLine.appendChild(doc.createTextNode('.'));
+    if (kind === 'send') {
+      workTitle.textContent = 'Sending your drawing';
+      workLine.textContent = 'Keep this page open for a moment.';
+      workSmall.textContent = info.size ? info.size + ' on its way to TOOLFLUX' : '';
+    } else {
+      workTitle.textContent = 'Sit tight.';
+      workLine.textContent = 'Your STEP file will arrive by email at ';
+      var b = doc.createElement('b'); b.textContent = info.email || 'your email';
+      workLine.appendChild(b); workLine.appendChild(doc.createTextNode('.'));
       workSmall.textContent = 'Order ' + info.orderId + '. If anything on the drawing is unclear, we will email you first. Check the spam folder if nothing arrives. ';
       var again = doc.createElement('a'); again.href = location.pathname + '#order'; again.textContent = 'Send another drawing';
       again.addEventListener('click', function (e) { e.preventDefault(); location.hash = 'order'; location.reload(); });
       workSmall.appendChild(again);
-    } else workSmall.textContent = t[2];
+    }
     if (gearSpin) gearSpin.setAttribute('dur', kind === 'done' ? '9s' : '2.4s');
     work.classList.toggle('done-state', kind === 'done');
     if (work.hidden) {
-      form.hidden = true; work.hidden = false;
-      summary.hidden = true;
-      $('order').scrollIntoView({ behavior: root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+      form.hidden = true; work.hidden = false; summary.hidden = true;
+      $('order').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
     }
     if (kind === 'done') workTitle.focus({ preventScroll: true });
   }
 
   async function submit() {
     try {
-      busy(true, 'Preparing files…');
+      busy(true);
       stage('send');
       var packed = [];
       for (var i = 0; i < files.length; i++) packed.push(await pack(files[i]));
       var total = packed.reduce(function (s, f) { return s + f.bytes; }, 0);
-      if (total > MAX_TOTAL) throw userErr('The files are over 15 MB together. Send a smaller PDF or fewer photos.');
-      busy(true, 'Uploading ' + fmtSize(total) + '…');
+      if (total > MAX_TOTAL) throw userErr('The files are over 25 MB together. Send a smaller PDF or fewer photos.');
       stage('send', { size: fmtSize(total) });
       var units = form.querySelector('input[name=units]:checked').value;
       var res = await post({
@@ -226,15 +200,14 @@
         name: $('name').value, company: $('company').value, email: $('email').value, phone: $('phone').value, notes: $('notes').value,
         files: packed.map(function (f) { return { name: f.name, b64: f.b64 }; })
       });
-      if (!res.ok) throw userErr(res.message || 'The upload did not go through. Try again, or WhatsApp us the drawing.');
-      if (res.free) return done(res, true);
-      if (mode === 'free') note.textContent = 'Your free part is already used, so this one is paid. The payment window is opening.';
-      pending = res;
-      openCheckout(res);
+      if (!res || !res.ok) throw userErr((res && res.message) || 'The drawing did not go through. Try again, or WhatsApp it to us.');
+      busy(false);
+      note.textContent = noteDefault;
+      stage('done', { email: res.email || $('email').value, orderId: res.orderId });
     } catch (err) {
       stage('form');
-      busy(false, mode === 'paid' ? 'Pay and send' : 'Send the drawing');
-      note.textContent = err.user ? err.message : 'The connection dropped during upload. Nothing was charged. Try again.';
+      busy(false);
+      note.textContent = err.user ? err.message : 'The connection dropped while sending. Check the connection and press Send again.';
     }
   }
 
@@ -265,75 +238,11 @@
         var c = doc.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
         var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(url);
-        c.toBlob(function (b) { b ? read(b, f.name.replace(/\.[^.]+$/, '') + '.jpg').then(resolve, reject) : reject(new Error('encode')); }, 'image/jpeg', 0.9);
+        c.toBlob(function (bl) { bl ? read(bl, f.name.replace(/\.[^.]+$/, '') + '.jpg').then(resolve, reject) : reject(new Error('encode')); }, 'image/jpeg', 0.9);
       };
       img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('decode')); };
       img.src = url;
     });
-  }
-
-  // ── payment ──
-  function openCheckout(o) {
-    busy(true, 'Opening payment…');
-    stage('pay');
-    loadRazorpay().then(function (Rzp) {
-      var rz = new Rzp({
-        key: o.keyId, order_id: o.rzpOrderId, amount: o.amount, currency: 'INR',
-        name: 'TOOLFLUX', description: 'Drawing to STEP · ' + o.orderId,
-        prefill: { name: o.name, email: o.email, contact: o.phone },
-        notes: { order: o.orderId }, theme: { color: '#007a91' },
-        handler: function (r) { confirm(o, r); },
-        modal: { ondismiss: function () { notPaid(o); } }
-      });
-      rz.on('payment.failed', function () { /* Razorpay shows its own retry; dismiss lands in notPaid */ });
-      rz.open();
-    }, function () {
-      stage('form');
-      busy(false, 'Pay now');
-      note.textContent = 'The payment window did not load. Check the connection and press Pay again. Your drawing is saved.';
-    });
-  }
-
-  function notPaid(o) {
-    stage('form');
-    busy(false, 'Pay now');
-    note.textContent = 'Payment not finished. Your drawing is saved under order ' + o.orderId + '. Press Pay to try again; unpaid orders are deleted after 3 days.';
-  }
-
-  async function confirm(o, r) {
-    busy(true, 'Confirming payment…');
-    stage('confirm');
-    var res = null;
-    try { res = await post({ action: 'verify', orderId: o.orderId, razorpay_order_id: r.razorpay_order_id, razorpay_payment_id: r.razorpay_payment_id, razorpay_signature: r.razorpay_signature }); }
-    catch (e) { res = null; }
-    if (res && res.ok) return done(o);
-    // The reply was lost or the check failed: ask the server, which asks Razorpay.
-    for (var i = 0; i < 4; i++) {
-      await wait(2500 * (i + 1));
-      try { var s = await post({ action: 'status', orderId: o.orderId, email: o.email }); if (s.ok && s.status !== 'awaiting_payment') return done(o); } catch (e) { /* retry */ }
-    }
-    stage('form');
-    busy(false, 'Pay now');
-    note.innerHTML = 'We could not confirm the payment yet. If money left your account, it is safe: WhatsApp <a style="color:inherit" href="' + WHATSAPP + '?text=' + encodeURIComponent('Payment check for ' + o.orderId) + '">your order number ' + o.orderId + '</a> and we will check it.';
-  }
-
-  function done(o, free) {
-    pending = null;
-    busy(false);
-    note.textContent = noteDefault;
-    stage('done', { email: o.email, orderId: o.orderId, free: free });
-  }
-
-  var rzpPromise = null;
-  function loadRazorpay() {
-    if (demo) return Promise.resolve(FakeRzp);
-    if (root.Razorpay) return Promise.resolve(root.Razorpay);
-    return rzpPromise || (rzpPromise = new Promise(function (resolve, reject) {
-      var s = doc.createElement('script'); s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      s.onload = function () { root.Razorpay ? resolve(root.Razorpay) : reject(); };
-      s.onerror = function () { rzpPromise = null; reject(); };
-      doc.head.appendChild(s);
-    }));
   }
 
   // text/plain keeps it a simple request: Apps Script cannot answer a CORS preflight.
@@ -344,31 +253,13 @@
   }
   function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  // ───────── localhost demo: fake backend + fake checkout ─────────
-  var demoState = {};
+  // ───────── localhost demo: fake backend ─────────
   async function fakeBackend(b) {
-    await wait(600);
-    var freeLeft = Number((/[?&]free=(\d+)/.exec(location.search) || [0, 3])[1]);
-    if (b.action === 'info') return { ok: true, freeLeft: freeLeft, freeLimit: 25, paid: !/[?&]nopay=1/.test(location.search) };
+    await wait(1200);
     if (b.action === 'create') {
-      if (/fail-upload/.test(b.notes)) return { ok: false, error: 'invalid', message: 'Demo: upload refused.' };
-      var id = 'DTS-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-DEMO';
-      if (freeLeft > 0) return { ok: true, free: true, orderId: id, email: b.email, freeLeft: freeLeft - 1 };
-      demoState[id] = 'awaiting_payment';
-      return { ok: true, orderId: id, rzpOrderId: 'order_demo', keyId: 'rzp_test_demo', amount: 7900, name: b.name, email: b.email, phone: b.phone };
+      if (/[?&]fail=1/.test(location.search)) return { ok: false, error: 'invalid', message: 'Demo: the upload was refused.' };
+      return { ok: true, orderId: 'DTS-' + new Date().toISOString().slice(2, 10).replace(/-/g, '') + '-DEMO', email: b.email };
     }
-    if (b.action === 'verify') { demoState[b.orderId] = 'paid'; return { ok: true, status: 'paid' }; }
-    if (b.action === 'status') return { ok: true, status: demoState[b.orderId] === 'paid' ? 'in_progress' : 'awaiting_payment' };
-    return { ok: false };
+    return { ok: true };
   }
-  function FakeRzp(opts) { this.o = opts; }
-  FakeRzp.prototype.on = function () {};
-  FakeRzp.prototype.open = function () {
-    var o = this.o;
-    setTimeout(function () {
-      var pay = /fail-pay/.test($('notes').value) ? false : root.confirm('Demo checkout: pay for ' + o.description + '?');
-      if (pay) o.handler({ razorpay_order_id: o.order_id, razorpay_payment_id: 'pay_demo', razorpay_signature: 'sig_demo' });
-      else o.modal.ondismiss();
-    }, 200);
-  };
 })(typeof window !== 'undefined' ? window : globalThis);
