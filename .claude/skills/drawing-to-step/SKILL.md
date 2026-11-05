@@ -1,46 +1,54 @@
 ---
 name: drawing-to-step
-description: Model a Drawing to STEP order in Fusion 360 from the customer's 2D drawing, check it dimension by dimension, export the STEP, and file the model in the Fusion "Drawing to STEP" library (newest 10 kept) for Roo to approve. Use when Roo says "model order DTS-…", "do the drawing to STEP orders", or points at a folder in Documents\Drawing to STEP.
+description: Model a Drawing to STEP order in Fusion 360 from the customer's 2D drawing, check it dimension by dimension, export the STEP, file it in the Fusion "Drawing to STEP" library (newest 10 kept), and write the PASS/HOLD verdict the desk app acts on. Used unattended by the desk app for every order, or when Roo says "model order DTS-…".
 ---
 
 # Drawing to STEP: modelling an order
 
-A machine shop will cut metal from this model. **A wrong dimension costs them a scrapped part.** Your job is a correct model plus an honest check sheet. Roo approves and sends; you never email anyone. Never write customer-facing text about how the model is made.
+The service is free and fully automatic. A machine shop will cut metal from this model, and **when your verdict is PASS the STEP is emailed to them with no human check**. So: model carefully, measure everything, and HOLD whenever you are not sure. A held order costs Roo a few minutes; a wrong model costs the customer a scrapped part. Never write customer-facing text about how the model is made.
 
-Orders live in `%USERPROFILE%\Documents\Drawing to STEP\<orderId> <part>\` (the desk app `dts-desk.js` creates them):
-`BRIEF.md` · `order.json` · `drawing\` (customer files) · `model\` (your output).
+Orders live in `%USERPROFILE%\Documents\Drawing to STEP\<orderId> <part>\` (the desk app creates them):
+`BRIEF.md` · `order.json` · `drawing\` (customer files, up to 10) · `model\` (your output).
 
 ## 0. Fusion connection
-- Run `node dts-desk.js --check-fusion` from the TOOLFLUX-WEBSITE repo. Four lines must read OK; each failing line prints its fix. Do not start modelling on a FIX.
-- Fusion tools appear as `mcp__fusion__*` (direct HTTP server in Claude Code's user config, the reliable one) and/or `mcp__Autodesk_Fusion__*` (Claude Desktop extension). Either works; they talk to the same Fusion on port 27182.
-- **No Fusion tools in the session but the check is all OK?** The session started before Fusion had finished starting (Claude Code connects only at session start). Don't ask for a restart: run every script through the direct client instead, `node fusion/fx.js <script.py>` (add `--ro` for read-only scripts). Write each script to a scratch `.py` file with `def run(_context: str):`; output and errors come back exactly as from the MCP tool. `node fusion/fx.js --ping` confirms Fusion is answering.
+- Run `node dts-desk.js --check-fusion`. All four lines must read OK; otherwise write a HOLD verdict with the failing line as the reason and stop.
+- Fusion tools may appear as `mcp__fusion__*`. If they are missing (the session started before Fusion answered), run every script through `node fusion/fx.js <script.py>` (`--ro` for read-only). Write each script to a `.py` file in the order's `model\` folder with `def run(_context: str):`.
 
 ## 1. Read before touching Fusion
 1. Read `BRIEF.md` and `order.json`: units, material, the customer's notes (e.g. "mid-tolerance", "ignore the keyway").
-2. Read every file in `drawing\` (PDF and images with the Read tool; a DXF is text: read entities if useful). Zoom into crops if text is small.
-3. **Scope check.** One order covers one simple prismatic or turned part from one sheet. If it is an assembly, a casting with draft/freeform surfaces, or needs more than one sheet: stop and tell Roo in two lines (he quotes on WhatsApp).
-4. Write `model\CHECK.md` **first**: a table of every dimension and feature: `| # | feature | value | tol | view it comes from | measured | ✓/✗ |`. Include hole counts, PCDs, angles, chamfers, fillets, threads, depths, and derived sizes (e.g. spigot height = overall − flange).
-5. **Missing or contradictory dimension?** Do not guess. Write the exact question at the top of CHECK.md and stop; Roo presses "Ask customer" in the desk. A *minor reading* (e.g. which edges "outer edges" means) is not a stop: record it under **Assumptions** and model the most ordinary reading.
+2. Read every file in `drawing\` (PDF and images with the Read tool; a DXF is text). Zoom into crops where text is small. Multi-sheet orders: read every sheet before modelling.
+3. **Any drawing is accepted**: turned, prismatic, castings and forgings, assemblies, multi-sheet. An assembly becomes one design with one component (and body) per part, positioned as drawn; export the whole design as one STEP.
+4. Write `model\CHECK.md` **first**: `| # | feature | value | tol | view it comes from | measured | ✓/✗ |` covering every dimension and feature: hole counts, PCDs, angles, chamfers, fillets, threads, depths, draft angles, derived sizes (e.g. spigot height = overall − flange).
+5. **Missing or contradictory dimension, unreadable text, or a shape you cannot model faithfully?** Do not guess: HOLD with the exact question as the reason. A *minor reading* (e.g. which edges "outer edges" means) is not a hold: record it under **Assumptions**, model the most ordinary reading, and mention it in `customerNote`.
 
-## 2. Model (fusion execute tool, featureType "script")
-- New document: `app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)`, parametric design, display units set to mm (or inch to match the drawing).
-- **Fusion API lengths are centimetres.** Write `mm = 0.1` and multiply. For inch drawings, `inch = 2.54`.
-- Build like a machinist would: a half-profile + **revolve** for turned parts (sketch on XZ, map points with `sketch.modelToSketchSpace(Point3D(r, 0, z))` so the orientation is never guessed); base sketch + extrude for prismatic parts; then holes/pockets as cuts; chamfers and fillets last, selecting edges by measured radius and height, not by index.
-- Model **nominal** sizes unless the notes ask for mid-tolerance. Threads: tap-drill diameter, list the thread in CHECK.md (STEP carries no thread data).
-- One body, named after the part; hide the sketches. Known trap: the root component's name cannot be changed (RuntimeError 3).
-- Do not catch exceptions in scripts; if a script fails, read the error and fix it. Print the timeline health at the end (all 0 = healthy).
+## 2. Model (fusion execute tool or fx.js, featureType "script")
+- New document: `app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)`, parametric design, display units mm (or inch to match the drawing).
+- **Fusion API lengths are centimetres.** `mm = 0.1`, `inch = 2.54`.
+- Build like a machinist would: half-profile + **revolve** for turned parts (sketch on XZ, place points with `sketch.modelToSketchSpace(Point3D(r, 0, z))`); base sketch + extrude for prismatic parts; holes/pockets as cuts; draft on cast faces where drawn; chamfers and fillets last, selecting edges by measured radius and height, not by index.
+- Nominal sizes unless the notes ask for mid-tolerance. Threads: tap-drill diameter, thread listed in CHECK.md and in `customerNote` (STEP carries no thread data).
+- Name bodies/components after the parts; hide sketches. Known trap: the root component's name cannot be changed.
+- Do not catch exceptions in scripts; read errors and fix. Print timeline health at the end (all 0 = healthy).
 
 ## 3. Check it like an inspector
-Run a `readOnly: true` script that measures: body count and solidity, bounding box (mm), volume, every cylindrical face's diameter, axis offset, angle and z-range, and the chamfer (cone) face count. Fill the measured and ✓/✗ columns of CHECK.md. Calculate the volume by hand where the shape allows and write both numbers under **Volume cross-check**; they should agree within 1%. Fix every ✗ before exporting. Finish CHECK.md with a **Result** line (e.g. `10 / 10 ✓`).
+A read-only script measures: body count and solidity, bounding box (mm), volume, every cylindrical face's diameter, axis offset, angle and z-range, cone (chamfer) and plane counts as relevant. Fill the measured and ✓/✗ columns. Hand-calculate the volume where the shape allows, under **Volume cross-check**; within 1%. Fix every ✗ you can; a ✗ you cannot fix is a HOLD. End CHECK.md with `Result: N / N ✓`.
 
 ## 4. Export
-- Give the body the "Steel - Satin" appearance so edges read in the preview.
-- STEP: `em = design.exportManager; em.execute(em.createSTEPExportOptions(<model\\Part name.step>, design.rootComponent))`.
-- Preview for the desk: `model\preview.png`, 1600×1200, transparent background. Known trap: `camera.viewOrientation` does **not** move the camera for saved images; set `camera.eye`, `camera.target`, `camera.upVector`, `isFitView = True`, then `viewport.camera = cam`, `viewport.refresh()`, `adsk.doEvents()`, then `viewport.saveAsImageFileWithOptions(opts)` with `opts.isBackgroundTransparent = True`.
-- Look at preview.png yourself before handing over.
+- "Steel - Satin" appearance on all bodies.
+- STEP: `em.execute(em.createSTEPExportOptions(<model\\Part name.step>, design.rootComponent))`.
+- Preview `model\preview.png`, 1600×1200, transparent. Trap: `camera.viewOrientation` does not move the camera for saved images; set `eye`/`target`/`upVector`, `isFitView = True`, `viewport.camera = cam`, `viewport.refresh()`, `adsk.doEvents()`, then `saveAsImageFileWithOptions` with `isBackgroundTransparent = True`.
+- Look at preview.png yourself (Read tool) before the verdict: does it look like the drawing?
 
 ## 5. File it in the Fusion library
-Run `fusion/dts_library.py` (repo root) with its `ORDER` and `PART` lines set to this order: copy it to a scratch file, edit those two lines, and send it with the MCP tool or `node fusion/fx.js <copy>.py`. It saves the active design to the Fusion project **"Drawing to STEP"** as `<orderId> <part>`, waits for the upload, and keeps only the **newest 10** order models there: older `DTS-…` files are deleted; anything else in the project, and any file open in Fusion, is never touched. Report its "deleted:" line to Roo.
+Copy `fusion/dts_library.py` to the order's `model\`, set its `ORDER` and `PART` lines, run it. It saves the design to the Fusion project **"Drawing to STEP"** and keeps only the newest **10** order models (older `DTS-…` files deleted; other files and open files never touched).
 
-## 6. Hand over
-Tell Roo in three lines: order id, ✓ count / anything he must look at (assumptions), "ready in the desk app to approve". Leave the Fusion document open for him to inspect. Never call the deliver API yourself.
+## 6. Verdict (always the last action)
+Write `model\VERDICT.json`, exactly one of:
+```json
+{ "verdict": "PASS", "checks": "12/12", "assumptions": ["…"], "customerNote": "Threaded holes M8 are modelled at the 6.8 mm tap-drill size." }
+{ "verdict": "HOLD", "checks": "10/12", "reason": "Section A-A gives no depth for the Ø12 counterbore. Question for the customer: …" }
+```
+- PASS only if every check passed (`checks` is `N/N`), the STEP file exists in `model\`, and the preview matches the drawing. The desk then emails the STEP with `customerNote` (keep it short, factual, about the model only; omit if nothing to say).
+- Anything else is HOLD with a clear `reason` that Roo can act on in one read. The desk emails Roo and keeps the order.
+
+## Automatic runs
+The desk app starts you with `claude -p` for each queued order. Nobody is watching: never ask questions, never wait for input, never email or call the backend. If you get stuck (tool error you cannot fix, Fusion not answering, drawing unreadable), write a HOLD verdict and finish.

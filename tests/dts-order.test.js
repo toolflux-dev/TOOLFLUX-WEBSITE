@@ -12,7 +12,8 @@ test('file kinds and the drawing rule', () => {
   assert.equal(o.checkFiles([{ name: 'a.pdf', size: 10 }, { name: 'a.dxf', size: 10 }]), '');
   assert.match(o.checkFiles([{ name: 'a.pdf', size: 11 * 1048576 }]), /over 10 MB/);
   assert.equal(o.checkFiles([{ name: 'big.jpg', size: 11 * 1048576 }]), '', 'big photos are resized, not refused');
-  assert.match(o.checkFiles([1, 2, 3, 4].map(i => ({ name: i + '.pdf', size: 1 }))), /at most 3/);
+  assert.match(o.checkFiles(Array.from({ length: 11 }, (_, i) => ({ name: i + '.pdf', size: 1 }))), /at most 10/);
+  assert.equal(o.checkFiles(Array.from({ length: 10 }, (_, i) => ({ name: i + '.pdf', size: 1 }))), '');
 });
 
 test('field checks', () => {

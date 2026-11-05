@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Drawing to STEP: 3D models for Mastercam | TOOLFLUX</title>
-<meta name="description" content="Upload the 2D drawing of one part and get back a STEP file that opens in Mastercam, checked against your drawing. The first 25 parts are free.">
+<meta name="description" content="Free for machine shops: upload the 2D drawing of any part and get back a STEP file that opens in Mastercam, checked against your drawing.">
 <link rel="canonical" href="https://www.toolflux.co.in/drawing-to-step.html">
 <meta property="og:title" content="Drawing to STEP: your 2D drawing as a 3D model">
-<meta property="og:description" content="Upload a part drawing, get a STEP file for Mastercam by email. The first 25 parts are free.">
+<meta property="og:description" content="Upload a part drawing, get a STEP file for Mastercam by email. Free.">
 <meta property="og:url" content="https://www.toolflux.co.in/drawing-to-step.html">
 <meta property="og:image" content="https://www.toolflux.co.in/assets/dts/flange-iso.webp">
 <meta property="og:type" content="website">
@@ -16,9 +16,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Service","name":"Drawing to STEP","serviceType":"2D drawing to 3D CAD model conversion",
- "description":"A machine shop uploads the 2D drawing of one part; TOOLFLUX emails back a STEP file for CAM programming, checked against the drawing.",
+ "description":"A machine shop uploads the 2D drawing of a part; TOOLFLUX emails back a STEP file for CAM programming, checked against the drawing. Free of charge.",
  "provider":{"@type":"LocalBusiness","name":"TOOLFLUX","url":"https://www.toolflux.co.in/","telephone":"+91-8660234766","address":{"@type":"PostalAddress","addressLocality":"Hubli","addressRegion":"Karnataka","addressCountry":"IN"}},
- "areaServed":"IN","offers":{"@type":"Offer","price":"79","priceCurrency":"INR","description":"One simple part (prismatic or turned), one drawing sheet"}}
+ "areaServed":"IN","offers":{"@type":"Offer","price":"0","priceCurrency":"INR","description":"Free: any part drawing to a STEP model"}}
 </script>
 <style>
 :root{
@@ -114,16 +114,16 @@ p{max-width:62ch}
 .frame figcaption span:last-child{color:var(--muted)}
 @media (max-width:900px){.work-side{grid-column:1/-1;padding-bottom:0}.run{grid-column:1/-1;margin-top:28px;flex-wrap:wrap;gap:20px 8px}.frame{flex:1 1 40%}.frame .pic{height:40vw}.frame.lift{flex-basis:100%;order:-1}.frame.lift .pic{height:70vw}}
 
-/* ── price: menu ── */
-#price{margin-top:var(--gap)}
-.price-side{grid-column:1/4}
-.price-side .shot{margin-top:32px;background:var(--surface);aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;padding:20px}
+/* ── what we model: menu ── */
+#model{margin-top:var(--gap)}
+.model-side{grid-column:1/4}
+.model-side .shot{margin-top:32px;background:var(--surface);aspect-ratio:4/5;display:flex;align-items:center;justify-content:center;padding:20px}
 .menu{grid-column:5/13;display:grid;grid-template-columns:1fr 1fr;column-gap:64px}
 .menu h3{font-size:var(--s-lead);font-weight:600;letter-spacing:0;margin:0 0 20px}
 .menu dl > div{margin-bottom:22px}
 .menu dt{display:flex;justify-content:space-between;gap:1rem;font-size:1.1875rem;font-weight:500}
 .menu dd{color:var(--muted);max-width:36ch;margin-top:2px}
-@media (max-width:900px){.price-side,.menu{grid-column:1/-1}.menu{grid-template-columns:1fr;margin-top:40px}.menu h3{margin-top:40px}.price-side .shot{width:60%}}
+@media (max-width:900px){.model-side,.menu{grid-column:1/-1}.menu{grid-template-columns:1fr;margin-top:40px}.menu h3{margin-top:40px}.model-side .shot{width:60%}}
 
 /* ── order: the title block ── */
 #order{margin-top:var(--gap);background:var(--surface);padding:clamp(72px,8vw,112px) 0}
@@ -285,7 +285,7 @@ footer .r{text-align:right}
     <a class="brand" href="index.html" aria-label="TOOLFLUX home"><img src="assets/toolflux-logo.svg" alt="TOOLFLUX" width="68" height="22"><span>Drawing to STEP</span></a>
     <nav aria-label="Page">
       <a href="#how">How it works</a>
-      <a href="#price">Price</a>
+      <a href="#model">What we model</a>
       <a href="#faq">Questions</a>
       <a href="#contact">Contact</a>
     </nav>
@@ -298,11 +298,11 @@ footer .r{text-align:right}
   <div class="wrap grid">
     <div class="hero-text">
       <h1 id="h1" class="rise">Your drawing, as a STEP file.</h1>
-      <p class="lead rise" style="--i:1">Upload the 2D drawing of one part. We email back a STEP file that opens in Mastercam, checked against your drawing.</p>
-      <p class="launch rise" style="--i:1" data-free-line>The first 25 parts are free while we collect feedback.</p>
+      <p class="lead rise" style="--i:1">Upload the 2D drawing of your part. We email back a STEP file that opens in Mastercam, checked against your drawing.</p>
+      <p class="launch rise" style="--i:1">Free for every machine shop. No payment, no account.</p>
       <div class="hero-act rise" style="--i:2">
         <a class="btn" href="#order">Upload a drawing</a>
-        <a href="#price">What is included</a>
+        <a href="#model">What we model</a>
       </div>
     </div>
     <figure class="hero-fig rise" style="--i:2">
@@ -324,7 +324,7 @@ footer .r{text-align:right}
       <h3>On your side</h3>
       <ol>
         <li><span>Upload the drawing</span><i></i><span>PDF or photo</span></li>
-        <li><span>Pay</span><i></i><span data-slip-pay>free for the first 25</span></li>
+        <li><span>Press send</span><i></i><span>that is all</span></li>
       </ol>
       <h3>On ours</h3>
       <ol>
@@ -372,29 +372,29 @@ footer .r{text-align:right}
   </div>
 </section>
 
-<section id="price" aria-labelledby="price-h">
+<section id="model" aria-labelledby="model-h">
   <div class="wrap grid">
-    <div class="price-side">
-      <h2 id="price-h">What is included</h2>
-      <div class="shot rise" style="--i:1"><img src="assets/dts/flange-low.webp" width="1100" height="686" alt="The demo flange, a typical single part" loading="lazy"></div>
+    <div class="model-side">
+      <h2 id="model-h">What we model</h2>
+      <div class="shot rise" style="--i:1"><img src="assets/dts/flange-low.webp" width="1100" height="686" alt="The demo flange from the drawing above" loading="lazy"></div>
     </div>
     <div class="menu">
       <div>
-        <h3 class="rise">Included</h3>
+        <h3 class="rise">Parts we model</h3>
         <dl>
-          <div class="rise" style="--i:1"><dt><span>One part</span><span>₹79</span></dt><dd>A single turned or prismatic part from one drawing sheet: shafts, bushes, flanges, plates, brackets, blocks. The first 25 parts are free, one per customer.</dd></div>
-          <div class="rise" style="--i:2"><dt><span>STEP file</span><span>included</span></dt><dd>Opens in Mastercam, SolidWorks, NX and any CAM that reads STEP.</dd></div>
-          <div class="rise" style="--i:3"><dt><span>Questions before modelling</span><span>included</span></dt><dd>If a dimension is missing or two views disagree, we email you instead of guessing.</dd></div>
-          <div class="rise" style="--i:4"><dt><span>Corrections</span><span>included</span></dt><dd>If our model does not match your drawing, reply with the dimension and we fix it.</dd></div>
+          <div class="rise" style="--i:1"><dt><span>Turned parts</span><span>lathe</span></dt><dd>Shafts, bushes, flanges, pins, sleeves and threaded parts.</dd></div>
+          <div class="rise" style="--i:2"><dt><span>Prismatic parts</span><span>VMC</span></dt><dd>Plates, brackets, blocks, housings and fixture parts.</dd></div>
+          <div class="rise" style="--i:3"><dt><span>Castings and forgings</span><span>as drawn</span></dt><dd>Drafted walls, cored passages and machining allowances, as the drawing shows them.</dd></div>
+          <div class="rise" style="--i:4"><dt><span>Assemblies and multi-sheet drawings</span><span>10 files</span></dt><dd>Send every sheet in one order, up to 10 files.</dd></div>
         </dl>
       </div>
       <div>
-        <h3 class="rise">Quoted on WhatsApp</h3>
+        <h3 class="rise">What you get</h3>
         <dl>
-          <div class="rise" style="--i:1"><dt><span>Assemblies</span><span>quote</span></dt><dd>Several parts that fit together, or a drawing with a parts list.</dd></div>
-          <div class="rise" style="--i:2"><dt><span>Castings and forgings</span><span>quote</span></dt><dd>Drafted walls, cored passages and freeform surfaces.</dd></div>
-          <div class="rise" style="--i:3"><dt><span>Multi-sheet drawings</span><span>quote</span></dt><dd>Complex parts spread across more than one sheet.</dd></div>
-          <div class="rise" style="--i:4"><dt><span>A batch of drawings</span><span>quote</span></dt><dd>Ten or more parts at once, for a new job or a whole fixture.</dd></div>
+          <div class="rise" style="--i:1"><dt><span>STEP file</span><span>by email</span></dt><dd>Opens in Mastercam, SolidWorks, NX and any CAM that reads STEP.</dd></div>
+          <div class="rise" style="--i:2"><dt><span>Questions first</span><span>no guessing</span></dt><dd>If a dimension is missing or two views disagree, we email you instead of guessing.</dd></div>
+          <div class="rise" style="--i:3"><dt><span>Corrections</span><span>on request</span></dt><dd>If the model does not match your drawing, reply with the dimension and we fix it.</dd></div>
+          <div class="rise" style="--i:4"><dt><span>Cost</span><span>free</span></dt><dd>No payment, no account, no limit on parts.</dd></div>
         </dl>
       </div>
     </div>
@@ -405,18 +405,18 @@ footer .r{text-align:right}
   <div class="wrap">
     <div class="order-head">
       <h2 id="order-h">Send your drawing</h2>
-      <p data-order-note>Fill it in like a title block. The first 25 parts are free, one per customer, and we will ask how the model worked for you.</p>
+      <p data-order-note>Fill it in like a title block and press send. It is free, and the STEP file comes to your email.</p>
     </div>
     <form class="tb" id="tb" novalidate>
       <div class="summary" id="summary" role="alert" tabindex="-1" hidden>
-        <h3 id="summary-h">Check these before paying</h3>
+        <h3 id="summary-h">Check these before sending</h3>
         <ul id="summary-list"></ul>
       </div>
       <div class="drop" id="drop">
         <input type="file" id="file" name="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.dxf,.dwg,application/pdf,image/*" aria-describedby="file-hint file-err" aria-label="Choose the drawing files">
         <svg width="64" height="46" viewBox="0 0 64 46" aria-hidden="true" fill="none" stroke="#0d1e26" stroke-width="2"><rect x="1" y="1" width="62" height="44"/><path d="M40 45V33h23M10 30l12-12 9 9 7-7"/></svg>
         <p class="big">Drop the drawing here</p>
-        <p class="hint pre" id="file-hint">or tap to choose. A PDF or a clear photo of the drawing, plus the DXF or DWG if you have one. Up to 3 files, 10 MB each.</p>
+        <p class="hint pre" id="file-hint">or tap to choose. A PDF or a clear photo of the drawing, plus the DXF or DWG if you have one. Up to 10 files, 10 MB each.</p>
         <ul class="files" id="files" aria-live="polite"></ul>
         <p class="err small" id="file-err" style="color:var(--bad);font-weight:500;position:relative;z-index:2"></p>
       </div>
@@ -433,7 +433,7 @@ footer .r{text-align:right}
         <div class="cell full"><label for="notes">Notes for the modeller</label><textarea id="notes" name="notes" maxlength="1500" rows="3"></textarea></div>
       </div>
       <div class="payrow" id="payrow">
-        <p id="pay-note">Free launch order. A confirmation comes to your email, and the STEP file follows.</p>
+        <p id="pay-note">A confirmation comes to your email straight away, and the STEP file follows.</p>
         <button class="btn" id="pay" type="submit">Send the drawing</button>
       </div>
     </form>
@@ -464,16 +464,16 @@ footer .r{text-align:right}
       <p class="rise"><b>What if the drawing is unclear?</b> We email you a question before we model. A missing dimension is never guessed.</p>
       <p class="rise"><b>How long does it take?</b> Orders are modelled in the order they are paid, Monday to Saturday. If a job is waiting on the machine, WhatsApp us your order number.</p>
       <p class="rise"><b>Who sees my drawing?</b> Only us. It is kept in our own storage to make your model and is not shared or reused. Ask and we delete it.</p>
-      <p class="rise"><b>What if the part is bigger than one simple part?</b> We tell you before starting, and refund you in full if you do not want a quote.</p>
-      <p class="rise"><b>Why are the first parts free?</b> We are opening the service with 25 free parts to hear what works for machine shops and what does not. One free part per customer; after that each part is paid, with a Razorpay receipt by email.</p>
-      <p class="rise"><b>Can I send more than one part?</b> Place one order per part, or send a batch on WhatsApp for a quote.</p>
+      <p class="rise"><b>Do you model assemblies and castings?</b> Yes. Send every sheet in one order, up to 10 files. If something on the drawing is unclear, we ask before modelling.</p>
+      <p class="rise"><b>Is it really free?</b> Yes. No payment and no account. Once you have tried the model, two lines of feedback would help us a lot.</p>
+      <p class="rise"><b>Can I send more than one part?</b> Yes, as many as you like. One order per drawing set keeps each STEP file easy to find.</p>
     </div>
   </div>
 </section>
 
 <section id="contact" aria-labelledby="contact-h">
   <div class="wrap grid">
-    <div class="c-say"><h2 id="contact-h">Bigger than one part?</h2><p class="rise" style="--i:1">Assemblies, castings or every part of a new job: send the drawings over and we will quote.</p></div>
+    <div class="c-say"><h2 id="contact-h">Questions about a drawing?</h2><p class="rise" style="--i:1">Talk to us before you send it, or after the STEP file arrives. WhatsApp is quickest.</p></div>
     <div class="c-pic rise" style="--i:1"><img src="assets/dts/flange-top.webp" width="1100" height="1100" alt="Top view of a modelled flange" loading="lazy"></div>
     <div class="c-links rise" style="--i:2">
       <h3>Talk to us directly</h3>
