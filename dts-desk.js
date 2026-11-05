@@ -109,6 +109,33 @@ async function deliver(orderId, message) {
   return res;
 }
 
+// ───────── Fusion connection health ─────────
+// The four things that break the Claude ↔ Fusion link, each with its fix.
+async function fusionHealth() {
+  const checks = [];
+  const running = await new Promise(ok => execFile('tasklist', ['/FI', 'IMAGENAME eq Fusion360.exe', '/NH'], (e, out) => ok(!e && /Fusion360\.exe/i.test(out || ''))));
+  checks.push({ name: 'Fusion is running', ok: running, fix: 'Start Fusion and sign in as toolflux@gmail.com.' });
+  let opt = null;
+  try {
+    const raw = fs.readFileSync(path.join(process.env.APPDATA || '', 'Autodesk', 'Neutron Platform', 'Options', 'NMachineSpecificOptions.xml'));
+    const xml = raw[0] === 0xff && raw[1] === 0xfe ? raw.toString('utf16le') : raw.toString('utf8'); // Fusion writes UTF-16
+    const m = /<MCPServerEnabled\b[^>]*\bValue="(\d)"/.exec(xml); opt = m ? m[1] === '1' : false;
+  } catch (e) { opt = false; }
+  checks.push({ name: 'Fusion MCP Server switched on', ok: opt, fix: 'In Fusion: Preferences > General > API > tick "Fusion MCP Server", then restart Fusion.' });
+  let server = false;
+  try {
+    const r = await fetch('http://127.0.0.1:27182/mcp', { method: 'POST', signal: AbortSignal.timeout(4000),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'dts-desk', version: '1' } } }) });
+    server = r.ok && /MCP Server/.test(await r.text());
+  } catch (e) { server = false; }
+  checks.push({ name: 'Fusion answers on port 27182', ok: server, fix: running ? 'Fusion is open but not answering: restart Fusion (an update may have reset the MCP setting).' : 'Start Fusion first.' });
+  let claude = false;
+  try { const c = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8')); claude = !!(c.mcpServers && c.mcpServers.fusion && /27182/.test(c.mcpServers.fusion.url || '')); } catch (e) { claude = false; }
+  checks.push({ name: 'Claude Code knows the Fusion server', ok: claude, fix: 'Run: claude mcp add --transport http --scope user fusion http://127.0.0.1:27182/mcp (see DRAWING-TO-STEP-SETUP.md).' });
+  return { ok: checks.every(c => c.ok), checks };
+}
+
 // ───────── server ─────────
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
@@ -127,6 +154,7 @@ const server = http.createServer(async (req, res) => {
     switch (url.pathname) {
       case '/api/state': out = { config: { url: config.url, hasKey: !!config.key }, pull: lastPull, base: BASE, states: Object.fromEntries(lastPull.orders.map(o => [o.orderId, orderState(o)])) }; break;
       case '/api/pull': await pull(); out = { ok: !lastPull.error, error: lastPull.error }; break;
+      case '/api/fusion': out = await fusionHealth(); break;
       case '/api/config':
         config = { url: String(body.url || '').trim(), key: String(body.key || '').trim() || config.key };
         if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(config.url)) throw new Error('That is not an Apps Script /exec URL.');
@@ -146,7 +174,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-if (require.main === module) {
+if (require.main === module && process.argv.includes('--check-fusion')) {
+  fusionHealth().then(h => { for (const c of h.checks) console.log((c.ok ? 'OK   ' : 'FIX  ') + c.name + (c.ok ? '' : '\n     ' + c.fix)); process.exit(h.ok ? 0 : 1); });
+} else if (require.main === module) {
   server.listen(PORT, '127.0.0.1', async () => {
     console.log('Drawing to STEP desk: http://localhost:' + PORT + '   folder: ' + BASE);
     if (config.url) await pull();
@@ -154,7 +184,7 @@ if (require.main === module) {
     if (!process.env.DTS_NO_BROWSER) execFile('cmd.exe', ['/c', 'start', '', 'http://localhost:' + PORT]);
   });
 }
-module.exports = { server, pull, orderState, folderFor, briefText, TOKEN, BASE, _setConfig: c => { config = c; } };
+module.exports = { server, pull, orderState, folderFor, briefText, fusionHealth, TOKEN, BASE, _setConfig: c => { config = c; } };
 
 // ───────── helpers ─────────
 function readJson(p, d) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { return d; } }
@@ -187,9 +217,11 @@ details{font-size:14px}pre{white-space:pre-wrap;font:13px/1.45 Consolas,monospac
 .setup{background:var(--card);padding:20px;display:grid;gap:10px;max-width:640px}.setup input{font:14px Inter,'Segoe UI',sans-serif;padding:9px;border:1px solid #9fb3bb;width:100%}
 .empty{background:var(--card);padding:28px;color:var(--muted)}h3{font-size:15px;font-weight:600;margin:24px 0 8px}
 .done{font-size:14px;color:var(--muted)}
+#fx .bad{background:#fdf3f2;color:var(--bad);padding:10px 24px;font-size:14px}#fx .bad b{display:block;margin-bottom:4px}#fx .good{background:#dff3ea;color:var(--ok);padding:6px 24px;font-size:13px}
 @media(max-width:760px){.o{grid-template-columns:1fr}}
 </style></head><body>
 <header><h1>Drawing to STEP · desk</h1><span class="s" id="s"></span><button class="q" id="refresh">Check for orders</button></header>
+<div id="fx"></div>
 <main id="m"></main>
 <script>
 const T=${JSON.stringify(TOKEN)};
@@ -231,6 +263,8 @@ document.addEventListener('click',async e=>{const b=e.target.closest('button');i
   if(r&&r.ok===false)alert(r.error||'Failed');render();});
 document.addEventListener('submit',async e=>{if(e.target.id!=='cfg')return;e.preventDefault();const f=new FormData(e.target);
   const r=await call('/api/config',{url:f.get('url'),key:f.get('key')});if(r.ok===false)alert(r.error);render();});
-render();setInterval(render,60000);
+async function fusion(){const h=await call('/api/fusion');const el=document.getElementById('fx');
+  el.innerHTML=h.ok?'<div class="good">Fusion connected</div>':'<div class="bad"><b>Fusion is not reachable for modelling</b>'+h.checks.filter(c=>!c.ok).map(c=>esc(c.name)+': '+esc(c.fix)).join('<br>')+'</div>';}
+render();fusion();setInterval(render,60000);setInterval(fusion,120000);
 </script></body></html>`;
 }

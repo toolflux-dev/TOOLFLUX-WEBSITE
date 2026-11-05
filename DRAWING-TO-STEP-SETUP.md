@@ -27,10 +27,22 @@ The first 25 orders are free, one per customer (matched by email or phone). They
 - Change the number with the Script Property `FREE_LIMIT` (`0` = paid from the start).
 - Free customers get a feedback request in the delivery email.
 
+## Fusion connection (keeps working across updates)
+Claude talks to Fusion through Fusion's own MCP server on `http://127.0.0.1:27182/mcp`.
+- **In Fusion:** Preferences > General > API > tick **Fusion MCP Server**. (Stored in `%APPDATA%\Autodesk\Neutron Platform\Options\NMachineSpecificOptions.xml`, a UTF-16 file.)
+- **In Claude Code:** registered directly, so it no longer depends on the Claude Desktop extension and its `mcp-remote` relay, which an app update can wipe. Done on 2026-11-05 with:
+  `claude mcp add --transport http --scope user fusion http://127.0.0.1:27182/mcp`
+  On this PC `claude` lives at `%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\<version>\<hash>\claude.exe`.
+- **Check it any time:** `node dts-desk.js --check-fusion` (the desk app also shows it as a banner). Each failing line prints its fix.
+- **Order matters:** open Fusion before starting a Claude session, or that session has no Fusion tools.
+
+## Fusion library
+Every finished model is saved to the Fusion project **Drawing to STEP** as `<order> <part>`. Only the newest **10** order models are kept; older `DTS-…` files are deleted automatically. Files you add to that project yourself, and any file open in Fusion, are never touched. Change the number with `KEEP` in `fusion/dts_library.py`.
+
 ## Daily use
 
-1. Open the desk (`DRAWING-TO-STEP.cmd`). Paid orders download into `Documents\Drawing to STEP\<order> <part>\`. You also get an email for each ₹79 paid.
-2. In Claude Code (this repo): **"model order DTS-…"**. Claude reads the drawing, writes `model\CHECK.md`, models in Fusion, exports `model\<part>.step` and `model\preview.png`.
+1. Open the desk (`DRAWING-TO-STEP.cmd`). Paid orders download into `Documents\Drawing to STEP\<order> <part>\`. You also get an email for each order.
+2. Open Fusion, then in Claude Code (this repo): **"model order DTS-…"**. Claude checks the Fusion connection, reads the drawing, writes `model\CHECK.md`, models and measures the part, exports `model\<part>.step` and `model\preview.png`, and files the model in the Fusion library.
 3. In the desk: look at the preview, open the check sheet, check the model in Fusion yourself. Add a note if needed (for example "threads modelled at tap-drill size").
 4. **Approve and send STEP.** The customer gets the STEP by email; the order folder moves to `_delivered`.
 
@@ -42,5 +54,5 @@ Unclear drawing: **Ask customer** marks the order *query* and opens an email to 
 - Delivery: STEP required, 20 MB cap (Gmail attachment limit 25 MB).
 
 ## Tests
-`node --test tests/dts-sync.test.js tests/dts-order.test.js tests/dts-desk.test.js`
+`node --test tests/dts-sync.test.js tests/dts-order.test.js tests/dts-desk.test.js` and `python -I tests/dts_library_test.py`
 On localhost, `drawing-to-step.html?demo=1` runs the whole order flow against a fake backend and checkout.
