@@ -176,14 +176,50 @@
     if (text) payBtn.textContent = text;
   }
 
+  // ── the TOOLFLUX gear panel that replaces the form once the customer presses Send ──
+  var work = $('sending'), workTitle = $('work-title'), workLine = $('work-line'), workSmall = $('work-small');
+  var gearSvg = work && work.querySelector('svg'), gearSpin = work && work.getElementsByTagName('animateTransform')[0];
+  if (gearSvg && root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches && gearSvg.pauseAnimations) gearSvg.pauseAnimations();
+  function stage(kind, info) {
+    info = info || {};
+    if (!work) return;
+    if (orderNote) orderNote.hidden = kind !== 'form';
+    if (kind === 'form') { work.hidden = true; form.hidden = false; return; }
+    var t = {
+      send:    ['Sending your drawing', 'Keep this page open for a moment.', info.size ? info.size + ' on its way to TOOLFLUX' : ''],
+      pay:     ['Waiting for payment', 'Finish the payment in the Razorpay window.', ''],
+      confirm: ['Confirming payment', 'Almost there. Keep this page open.', ''],
+      done:    ['Sit tight.', 'Your STEP file will arrive by email at ', '']
+    }[kind];
+    workTitle.textContent = t[0];
+    workLine.textContent = t[1];
+    if (kind === 'done') {
+      var b = doc.createElement('b'); b.textContent = info.email || 'your email'; workLine.appendChild(b); workLine.appendChild(doc.createTextNode('.'));
+      workSmall.textContent = 'Order ' + info.orderId + '. If anything on the drawing is unclear, we will email you first. Check the spam folder if nothing arrives. ';
+      var again = doc.createElement('a'); again.href = location.pathname + '#order'; again.textContent = 'Send another drawing';
+      again.addEventListener('click', function (e) { e.preventDefault(); location.hash = 'order'; location.reload(); });
+      workSmall.appendChild(again);
+    } else workSmall.textContent = t[2];
+    if (gearSpin) gearSpin.setAttribute('dur', kind === 'done' ? '9s' : '2.4s');
+    work.classList.toggle('done-state', kind === 'done');
+    if (work.hidden) {
+      form.hidden = true; work.hidden = false;
+      summary.hidden = true;
+      $('order').scrollIntoView({ behavior: root.matchMedia && root.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    }
+    if (kind === 'done') workTitle.focus({ preventScroll: true });
+  }
+
   async function submit() {
     try {
       busy(true, 'Preparing files…');
+      stage('send');
       var packed = [];
       for (var i = 0; i < files.length; i++) packed.push(await pack(files[i]));
       var total = packed.reduce(function (s, f) { return s + f.bytes; }, 0);
       if (total > MAX_TOTAL) throw userErr('The files are over 15 MB together. Send a smaller PDF or fewer photos.');
       busy(true, 'Uploading ' + fmtSize(total) + '…');
+      stage('send', { size: fmtSize(total) });
       var units = form.querySelector('input[name=units]:checked').value;
       var res = await post({
         action: 'create', part: $('part').value, material: $('material').value, units: units,
@@ -196,6 +232,7 @@
       pending = res;
       openCheckout(res);
     } catch (err) {
+      stage('form');
       busy(false, mode === 'paid' ? 'Pay and send' : 'Send the drawing');
       note.textContent = err.user ? err.message : 'The connection dropped during upload. Nothing was charged. Try again.';
     }
@@ -238,6 +275,7 @@
   // ── payment ──
   function openCheckout(o) {
     busy(true, 'Opening payment…');
+    stage('pay');
     loadRazorpay().then(function (Rzp) {
       var rz = new Rzp({
         key: o.keyId, order_id: o.rzpOrderId, amount: o.amount, currency: 'INR',
@@ -250,18 +288,21 @@
       rz.on('payment.failed', function () { /* Razorpay shows its own retry; dismiss lands in notPaid */ });
       rz.open();
     }, function () {
+      stage('form');
       busy(false, 'Pay now');
       note.textContent = 'The payment window did not load. Check the connection and press Pay again. Your drawing is saved.';
     });
   }
 
   function notPaid(o) {
+    stage('form');
     busy(false, 'Pay now');
     note.textContent = 'Payment not finished. Your drawing is saved under order ' + o.orderId + '. Press Pay to try again; unpaid orders are deleted after 3 days.';
   }
 
   async function confirm(o, r) {
     busy(true, 'Confirming payment…');
+    stage('confirm');
     var res = null;
     try { res = await post({ action: 'verify', orderId: o.orderId, razorpay_order_id: r.razorpay_order_id, razorpay_payment_id: r.razorpay_payment_id, razorpay_signature: r.razorpay_signature }); }
     catch (e) { res = null; }
@@ -271,24 +312,16 @@
       await wait(2500 * (i + 1));
       try { var s = await post({ action: 'status', orderId: o.orderId, email: o.email }); if (s.ok && s.status !== 'awaiting_payment') return done(o); } catch (e) { /* retry */ }
     }
+    stage('form');
     busy(false, 'Pay now');
     note.innerHTML = 'We could not confirm the payment yet. If money left your account, it is safe: WhatsApp <a style="color:inherit" href="' + WHATSAPP + '?text=' + encodeURIComponent('Payment check for ' + o.orderId) + '">your order number ' + o.orderId + '</a> and we will check it.';
   }
 
   function done(o, free) {
     pending = null;
-    var box = doc.createElement('div');
-    box.className = 'done'; box.setAttribute('role', 'status'); box.tabIndex = -1;
-    box.innerHTML = '<h3>' + (free ? 'We have your drawing.' : 'Paid. We have your drawing.') + '</h3>' +
-      '<p>Order <span class="oid"></span>' + (free ? ' is one of our free launch parts' : '') + '. A confirmation is on its way to <b class="em"></b>.</p>' +
-      '<p>If anything on the drawing is unclear, we will email you first. The STEP file comes to the same address.' + (free ? ' Once you have tried it, two lines of feedback would help us a lot.' : '') + '</p>' +
-      '<p><button type="button" class="btn btn-quiet" id="again">Send another drawing</button></p>';
-    box.querySelector('.oid').textContent = o.orderId;
-    box.querySelector('.em').textContent = o.email;
-    form.replaceChildren(box);
-    box.focus();
-    $('again').addEventListener('click', function () { location.reload(); });
+    busy(false);
     note.textContent = noteDefault;
+    stage('done', { email: o.email, orderId: o.orderId, free: free });
   }
 
   var rzpPromise = null;
