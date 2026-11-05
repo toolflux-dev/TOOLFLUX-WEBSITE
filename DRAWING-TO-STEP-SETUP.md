@@ -12,8 +12,14 @@ Free for every machine shop, fully automatic. A customer uploads a drawing on `d
 
 ## What has to be running
 1. **Fusion**, signed in as toolflux@gmail.com, with Preferences > General > API > **Fusion MCP Server** ticked.
-2. **The desk app** (`DRAWING-TO-STEP.cmd`). It checks for orders every 2 minutes and models them one at a time.
-If Fusion is not answering, the desk waits (banner: "Waiting for Fusion") and starts as soon as it is.
+2. **The desk app.** It checks for orders every 2 minutes and models them one at a time. If Fusion or the Claude sign-in is not ready, it waits (dashboard banner) and starts as soon as they are.
+
+## Auto-start (set up 2026-11-06)
+The desk starts by itself at Windows login and restarts itself if it ever stops:
+- `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Drawing to STEP desk.cmd` opens `Documents\Drawing to STEP\run-desk.cmd` minimised. **Delete that Startup file to stop auto-start.**
+- `run-desk.cmd` (copy kept in the repo as `tools/dts-run-desk.cmd`) runs the desk from `Documents\Drawing to STEP\_app`, a detached git worktree. On every start it updates `_app` to `origin/main`, so whatever is merged to the website is what runs. Log: `Documents\Drawing to STEP\desk-autostart.log`.
+- Recreate `_app` if it is ever deleted: `git worktree add --detach "%USERPROFILE%\Documents\Drawing to STEP\_app" origin/main` from the repo.
+- Fusion is not auto-started: open it after login (the desk waits for it). Dashboard: http://localhost:7781.
 
 ## Claude sign-in (one time)
 The desk starts the **standalone Claude Code** to model orders. It signs in separately from the Claude app, and a desk job fails with "OAuth session expired" when it is signed out. The desk now checks this before every job (`node dts-desk.js --check-fusion`, line "Claude Code is signed in") and pauses with a banner instead of failing orders.
