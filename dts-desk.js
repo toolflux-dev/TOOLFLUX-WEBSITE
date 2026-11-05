@@ -129,7 +129,7 @@ async function fusionHealth() {
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'dts-desk', version: '1' } } }) });
     server = r.ok && /MCP Server/.test(await r.text());
   } catch (e) { server = false; }
-  checks.push({ name: 'Fusion answers on port 27182', ok: server, fix: running ? 'Fusion is open but not answering: restart Fusion (an update may have reset the MCP setting).' : 'Start Fusion first.' });
+  checks.push({ name: 'Fusion answers on port 27182', ok: server, fix: running ? 'Fusion is open but not answering. If it was just launched, wait a minute and check again; otherwise restart Fusion.' : 'Start Fusion first.' });
   let claude = false;
   try { const c = JSON.parse(fs.readFileSync(path.join(os.homedir(), '.claude.json'), 'utf8')); claude = !!(c.mcpServers && c.mcpServers.fusion && /27182/.test(c.mcpServers.fusion.url || '')); } catch (e) { claude = false; }
   checks.push({ name: 'Claude Code knows the Fusion server', ok: claude, fix: 'Run: claude mcp add --transport http --scope user fusion http://127.0.0.1:27182/mcp (see DRAWING-TO-STEP-SETUP.md).' });

@@ -34,7 +34,7 @@ Claude talks to Fusion through Fusion's own MCP server on `http://127.0.0.1:2718
   `claude mcp add --transport http --scope user fusion http://127.0.0.1:27182/mcp`
   On this PC `claude` lives at `%LOCALAPPDATA%\Claude-Data\claude_pzs8sxrjxfjjc\claude-code\<version>\<hash>\claude.exe`.
 - **Check it any time:** `node dts-desk.js --check-fusion` (the desk app also shows it as a banner). Each failing line prints its fix.
-- **Order matters:** open Fusion before starting a Claude session, or that session has no Fusion tools.
+- **Startup order no longer matters.** Claude Code connects to MCP servers only when a session starts, so a session opened while Fusion was still loading has no Fusion tools. Claude then uses `node fusion/fx.js`, which talks to Fusion directly whenever it is running (`node fusion/fx.js --ping` to test). Fusion takes a minute after launch before it answers.
 
 ## Fusion library
 Every finished model is saved to the Fusion project **Drawing to STEP** as `<order> <part>`. Only the newest **10** order models are kept; older `DTS-…` files are deleted automatically. Files you add to that project yourself, and any file open in Fusion, are never touched. Change the number with `KEEP` in `fusion/dts_library.py`.

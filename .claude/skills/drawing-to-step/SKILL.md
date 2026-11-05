@@ -13,7 +13,7 @@ Orders live in `%USERPROFILE%\Documents\Drawing to STEP\<orderId> <part>\` (the 
 ## 0. Fusion connection
 - Run `node dts-desk.js --check-fusion` from the TOOLFLUX-WEBSITE repo. Four lines must read OK; each failing line prints its fix. Do not start modelling on a FIX.
 - Fusion tools appear as `mcp__fusion__*` (direct HTTP server in Claude Code's user config, the reliable one) and/or `mcp__Autodesk_Fusion__*` (Claude Desktop extension). Either works; they talk to the same Fusion on port 27182.
-- If neither set of tools exists in the session but the check is all OK, the session started before Fusion was up: ask Roo to start a new session.
+- **No Fusion tools in the session but the check is all OK?** The session started before Fusion had finished starting (Claude Code connects only at session start). Don't ask for a restart: run every script through the direct client instead, `node fusion/fx.js <script.py>` (add `--ro` for read-only scripts). Write each script to a scratch `.py` file with `def run(_context: str):`; output and errors come back exactly as from the MCP tool. `node fusion/fx.js --ping` confirms Fusion is answering.
 
 ## 1. Read before touching Fusion
 1. Read `BRIEF.md` and `order.json`: units, material, the customer's notes (e.g. "mid-tolerance", "ignore the keyway").
@@ -40,7 +40,7 @@ Run a `readOnly: true` script that measures: body count and solidity, bounding b
 - Look at preview.png yourself before handing over.
 
 ## 5. File it in the Fusion library
-Send the text of `fusion/dts_library.py` (repo root) as a script, with its `ORDER` and `PART` lines set to this order. It saves the active design to the Fusion project **"Drawing to STEP"** as `<orderId> <part>`, waits for the upload, and keeps only the **newest 10** order models there: older `DTS-…` files are deleted; anything else in the project, and any file open in Fusion, is never touched. Report its "deleted:" line to Roo.
+Run `fusion/dts_library.py` (repo root) with its `ORDER` and `PART` lines set to this order: copy it to a scratch file, edit those two lines, and send it with the MCP tool or `node fusion/fx.js <copy>.py`. It saves the active design to the Fusion project **"Drawing to STEP"** as `<orderId> <part>`, waits for the upload, and keeps only the **newest 10** order models there: older `DTS-…` files are deleted; anything else in the project, and any file open in Fusion, is never touched. Report its "deleted:" line to Roo.
 
 ## 6. Hand over
 Tell Roo in three lines: order id, ✓ count / anything he must look at (assumptions), "ready in the desk app to approve". Leave the Fusion document open for him to inspect. Never call the deliver API yourself.
