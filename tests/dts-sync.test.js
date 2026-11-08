@@ -33,7 +33,7 @@ function load(opts = {}) {
   const cache = {};
   const rzpPayments = opts.rzpPayments || {};
   const sandbox = {
-    PropertiesService: { getScriptProperties: () => ({ getProperty: k => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = v; } }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: k => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; } }) },
     SpreadsheetApp: { openById: () => ({ getSheetByName: () => ssSheet, insertSheet: () => (ssSheet = sheet) }) },
     DriveApp: {
       getFolderById: id => folders[id],
@@ -67,7 +67,7 @@ function load(opts = {}) {
   vm.createContext(sandbox);
   vm.runInContext(SRC, sandbox);
   const call = body => sandbox.doPost({ postData: { contents: JSON.stringify(body) } }).body;
-  return { call, rows, mails, fetches, folders, sandbox, cache };
+  return { call, rows, mails, fetches, folders, sandbox, cache, props };
 }
 
 const b64 = s => Buffer.from(s).toString('base64');
@@ -204,4 +204,31 @@ test('ask: the customer gets the question with a private answer link; their answ
   assert.match(g.mails[g.mails.length - 1].subject, /^Customer answered/);
   assert.match(g.call({ action: 'answer', orderId: c.orderId, t, text: 'again' }).message, /already been answered/);
   assert.equal(g.call({ action: 'queue', key: K }).orders[0].status, 'queued');
+});
+
+test('watchdog: one email to Roo when orders wait and the desk is silent or stuck; quiet otherwise', () => {
+  const g = load();
+  const now = Date.parse('2026-11-09T10:00:00Z');
+  const row = (status, minsAgo) => ({ data: { status, orderId: 'DTS-' + minsAgo, part: 'P', created: new Date(now - minsAgo * 60000) } });
+  const wp = g.sandbox.watchdogProblem_;
+  assert.equal(wp([row('queued', 10)], now, now - 99 * 60000, {}), null, 'young orders: no alarm');
+  assert.equal(wp([row('delivered', 90)], now, 0, {}), null, 'nothing waiting');
+  assert.match(wp([row('queued', 45)], now, now - 40 * 60000, {}).why, /has not checked for orders/);
+  assert.match(wp([row('queued', 45)], now, now - 60000, { blocked: 'Claude usage limit reached' }).why, /paused/);
+  assert.match(wp([row('queued', 45)], now, now - 60000, { waiting: 'Waiting: Fusion answers on port 27182' }).why, /Fusion/);
+  assert.equal(wp([row('queued', 45)], now, now - 60000, { auto: true, job: 'DTS-9' }), null, 'desk busy and healthy: orders are in line');
+
+  // heartbeat via the queue call, then the trigger body
+  const c = g.call(order());
+  g.call({ action: 'queue', key: K, health: { auto: true, waiting: '', blocked: '' } });
+  assert.ok(Number(g.props.DESK_SEEN) > 0);
+  g.rows[1][col('created')] = new Date(Date.now() - 60 * 60000);
+  g.props.DESK_SEEN = String(Date.now() - 2 * 3600 * 1000);
+  const before = g.mails.length;
+  g.sandbox.watchdog();
+  assert.equal(g.mails.length, before + 1);
+  assert.match(g.mails[before].subject, /Orders are waiting · 1/);
+  assert.match(g.mails[before].body, /run-desk\.cmd/);
+  g.sandbox.watchdog();
+  assert.equal(g.mails.length, before + 1, 'not repeated within 6 hours');
 });
