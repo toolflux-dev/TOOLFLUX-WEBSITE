@@ -174,3 +174,29 @@ test('drawings are rendered for Claude before a job, and only again when the fil
   const r3 = await auto.renderDrawings(dir);
   assert.equal(r3.skipped, undefined, 're-rendered after a new file');
 });
+
+test('usage limit: the order goes back to the queue and automatic resumes after the reset, nothing is held', async () => {
+  const msg = "You've hit your 5-hour limit · resets 5:10am (Asia/Kolkata)";
+  assert.equal(auto.usageLimit(msg), true);
+  assert.equal(auto.usageLimit('RuntimeError in Fusion script'), false);
+  const now = new Date(2026, 10, 6, 2, 47);
+  const at = auto.resumeAt(msg, now);
+  assert.equal(at.getHours(), 5); assert.equal(at.getMinutes(), 12); assert.equal(at.getDate(), 6);
+  const later = auto.resumeAt(msg, new Date(2026, 10, 6, 6, 0));
+  assert.equal(later.getDate(), 7, 'a reset time already past means tomorrow');
+  assert.ok(auto.resumeAt('', now) - now >= 29 * 60 * 1000, 'no time given: 30 minutes');
+
+  const f = path.join(tmp, 'fake-limit.js');
+  fs.writeFileSync(f, "console.log(\"You've hit your 5-hour limit · resets 5:10am (Asia/Kolkata)\"); process.exit(1);");
+  process.env.DTS_FAKE_CLAUDE = f;
+  const orders = [mk('DTS-H8')];
+  await withBackend(orders, async calls => {
+    await desk.pull();
+    await desk.runAuto(orders[0]);
+    const marks = calls.filter(c => c.action === 'mark');
+    assert.equal(marks.pop().status, 'queued');
+    assert.equal(marks.filter(m => m.status === 'held').length, 0, 'never held for a usage limit');
+    assert.equal(calls.filter(c => c.action === 'deliver').length, 0);
+    assert.match(desk._autoState().blocked, /usage limit/);
+  });
+});
