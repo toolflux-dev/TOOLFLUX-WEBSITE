@@ -200,3 +200,40 @@ test('usage limit: the order goes back to the queue and automatic resumes after 
     assert.match(desk._autoState().blocked, /usage limit/);
   });
 });
+
+test('model choice: light for one simple vector sheet, full for the rest; light escalates before the customer is asked', async () => {
+  const L = auto.MODEL_LIGHT, F = auto.MODEL_FULL;
+  assert.equal(auto.chooseModel({ sheets: 1, vectorPaths: 440, raster: false }, {}).model, L, 'SNS sketch size');
+  assert.equal(auto.chooseModel({ sheets: 1, vectorPaths: 1865, raster: false }, {}).model, F, 'R2GX size');
+  assert.equal(auto.chooseModel({ sheets: 2, vectorPaths: 300, raster: false }, {}).model, F);
+  assert.equal(auto.chooseModel({ sheets: 1, vectorPaths: 0, raster: true }, {}).model, F, 'photos and scans');
+  assert.equal(auto.chooseModel(null, {}).model, F);
+  assert.equal(auto.chooseModel({ sheets: 1, vectorPaths: 100, raster: false }, { notes: 'Customer answer: 15 mm' }).model, F);
+  assert.deepEqual(auto.buildArgs({ orderId: 'X', part: 'p' }, 'd', 'b', 'sonnet').slice(6, 8), ['--model', 'sonnet']);
+
+  // stand-in Claude that only passes with the full model: the light QUESTION must not reach the customer
+  const f = path.join(tmp, 'fake-by-model.js');
+  fs.writeFileSync(f, `
+const fs = require('fs'), path = require('path');
+const m = path.join(process.env.DTS_ORDER_DIR, 'model'); fs.mkdirSync(m, { recursive: true });
+const model = process.argv[process.argv.indexOf('--model') + 1];
+if (model === ${JSON.stringify(F)}) { fs.writeFileSync(path.join(m, 'P.step'), 'ISO-10303-21;'); fs.writeFileSync(path.join(m, 'VERDICT.json'), JSON.stringify({ verdict: 'PASS', checks: '7/7' })); }
+else fs.writeFileSync(path.join(m, 'VERDICT.json'), JSON.stringify({ verdict: 'QUESTION', question: 'What is the bore depth on sheet 1?' }));`);
+  process.env.DTS_FAKE_CLAUDE = f;
+  const o = mk('DTS-J9');
+  const dir = desk.folderFor(o);
+  fs.mkdirSync(path.join(dir, 'drawing'), { recursive: true });
+  // a one-page vector PDF with a few lines: counts as simple, so the light model goes first
+  fs.writeFileSync(path.join(dir, 'drawing', 'd.pdf'), '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R>>endobj 4 0 obj<</Length 44>>stream\n10 10 m 190 10 l S 10 10 m 10 190 l S\nendstream endobj\ntrailer<</Root 1 0 R>>\n%%EOF');
+  const c = await auto.measureDrawing(dir);
+  if (!c) return; // PyMuPDF missing on this machine
+  assert.equal(auto.chooseModel(c, o).model, L);
+  await withBackend([o], async calls => {
+    await desk.pull();
+    await desk.runAuto(o);
+    assert.equal(calls.filter(x => x.action === 'ask').length, 0, 'customer not asked after the light attempt');
+    assert.ok(calls.find(x => x.action === 'deliver'), 'full model passed and the STEP was sent');
+    assert.equal(desk._autoState().last.model, F);
+    assert.ok(fs.existsSync(path.join(desk.BASE, '_delivered', path.basename(dir), 'model', 'VERDICT-light.json')), 'light verdict kept for the record');
+  });
+});

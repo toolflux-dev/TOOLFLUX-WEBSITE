@@ -59,9 +59,37 @@ function prompt(order, dir) {
   ].join('\n');
 }
 
-function buildArgs(order, dir, base) {
+function buildArgs(order, dir, base, model) {
   return ['-p', prompt(order, dir), '--output-format', 'text', '--permission-mode', 'acceptEdits',
-    '--add-dir', base, '--allowedTools', ...ALLOWED_TOOLS];
+    ...(model ? ['--model', model] : []), '--add-dir', base, '--allowedTools', ...ALLOWED_TOOLS];
+}
+
+// ── light or full model (Roo, 2026-11-09: make the plan's usage last longer) ──
+const MODEL_LIGHT = process.env.DTS_MODEL_LIGHT || 'sonnet';
+const MODEL_FULL = process.env.DTS_MODEL_FULL || 'opus';
+const LIGHT_MAX_PATHS = Number(process.env.DTS_LIGHT_MAX_PATHS || 1200);
+
+// Pure: tested. c = fusion/drawing_complexity.py output (or null if it could not run).
+// Light only for one clean vector sheet with a modest amount of linework, first attempt.
+// Photos/scans, multi-sheet, big drawings and re-runs after a customer's answer get the full model.
+function chooseModel(c, order) {
+  const answered = /Customer answer:/.test(String((order && order.notes) || ''));
+  if (answered) return { model: MODEL_FULL, why: 're-run after the customer answered' };
+  if (!c) return { model: MODEL_FULL, why: 'drawing could not be measured' };
+  if (c.raster) return { model: MODEL_FULL, why: 'photo or scan' };
+  if (c.sheets !== 1) return { model: MODEL_FULL, why: c.sheets + ' sheets' };
+  if (c.vectorPaths > LIGHT_MAX_PATHS) return { model: MODEL_FULL, why: c.vectorPaths + ' paths' };
+  return { model: MODEL_LIGHT, why: 'one simple sheet (' + c.vectorPaths + ' paths)' };
+}
+
+function measureDrawing(dir) {
+  const script = path.join(__dirname, 'fusion', 'drawing_complexity.py');
+  return new Promise(resolve => {
+    require('child_process').execFile(process.env.DTS_PYTHON || 'python', ['-I', script, dir], { timeout: 60000, windowsHide: true }, (e, out) => {
+      if (e) return resolve(null);
+      try { resolve(JSON.parse(String(out).trim().split('\n').pop())); } catch (x) { resolve(null); }
+    });
+  });
 }
 
 // Read VERDICT.json and decide. Pure: tested in tests/dts-auto.test.js.
@@ -107,7 +135,7 @@ function resumeAt(text, now) {
 }
 
 // Start one modelling job. Resolves with { code, timedOut, log } when Claude exits.
-function runJob(order, dir, base, cwd) {
+function runJob(order, dir, base, cwd, model) {
   return new Promise(resolve => {
     const exe = findClaude();
     const logPath = path.join(dir, 'model', 'claude-run.log');
@@ -118,7 +146,7 @@ function runJob(order, dir, base, cwd) {
     // Tests set DTS_FAKE_CLAUDE to a node script that stands in for Claude Code.
     const fake = process.env.DTS_FAKE_CLAUDE;
     const cmd = fake ? process.execPath : exe;
-    const args = fake ? [fake].concat(buildArgs(order, dir, base)) : buildArgs(order, dir, base);
+    const args = fake ? [fake].concat(buildArgs(order, dir, base, model)) : buildArgs(order, dir, base, model);
     try {
       child = spawn(cmd, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], env: Object.assign({}, process.env, { DTS_ORDER: order.orderId, DTS_ORDER_DIR: dir }) });
     } catch (e) { log.end('spawn failed: ' + e.message + '\n'); return resolve({ code: -1, timedOut: false, error: e.message }); }
@@ -151,4 +179,4 @@ function renderDrawings(dir) {
   });
 }
 
-module.exports = { findClaude, buildArgs, decide, runJob, signedOut, usageLimit, resumeAt, renderDrawings, ALLOWED_TOOLS, JOB_TIMEOUT_MS };
+module.exports = { findClaude, buildArgs, decide, runJob, signedOut, usageLimit, resumeAt, renderDrawings, chooseModel, measureDrawing, MODEL_LIGHT, MODEL_FULL, ALLOWED_TOOLS, JOB_TIMEOUT_MS };

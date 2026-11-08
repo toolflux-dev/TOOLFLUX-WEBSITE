@@ -49,7 +49,7 @@ function doPost(e) {
       case 'question': return json_(getQuestion_(body));
       case 'answer':  return json_(answerQuestion_(body));
       case 'ask':     requireDesk_(body); return json_(deskAsk_(body));
-      case 'queue':   requireDesk_(body); return json_(deskQueue_());
+      case 'queue':   requireDesk_(body); heartbeat_(body.health); return json_(deskQueue_());
       case 'file':    requireDesk_(body); return json_(deskFile_(body));
       case 'mark':    requireDesk_(body); return json_(deskMark_(body));
       case 'deliver': requireDesk_(body); return json_(deskDeliver_(body));
@@ -108,6 +108,52 @@ function orderStatus_(b) {
 }
 
 // ───────────────────────────── desk ─────────────────────────────
+
+// ── watchdog: Roo gets one email when orders wait because the desk PC, Fusion or Claude is not working ──
+
+function heartbeat_(health) {
+  var p = PropertiesService.getScriptProperties();
+  p.setProperty('DESK_SEEN', String(Date.now()));
+  p.setProperty('DESK_HEALTH', JSON.stringify(health || {}).slice(0, 2000));
+}
+
+// Pure: what (if anything) is wrong. Tested in tests/dts-sync.test.js.
+function watchdogProblem_(orders, now, seen, health) {
+  var waiting = orders.filter(function (r) {
+    return r.data.status === 'queued' && now - new Date(r.data.created).getTime() > 30 * 60 * 1000;
+  });
+  if (!waiting.length) return null;
+  var ids = waiting.map(function (r) { return r.data.orderId + ' (' + r.data.part + ')'; });
+  if (!seen || now - seen > 30 * 60 * 1000) {
+    return { ids: ids, why: 'The desk app has not checked for orders since ' + (seen ? new Date(seen).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'it was set up') + '.',
+      fix: 'Turn on the desk PC and log in (the desk starts by itself). If the PC is on, double-click Documents\\Drawing to STEP\\run-desk.cmd.' };
+  }
+  if (health && health.blocked) return { ids: ids, why: 'Automatic modelling is paused: ' + health.blocked, fix: 'Do what the pause message says, then press Retry automatic at http://localhost:7781.' };
+  if (health && health.auto === false) return { ids: ids, why: 'Automatic modelling is switched off in the desk.', fix: 'Press "Turn automatic on" at http://localhost:7781.' };
+  if (health && health.waiting) return { ids: ids, why: health.waiting, fix: 'Open Fusion on the desk PC (it may still be starting) and check http://localhost:7781.' };
+  return null; // desk alive and working: orders are just in line
+}
+
+/** Time trigger (every 15 minutes, made by setupWatchdog). Emails Roo at most once every 6 hours per problem. */
+function watchdog() {
+  var p = PropertiesService.getScriptProperties();
+  var health = safeJson_(p.getProperty('DESK_HEALTH') || '{}', {});
+  var problem = watchdogProblem_(allOrders_(), Date.now(), Number(p.getProperty('DESK_SEEN') || 0), health);
+  if (!problem) { p.deleteProperty('WATCHDOG_SENT'); return; }
+  var sent = safeJson_(p.getProperty('WATCHDOG_SENT') || '{}', {});
+  if (sent.why === problem.why && Date.now() - sent.at < 6 * 3600 * 1000) return;
+  MailApp.sendEmail({ to: ownerEmail_(), name: 'Drawing to STEP',
+    subject: 'Orders are waiting · ' + problem.ids.length + ' not being modelled',
+    body: problem.why + '\n\nFix: ' + problem.fix + '\n\nWaiting more than 30 minutes:\n- ' + problem.ids.join('\n- ') });
+  p.setProperty('WATCHDOG_SENT', JSON.stringify({ why: problem.why, at: Date.now() }));
+}
+
+/** Run once from the editor: installs the 15-minute watchdog trigger. */
+function setupWatchdog() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'watchdog') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('watchdog').timeBased().everyMinutes(15).create();
+  Logger.log('watchdog trigger installed (every 15 minutes)');
+}
 
 function deskQueue_() {
   var rows = allOrders_();

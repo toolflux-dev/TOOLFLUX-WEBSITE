@@ -49,7 +49,7 @@ function folderFor(o) { return path.join(BASE, safe(o.orderId + ' ' + o.part).sl
 
 async function pull() {
   try {
-    const q = await api({ action: 'queue' });
+    const q = await api({ action: 'queue', health: health() });
     for (const o of q.orders) {
       const dir = folderFor(o);
       fs.mkdirSync(path.join(dir, 'drawing'), { recursive: true });
@@ -125,9 +125,32 @@ async function autoTick() {
     .sort((a, b) => String(a.created).localeCompare(String(b.created)))[0];
   if (!next) { autoState.waiting = ''; return; }
   const h = await fusionHealth();
-  if (!h.ok) { autoState.waiting = 'Waiting: ' + h.checks.filter(c => !c.ok).map(c => c.name + ' (' + c.fix + ')').join('; '); return; }
+  if (!h.ok) {
+    autoState.waiting = 'Waiting: ' + h.checks.filter(c => !c.ok).map(c => c.name + ' (' + c.fix + ')').join('; ');
+    if (!h.checks[0].ok) openFusion(); // Fusion not running: start it, then the next tick goes ahead
+    return;
+  }
   autoState.waiting = '';
   await runAuto(next);
+}
+
+// Start Fusion through its Start Menu shortcut (stable across Fusion updates). At most every 10 minutes,
+// because Fusion takes a minute or two to open and answer.
+let fusionLaunchedAt = 0;
+function openFusion() {
+  if (process.env.DTS_NO_FUSION_LAUNCH || Date.now() - fusionLaunchedAt < 10 * 60 * 1000) return false;
+  const lnk = path.join(process.env.APPDATA || '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Autodesk', 'Autodesk Fusion.lnk');
+  if (!fs.existsSync(lnk)) return false;
+  fusionLaunchedAt = Date.now();
+  console.log('[auto] starting Fusion');
+  require('child_process').spawn('cmd.exe', ['/c', 'start', '""', lnk], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  return true;
+}
+
+// What the backend's watchdog sees with every order check, so it can email Roo when orders wait.
+function health() {
+  return { fusion: !/Fusion/.test(autoState.waiting || ''), blocked: autoState.blocked || '', waiting: autoState.waiting || '',
+    job: autoState.job ? autoState.job.orderId : '', auto: !!config.auto };
 }
 
 async function runAuto(o) {
@@ -139,7 +162,23 @@ async function runAuto(o) {
     try { fs.unlinkSync(path.join(dir, 'model', 'VERDICT.json')); } catch (e) { /* none yet */ }
     const rendered = await auto.renderDrawings(dir);
     if (!rendered.ok) console.log('[auto] drawing render failed (Claude will read the originals):', rendered.error);
-    const run = await auto.runJob(o, dir, BASE, __dirname);
+    // Light model for simple drawings; if it does not reach PASS, the full model gets one go before
+    // anything reaches the customer (so customers are never asked because of the lighter model).
+    const pick = auto.chooseModel(await auto.measureDrawing(dir), o);
+    let model = pick.model;
+    autoState.job.model = model;
+    console.log('[auto]', o.orderId, 'model', model, '-', pick.why);
+    let run = await auto.runJob(o, dir, BASE, __dirname, model);
+    const verdictFile = path.join(dir, 'model', 'VERDICT.json');
+    if (model === auto.MODEL_LIGHT && !run.usageLimit && !run.signedOut) {
+      const first = auto.decide(fs.existsSync(verdictFile) ? fs.readFileSync(verdictFile, 'utf8') : '', orderState(o).steps);
+      if (first.action !== 'deliver' || run.code !== 0) {
+        console.log('[auto]', o.orderId, 'light model gave', first.action, '- re-running with', auto.MODEL_FULL);
+        try { fs.renameSync(verdictFile, path.join(dir, 'model', 'VERDICT-light.json')); } catch (e) { /* no verdict */ }
+        model = auto.MODEL_FULL; autoState.job.model = model;
+        run = await auto.runJob(o, dir, BASE, __dirname, model);
+      }
+    }
     if (run.usageLimit && !run.signedOut) {
       // The Claude plan's usage limit, not the order's fault: back in the queue, retry after the reset.
       const at = auto.resumeAt(run.tail);
@@ -170,7 +209,7 @@ async function runAuto(o) {
     if (d.action === 'deliver') {
       await pull();
       await deliver(o.orderId, d.message);
-      outcome = { orderId: o.orderId, result: 'sent', checks: d.checks };
+      outcome = { orderId: o.orderId, result: 'sent', checks: d.checks, model };
     } else if (d.action === 'ask') {
       // Missing or unclear information only the customer has: they get the question and an answer link.
       await api({ action: 'ask', orderId: o.orderId, question: d.question });
@@ -272,9 +311,12 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module && process.argv.includes('--check-fusion')) {
   fusionHealth().then(h => { for (const c of h.checks) console.log((c.ok ? 'OK   ' : 'FIX  ') + c.name + (c.ok ? '' : '\n     ' + c.fix)); process.exit(h.ok ? 0 : 1); });
 } else if (require.main === module) {
+  // A desk is already running (e.g. started twice): exit with 3 so run-desk.cmd stops instead of looping.
+  server.on('error', e => { if (e.code === 'EADDRINUSE') { console.log('A desk is already running on port ' + PORT + '.'); process.exit(3); } throw e; });
   server.listen(PORT, '127.0.0.1', async () => {
     console.log('Drawing to STEP desk: http://localhost:' + PORT + '   folder: ' + BASE);
     console.log('Automatic modelling: ' + (config.auto ? 'ON' : 'off') + ' · Claude: ' + auto.findClaude());
+    if (config.auto) { const h = await fusionHealth(); if (!h.checks[0].ok) openFusion(); }
     if (config.url) { await pull(); autoTick(); }
     setInterval(async () => { if (config.url && !autoState.job) { await pull(); autoTick(); } }, 2 * 60 * 1000);
     if (!process.env.DTS_NO_BROWSER) execFile('cmd.exe', ['/c', 'start', '', 'http://localhost:' + PORT]);
