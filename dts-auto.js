@@ -89,6 +89,23 @@ function signedOut(text) {
   return /Failed to authenticate|OAuth (session|token) (has )?expired|not (logged|signed) in|Invalid API key|Please run \/login|authentication_error/i.test(String(text || ''));
 }
 
+// The Claude plan's usage limit ("You've hit your 5-hour limit · resets 5:10am"). Also not the order's
+// fault: the desk puts the order back and waits until the limit resets, then carries on by itself.
+function usageLimit(text) {
+  return /hit your .{0,30}limit|usage limit reached|rate.?limit(ed)?|resets \d{1,2}(:\d\d)?\s?(am|pm)/i.test(String(text || ''));
+}
+
+// When the limit resets, from "resets 5:10am" (local time); else 30 minutes from now. Pure: tested.
+function resumeAt(text, now) {
+  now = now || new Date();
+  const m = /resets\s+(\d{1,2})(?::(\d\d))?\s*(am|pm)/i.exec(String(text || ''));
+  if (!m) return new Date(now.getTime() + 30 * 60 * 1000);
+  let h = Number(m[1]) % 12; if (/pm/i.test(m[3])) h += 12;
+  const t = new Date(now); t.setHours(h, Number(m[2] || 0), 0, 0);
+  if (t <= now) t.setDate(t.getDate() + 1);
+  return new Date(t.getTime() + 2 * 60 * 1000); // two minutes' margin
+}
+
 // Start one modelling job. Resolves with { code, timedOut, log } when Claude exits.
 function runJob(order, dir, base, cwd) {
   return new Promise(resolve => {
@@ -112,7 +129,7 @@ function runJob(order, dir, base, cwd) {
     let timedOut = false;
     const t = setTimeout(() => { timedOut = true; try { child.kill(); } catch (e) { /* gone */ } }, JOB_TIMEOUT_MS);
     child.on('error', e => { clearTimeout(t); log.end('error: ' + e.message + '\n'); resolve({ code: -1, timedOut, error: e.message, signedOut: false, tail }); });
-    child.on('close', code => { clearTimeout(t); log.end('exit ' + code + (timedOut ? ' (timed out)' : '') + '\n'); resolve({ code, timedOut, signedOut: code !== 0 && signedOut(tail), tail }); });
+    child.on('close', code => { clearTimeout(t); log.end('exit ' + code + (timedOut ? ' (timed out)' : '') + '\n'); resolve({ code, timedOut, signedOut: code !== 0 && signedOut(tail), usageLimit: code !== 0 && usageLimit(tail), tail }); });
   });
 }
 
@@ -134,4 +151,4 @@ function renderDrawings(dir) {
   });
 }
 
-module.exports = { findClaude, buildArgs, decide, runJob, signedOut, renderDrawings, ALLOWED_TOOLS, JOB_TIMEOUT_MS };
+module.exports = { findClaude, buildArgs, decide, runJob, signedOut, usageLimit, resumeAt, renderDrawings, ALLOWED_TOOLS, JOB_TIMEOUT_MS };

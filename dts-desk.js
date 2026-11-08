@@ -140,6 +140,18 @@ async function runAuto(o) {
     const rendered = await auto.renderDrawings(dir);
     if (!rendered.ok) console.log('[auto] drawing render failed (Claude will read the originals):', rendered.error);
     const run = await auto.runJob(o, dir, BASE, __dirname);
+    if (run.usageLimit && !run.signedOut) {
+      // The Claude plan's usage limit, not the order's fault: back in the queue, retry after the reset.
+      const at = auto.resumeAt(run.tail);
+      autoState.blocked = 'Claude usage limit reached; automatic modelling resumes by itself at ' + at.toLocaleString() + '.';
+      setTimeout(() => { if (/usage limit/.test(autoState.blocked)) { autoState.blocked = ''; autoTick(); } }, Math.max(60000, at - Date.now())).unref(); // the desk's server keeps the process alive
+      await api({ action: 'mark', orderId: o.orderId, status: 'queued', note: 'paused: Claude usage limit, retry at ' + at.toISOString() });
+      autoState.job = null;
+      autoState.last = { at: new Date().toISOString(), orderId: o.orderId, result: 'paused', reason: 'usage limit, resumes ' + at.toLocaleTimeString() };
+      console.log('[auto] paused: usage limit, resumes', at.toISOString());
+      await pull();
+      return;
+    }
     if (run.signedOut) {
       // Not the order's fault: put it back in the queue, pause, and tell Roo once.
       autoState.blocked = SIGN_IN_FIX;
