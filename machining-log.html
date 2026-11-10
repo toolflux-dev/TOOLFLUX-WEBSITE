@@ -3,297 +3,346 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f9fa">
 <title>TOOLFLUX Machlog — Your Production in Rupees | From ₹299/month</title>
 <meta name="description" content="Machlog shows machine-shop owners what every shift produced, what was rejected and the real tooling cost per component. Operators log in seconds. 14-day free trial.">
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><script src="favicon-spin.js" defer></script>
+<link rel="icon" type="image/svg+xml" href="assets/machlog-mark.svg">
+<script>document.documentElement.classList.add("js")</script>
 <style>
-:root{
-  --teal:#0097B2; --teal-d:#00495a; --teal-lt:#9EE0F0; --teal-tint:rgba(0,151,178,.12);
-  --ink:#08141a; --navy:#012B42;
-  --W:#FEFFFE; --off:#f4f7f8; --off2:#e8ecee;
-  --T:#0d1e26; --mut:#6b8494; --mut-dark:#7c93a0;
-  --rule:#e2e8eb; --ruled:rgba(255,255,255,.12);
-  --bad:#e05a4a; --ok:#2fae6e; --warn:#e2a33d;
-  --mono: ui-monospace,'Cascadia Mono',Consolas,monospace;
-  --r:3px;
+/* Machlog landing — "The product performs" (seed 1515428265), brand palette and type kept.
+   One ground (#f5f9fa, the app's own), one ink (navy), one accent (TOOLFLUX teal on actions and data).
+   One stage colour behind fragments: navy. Five type steps. Grid: 12 columns inside 32px margins. */
+:root {
+  --bg: #f5f9fa; --surface: #ffffff; --tint: #e3f3f7; --tint2: #f0f8fa;
+  --ink: #012B42; --text: #0d1e26; --muted: #4b5d68;
+  --accent: #0097B2; --accent-d: #00748a; --accent-dd: #0b4a59;
+  --stage: #012B42; --line: #e3eaed; --line2: #cdd7dc;
+  --bad: #a62d1e; --bad-bg: #fdefec; --warn: #8a4b00; --warn-bg: #fff4e0; --ok: #1a6e50; --ok-bg: #e6f4ee; --wa: #157a3e;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --s1: clamp(40px, 5vw, 76px);
+  --s2: clamp(30px, 3.4vw, 52px);
+  --s3: clamp(22px, 2.3vw, 34px);
+  --s4: 18px;
+  --s5: 14px;
+  --m: 32px;
+  --r: 14px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+  --t-press: 140ms; --t-hover: 180ms; --t-ui: 240ms;
 }
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;overflow-x:hidden}
-body{background:var(--ink); color:var(--W); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; line-height:1.6; overflow-x:hidden; position:relative}
-img,svg{max-width:100%}
-a{color:inherit}
-::selection{background:var(--teal);color:#fff}
-::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:var(--ink)}::-webkit-scrollbar-thumb{background:var(--teal);border-radius:4px}
-@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 80px }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--s4); line-height: 1.55; font-variant-numeric: tabular-nums; overflow-x: clip }
+img, svg { display: block; max-width: 100% }
+a { color: inherit }
+button { font: inherit; color: inherit; cursor: pointer }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px } /* taste-skill-ignore */
+::selection { background: var(--accent); color: #fff }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+.skip { position: absolute; left: var(--m); top: -60px; background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 10 } /* taste-skill-ignore */
+.skip:focus { top: 10px }
 
-/* dynamic background */
-#bgfx{position:fixed; inset:0; z-index:0; pointer-events:none;
-  background:radial-gradient(760px 540px at 50% var(--glow-y,20%), var(--glow-c,rgba(0,151,178,.16)), transparent 68%), linear-gradient(var(--ink), var(--ink));
-  transition:background .6s ease}
-#bgfx::before{content:''; position:absolute; inset:0;
-  background-image:linear-gradient(rgba(0,151,178,.07) 1px, transparent 1px),linear-gradient(90deg, rgba(0,151,178,.07) 1px, transparent 1px);
-  background-size:46px 46px; background-position:center calc(var(--grid-shift, 0px)); opacity:.5;
-  mask-image:radial-gradient(1200px 760px at 50% 28%, #000 0%, transparent 80%)}
-#bgfx::after{content:''; position:absolute; inset:0; background:linear-gradient(180deg, transparent 0%, var(--ink) 97%)}
-
-.wrap{max-width:1200px; margin:0 auto; padding:0 1.6rem; position:relative; z-index:2}
-.wide{max-width:1320px}
-.lbl{font-size:.62rem; font-weight:700; letter-spacing:.28em; text-transform:uppercase; color:var(--teal-lt)}
-.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
-
-#sprog{position:fixed; top:0; left:0; height:2px; background:var(--teal); z-index:200; width:0%}
-
-#nav{position:fixed; top:0; left:0; right:0; z-index:100; display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.6rem; transition:background .3s ease,padding .3s ease,border-color .3s ease; border-bottom:1px solid transparent}
-#nav.scrolled{background:rgba(8,20,26,.86); backdrop-filter:blur(14px); padding:.7rem 1.6rem; border-color:var(--ruled)}
-.navlogo{display:flex; align-items:center; gap:.6rem; font-family:var(--mono); font-weight:800; letter-spacing:.14em; font-size:1.05rem; text-decoration:none; color:#fff}
-.navlogo .dot{width:8px;height:8px;border-radius:50%;background:var(--teal)}
-.navback{font-size:.68rem; font-weight:600; color:var(--mut-dark); text-decoration:none; letter-spacing:.05em; display:none}
-@media(min-width:720px){.navback{display:inline}}
-
-.btn{display:inline-flex; align-items:center; gap:.5rem; font-size:.7rem; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:.85rem 1.5rem; border-radius:var(--r); text-decoration:none; cursor:pointer; border:1.5px solid transparent; transition:all .2s ease; white-space:nowrap}
-.btn-teal{background:var(--teal); color:#fff}.btn-teal:hover{background:#00b0cf; transform:translateY(-1px)}
-.btn-olw{border-color:rgba(255,255,255,.28); color:#fff; background:transparent}.btn-olw:hover{border-color:var(--teal); color:var(--teal-lt)}
-.btn-lg{padding:1.05rem 2rem; font-size:.74rem}
-.btn-sm{padding:.55rem 1rem; font-size:.62rem}
-
-.rv{opacity:0; transform:translateY(34px); transition:opacity .9s cubic-bezier(.16,1,.3,1), transform .9s cubic-bezier(.16,1,.3,1)}
-.rv.in{opacity:1; transform:none}
-.rv.d1.in{transition-delay:.1s}.rv.d2.in{transition-delay:.2s}.rv.d3.in{transition-delay:.32s}
-
-/* ══ HERO ══ */
-#hero{position:relative; padding:9rem 0 4rem; z-index:2}
-.hero-eyebrow{display:flex; align-items:center; gap:.7rem; justify-content:center; margin-bottom:1.5rem}
-.hero-eyebrow::before,.hero-eyebrow::after{content:'';width:26px;height:1px;background:rgba(0,151,178,.5)}
-h1.h-title{text-align:center; font-size:clamp(2.4rem,6.4vw,4.6rem); font-weight:800; letter-spacing:-.03em; line-height:1.03; max-width:960px; margin:0 auto 1.3rem}
-h1.h-title .tl{color:var(--teal-lt)}
-.h-sub{max-width:620px; margin:0 auto 2.2rem; text-align:center; font-size:1.05rem; color:rgba(255,255,255,.72); font-weight:300}
-.h-ctas{display:flex; gap:.9rem; justify-content:center; flex-wrap:wrap; margin-bottom:1rem}
-.h-note{text-align:center; font-size:.68rem; color:var(--mut-dark); letter-spacing:.05em}
-.h-pills{display:flex; gap:.55rem; justify-content:center; flex-wrap:wrap; margin-top:2rem}
-.h-pill{font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:.42rem 1rem; border-radius:999px; border:1px solid rgba(0,151,178,.32); color:var(--teal-lt); background:rgba(0,151,178,.08)}
-
-/* big full-window dashboard demo */
-.demo-wrap{margin-top:4rem; position:relative}
-.demo-cap{text-align:center; font-size:.62rem; letter-spacing:.16em; text-transform:uppercase; color:var(--mut-dark); margin-bottom:1rem}
-.win{background:#0d1f28; border:1px solid var(--ruled); border-radius:10px; overflow:hidden; box-shadow:0 50px 110px -24px rgba(0,0,0,.7), 0 0 0 1px rgba(0,151,178,.05)}
-.win-bar{display:flex; align-items:center; gap:.45rem; padding:.7rem .95rem; background:#0a171f; border-bottom:1px solid var(--ruled)}
-.win-bar span{width:9px; height:9px; border-radius:50%; background:#28414c}
-.win-bar .url{margin-left:1rem; font-family:var(--mono); font-size:.62rem; color:#516470; background:#0d1f28; padding:.22rem .7rem; border-radius:4px}
-
-/* ══ app mockup (faithful) ══ */
-.mk{background:var(--off); color:#0d1e26}
-.mk-bar{background:#fff; border-bottom:2px solid var(--navy); padding:.6rem 1rem; display:flex; align-items:center; gap:.7rem}
-.mk-bar .lg{font-family:var(--mono); font-size:.8rem; font-weight:800; letter-spacing:.1em; color:var(--navy)}
-.mk-bar .sub{font-size:.6rem; letter-spacing:.14em; text-transform:uppercase; color:#9aa9b0}
-.mk-bar .chip{margin-left:auto; font-size:.56rem; font-weight:800; letter-spacing:.1em; padding:.3rem .6rem; border:1px solid var(--teal); border-radius:2px; color:var(--teal-d); background:var(--teal-tint)}
-.mk-tabs{display:flex; gap:.3rem; padding:.5rem 1rem 0; background:#fff; border-bottom:1px solid #eef2f3}
-.mk-tab{font-size:.58rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#8a9aa2; padding:.5rem .8rem; border-bottom:2px solid transparent}
-.mk-tab.on{color:var(--navy); border-bottom-color:var(--teal)}
-.mk-pad{padding:1rem}
-.mk-panel{background:#fff; border:1px solid #e2e8eb; border-radius:3px; margin-bottom:.8rem; overflow:hidden}
-.mk-ph{display:flex; align-items:center; gap:.5rem; padding:.55rem .8rem; border-bottom:1px solid #eef2f3}
-.mk-ph .t{font-size:.6rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#6b8494}
-.mk-ph .n{margin-left:auto; font-size:.6rem; color:#9aa9b0}
-.mk-att{display:flex; align-items:center; gap:.6rem; padding:.55rem .8rem; font-size:.78rem; border-bottom:1px solid #f1f4f5; color:#0d1e26}
-.mk-att:last-child{border-bottom:0}
-.mk-att .d{width:7px; height:7px; border-radius:50%; flex-shrink:0}
-.mk-att.bad .d{background:var(--bad)}.mk-att.warn .d{background:var(--warn)}.mk-att.info .d{background:var(--teal)}
-.mk-att .ar{margin-left:auto; color:#c2ced3}
-.mk-att b{font-weight:700}
-.mk-cols{display:grid; grid-template-columns:1fr 1fr; gap:.8rem}
-@media(max-width:720px){.mk-cols{grid-template-columns:1fr}}
-.mk-stats{display:grid; grid-template-columns:repeat(3,1fr)}
-.mk-stat{padding:.7rem .8rem; border-right:1px solid #f1f4f5; border-top:1px solid #f1f4f5}
-.mk-stat:nth-child(3n){border-right:0}
-.mk-stat .l{font-size:.54rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#9aa9b0}
-.mk-stat .v{font-family:var(--mono); font-size:1.25rem; font-weight:800; color:var(--navy); margin:.12rem 0}
-.mk-stat .v.bad{color:var(--bad)}
-.mk-stat .s{font-size:.56rem; color:#9aa9b0}
-.mk-hero{display:flex; align-items:center; gap:.6rem; background:#e9f5f7; border:1px solid var(--teal); border-radius:2px; margin:.55rem; padding:.6rem .8rem}
-.mk-hero .em{font-size:1.4rem}
-.mk-hero .l{font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--teal-d)}
-.mk-hero .n{font-size:.95rem; font-weight:800; color:var(--navy)}
-.mk-hero .s{font-size:.66rem; color:#4a6272}
-.mk-perf{display:flex; align-items:center; gap:.55rem; padding:.42rem .8rem; font-size:.72rem; border-bottom:1px solid #f4f6f7}
-.mk-rank{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:800;color:#fff;flex-shrink:0}
-.mk-rank.r1{background:var(--navy)}.mk-rank.r2{background:var(--teal)}.mk-rank.r3{background:#cfe8ec;color:var(--teal-d)}
-.mk-pname{font-weight:700; min-width:52px}
-.mk-pbar{flex:1; height:6px; background:#e8ecee; border-radius:3px; overflow:hidden}
-.mk-pbar i{display:block; height:100%; background:var(--teal)}
-.mk-pgood{font-family:var(--mono); font-weight:700; color:var(--navy); min-width:30px; text-align:right}
-.mk-peff{font-size:.56rem; font-weight:800; padding:.12rem .38rem; border-radius:2px}
-.mk-peff.g{background:#e3f2e9;color:#1d6b40}.mk-peff.w{background:#f7ecdc;color:#8a5200}
-.mk-jtbl{width:100%; border-collapse:collapse; font-size:.7rem}
-.mk-jtbl th{text-align:left; font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#9aa9b0; padding:.4rem .55rem; border-bottom:1px solid #eef2f3}
-.mk-jtbl td{padding:.42rem .55rem; border-bottom:1px solid #f4f6f7; color:#0d1e26}
-.mk-jtbl .code{font-family:var(--mono); font-weight:700; color:var(--navy)}
-.mk-jst{font-size:.5rem; font-weight:800; letter-spacing:.08em; padding:.1rem .35rem; border-radius:2px}
-.mk-jst.run{color:var(--teal-d); background:var(--teal-tint)}
-.mk-jst.pause{color:#8a5200; background:#f7ecdc}
-.mk-prog{display:inline-block; width:48px; height:5px; background:#e8ecee; border-radius:3px; overflow:hidden; vertical-align:middle}
-.mk-prog i{display:block; height:100%; background:var(--teal)}
-.mk-chart{display:flex; align-items:flex-end; gap:.4rem; height:72px; padding:.6rem .3rem 0}
-.mk-cbar{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%}
-.mk-cbar i{width:100%; background:var(--teal); border-radius:1px 1px 0 0; position:relative}
-.mk-cbar i em{position:absolute;top:0;left:0;right:0;background:var(--bad);display:block}
-.mk-cbar .cl{font-size:.5rem; font-weight:700; color:#9aa9b0; margin-top:.25rem}
-
-/* mock: insert life / phone */
-.mk-life{border-radius:2px; margin:.55rem; padding:.7rem .85rem}
-.mk-life.overdue{background:#fdeceb; border:1px solid var(--bad)}
-.mk-life .t{font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:#a13d2f}
-.mk-life .m{font-size:.72rem; color:#0d1e26; margin-top:.2rem}
-.mk-life .bar{height:6px; background:#d7e3e6; border-radius:3px; overflow:hidden; margin-top:.5rem}
-.mk-life .bar i{display:block; height:100%; background:var(--bad)}
-.mk-actbar{display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin:.55rem}
-.mk-actbtn{text-align:center; padding:.7rem .4rem; border-radius:2px; font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase}
-.mk-actbtn.pri{background:var(--navy); color:#fff}
-.mk-actbtn.ghost{border:1px solid #cfd8dc; color:#4a6272}
-.mk-actbtn.teal{grid-column:1/-1; background:var(--teal); color:#fff}
-
-/* mock: CPC */
-.mk-cpc{display:grid; grid-template-columns:1fr 1fr; gap:0; margin:.55rem}
-.mk-cpc .c{padding:.75rem .85rem; border:1px solid #eef2f3}
-.mk-cpc .l{font-size:.54rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:#9aa9b0}
-.mk-cpc .v{font-family:var(--mono); font-size:1.5rem; font-weight:800; color:var(--navy); margin-top:.15rem}
-.mk-cpc .v.teal{color:var(--teal-d)}
-.mk-cpc .s{font-size:.56rem; color:#9aa9b0}
-
-/* mock: shift proof */
-.mk-proof{border:2px solid var(--navy); border-radius:2px; background:#fff; margin:.55rem; padding:.8rem}
-.mk-proof-hd{display:flex; justify-content:space-between; border-bottom:2px solid var(--navy); padding-bottom:.5rem; margin-bottom:.5rem; gap:.5rem}
-.mk-proof-co{font-size:.54rem; font-weight:800; letter-spacing:.08em; color:var(--navy); text-transform:uppercase}
-.mk-proof-t{font-family:var(--mono); font-size:.9rem; font-weight:800; color:var(--navy)}
-.mk-proof-sync{font-size:.48rem; font-weight:800; letter-spacing:.08em; padding:.2rem .45rem; border-radius:2px; background:#e3f2e9; color:#1d6b40; border:1px solid #1d6b40; white-space:nowrap; height:fit-content}
-.mk-proof-job{border-bottom:1px solid #eef2f3; padding:.5rem 0; font-size:.66rem}
-.mk-proof-code{font-family:var(--mono); font-weight:800; color:var(--navy)}
-.mk-proof-good{font-family:var(--mono); font-size:1.15rem; font-weight:800; color:var(--navy)}
-.mk-proof-rej{font-family:var(--mono); font-weight:800; color:var(--bad)}
-.mk-proof-tot{display:flex; text-align:center; margin-top:.25rem}
-.mk-proof-tot div{flex:1; padding:.45rem .1rem; border-right:1px solid #eef2f3}
-.mk-proof-tot div:last-child{border-right:0}
-.mk-proof-tn{font-family:var(--mono); font-size:1rem; font-weight:800; color:var(--navy)}
-.mk-proof-tl{font-size:.44rem; font-weight:700; letter-spacing:.08em; color:#9aa9b0}
-.mk-wabtn{margin:.55rem; background:#1da851; color:#fff; text-align:center; padding:.65rem; border-radius:2px; font-size:.68rem; font-weight:800; letter-spacing:.06em}
-
-/* mock: report (A4) */
-.mk-report{background:#fff; color:#111; margin:0 auto; padding:1.6rem 1.8rem; max-width:560px; box-shadow:0 30px 70px -20px rgba(0,0,0,.5)}
-.mr-hd{display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2.5px solid var(--navy); padding-bottom:.7rem; margin-bottom:.9rem}
-.mr-co{font-family:var(--mono); font-size:1rem; font-weight:800; color:var(--navy); letter-spacing:.02em}
-.mr-meta{font-size:.6rem; color:#667; margin-top:.2rem}
-.mr-tt{text-align:right}
-.mr-title{font-size:.72rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--navy)}
-.mr-id{font-family:var(--mono); font-size:.62rem; color:#889; margin-top:.2rem}
-.mr-tbl{width:100%; border-collapse:collapse; font-size:.62rem; margin-bottom:.9rem}
-.mr-tbl th{background:var(--navy); color:#fff; text-align:left; padding:.4rem .5rem; font-size:.52rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
-.mr-tbl th.n,.mr-tbl td.n{text-align:right}
-.mr-tbl td{padding:.4rem .5rem; border-bottom:1px solid #eef1f2; color:#223}
-.mr-tbl .code{font-family:var(--mono); font-weight:700; color:var(--navy)}
-.mr-tbl tr.flag td{background:#fdf0ee}
-.mr-tbl .warnc{color:#a13d2f; font-weight:700}
-.mr-foot{display:flex; justify-content:space-between; font-size:.56rem; color:#889; border-top:1px solid #dde3e5; padding-top:.6rem}
-
-/* frames */
-.frame{border-radius:9px; overflow:hidden; background:#0d1f28; border:1px solid var(--ruled); box-shadow:0 34px 80px -20px rgba(0,0,0,.6)}
-.frame .dbar{display:flex; gap:.42rem; padding:.6rem .85rem; background:#0a171f}
-.frame .dbar span{width:8px;height:8px;border-radius:50%;background:#26414c}
-.frame-phone{width:280px; margin:0 auto; background:#0d1f28; border-radius:28px; padding:.55rem; border:1px solid var(--ruled); box-shadow:0 34px 80px -20px rgba(0,0,0,.6)}
-.frame-phone .pnotch{width:58px;height:5px;border-radius:3px;background:#1c313b;margin:.35rem auto .5rem}
-.frame-phone .pscreen{border-radius:20px; overflow:hidden}
-
-/* feature sections */
-.feat{position:relative; z-index:2; padding:6.5rem 0}
-.feat-grid{display:grid; grid-template-columns:.9fr 1.1fr; gap:4rem; align-items:center}
-.feat-grid.rev .feat-copy{order:2}.feat-grid.rev .feat-mk{order:1}
-@media(max-width:900px){.feat-grid{grid-template-columns:1fr; gap:2.6rem}.feat-grid.rev .feat-copy,.feat-grid.rev .feat-mk{order:0}}
-.feat-num{font-family:var(--mono); font-size:.72rem; font-weight:800; color:var(--teal); letter-spacing:.1em; margin-bottom:.9rem}
-.feat-h{font-size:clamp(1.6rem,3.4vw,2.4rem); font-weight:800; letter-spacing:-.02em; line-height:1.12; margin-bottom:1rem}
-.feat-h .tl{color:var(--teal-lt)}
-.feat-p{color:rgba(255,255,255,.68); font-size:.96rem; font-weight:300; max-width:46ch; margin-bottom:1.3rem}
-.feat-list{list-style:none; display:flex; flex-direction:column; gap:.55rem}
-.feat-list li{display:flex; gap:.6rem; align-items:flex-start; font-size:.88rem; color:rgba(255,255,255,.82)}
-.feat-list li::before{content:'→'; color:var(--teal); font-weight:700; flex-shrink:0}
-.feat-mk{display:flex; justify-content:center}
-.feat-mk .frame{width:100%}
-
-/* report feature — full-width spotlight */
-.spotlight{position:relative; z-index:2; padding:6rem 0; border-top:1px solid var(--ruled); border-bottom:1px solid var(--ruled); background:rgba(0,151,178,.03)}
-.spot-head{text-align:center; max-width:680px; margin:0 auto 3rem}
-.spot-badge{display:inline-block; font-size:.58rem; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--teal-lt); background:var(--teal-tint); border:1px solid rgba(0,151,178,.35); padding:.4rem 1.1rem; border-radius:999px; margin-bottom:1.3rem}
-.spot-benefits{display:grid; grid-template-columns:repeat(3,1fr); gap:1.6rem; max-width:820px; margin:2.4rem auto 0}
-@media(max-width:720px){.spot-benefits{grid-template-columns:1fr; gap:1.1rem}}
-.spot-b{text-align:center}
-.spot-b .h{font-size:.9rem; font-weight:700; color:#fff; margin-bottom:.3rem}
-.spot-b .p{font-size:.78rem; color:rgba(255,255,255,.6); font-weight:300}
-
-.calc-box{background:rgba(255,255,255,.05); border:1px solid var(--ruled); border-radius:var(--r); padding:1.1rem 1.3rem; margin-top:1.2rem; max-width:400px}
-.calc-line{display:flex; justify-content:space-between; font-size:.8rem; padding:.35rem 0; border-bottom:1px dashed rgba(255,255,255,.12); color:rgba(255,255,255,.75)}
-.calc-line:last-child{border:0; font-weight:800; color:#fff; padding-top:.5rem}
-
-.compare{display:flex; gap:1.8rem; justify-content:center; flex-wrap:wrap}
-.cmp-col{width:230px}
-.cmp-tag{text-align:center; font-size:.6rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; margin-bottom:.7rem}
-.cmp-tag.op{color:var(--mut-dark)}.cmp-tag.ow{color:var(--teal-lt)}
-
-#problem{position:relative; z-index:2; padding:4.5rem 0; border-top:1px solid var(--ruled); border-bottom:1px solid var(--ruled)}
-.prob-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:2.4rem}
-.prob-item{text-align:center}
-.prob-q{font-size:.68rem; color:var(--mut-dark); font-style:italic; margin-bottom:.6rem}
-.prob-a{font-size:1rem; font-weight:700; color:#fff}
-.prob-a .tl{color:var(--teal-lt)}
-
-#pricing{position:relative; z-index:2; padding:6rem 0; text-align:center}
-.price-card{max-width:420px; margin:2.4rem auto 0; background:rgba(255,255,255,.04); border:1px solid var(--ruled); border-radius:8px; padding:2.2rem 2rem}
-.price-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; max-width:960px; margin:2.4rem auto 0}
-.price-grid .price-card{margin:0; max-width:none; display:flex; flex-direction:column; gap:.45rem; padding:1.8rem 1.5rem}
-.price-card.feat{border-color:var(--teal-lt)}
-.price-tier{font-family:var(--mono); font-size:.7rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-lt)}
-.price-dev{font-size:.85rem; color:rgba(255,255,255,.78)}
-.price-for{font-size:.75rem; color:var(--mut-dark)}
-.price-all{max-width:520px; margin:1.6rem auto 0}
-.price-num{font-family:var(--mono); font-size:3rem; font-weight:800; color:#fff}
-.price-grid .price-num{font-size:2.4rem}
-.price-num span{font-size:1rem; font-weight:400; color:var(--mut-dark)}
-.price-trial{display:inline-block; font-size:.62rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--teal-lt); background:var(--teal-tint); border:1px solid rgba(0,151,178,.35); padding:.4rem 1rem; border-radius:999px}
-.price-list{list-style:none; text-align:left; margin:1.6rem 0; display:flex; flex-direction:column; gap:.55rem}
-.price-list li{font-size:.85rem; color:rgba(255,255,255,.78); display:flex; gap:.55rem}
-.price-list li::before{content:'✓'; color:var(--ok); font-weight:800}
-
-#finalcta{position:relative; z-index:2; padding:6rem 0 7rem; text-align:center}
-#finalcta h2{font-size:clamp(1.8rem,4.4vw,3rem); font-weight:800; letter-spacing:-.02em; margin-bottom:1.1rem}
-#finalcta h2 .tl{color:var(--teal-lt)}
-.steps3{display:flex; justify-content:center; gap:2.2rem; flex-wrap:wrap; margin:2.2rem 0 2.4rem}
-.step3{max-width:180px; text-align:center}
-.step3 .n{width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;font-size:.85rem;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem}
-.step3 .t{font-size:.76rem; color:rgba(255,255,255,.7)}
-
-footer{position:relative; z-index:2; padding:2.6rem 1.6rem; text-align:center; border-top:1px solid var(--ruled); color:var(--mut-dark); font-size:.78rem}
-footer a{color:var(--teal-lt); text-decoration:none}
-footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; color:#fff; margin-bottom:.4rem; font-size:.85rem}
-
-@media(max-width:640px){
-  .wrap{padding:0 1.15rem}
-  #hero{padding:7.5rem 0 3rem}
-  .feat{padding:4rem 0}
-  .mk-stat .v{font-size:1.05rem}
-  .win-bar .url{display:none}
+/* ── controls ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 22px; border-radius: 10px; /* taste-skill-ignore */
+  background: var(--accent-d); color: #fff; font-size: 16px; font-weight: 650; text-decoration: none;
+  transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease }
+.btn-lg { min-height: 54px; padding: 14px 26px; font-size: 18px }
+.btn-sm { min-height: 40px; padding: 8px 16px; font-size: 16px }
+.btn:active { transform: scale(0.97) }
+.btn-paper { background: #fff; color: var(--ink) }
+.link { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.22em; text-decoration-thickness: 0.07em; transition: text-decoration-color var(--t-hover) ease, color var(--t-hover) ease }
+.link-strong { font-weight: 650; color: var(--ink); text-decoration-color: currentColor }
+.link-paper { color: #fff; font-weight: 600; text-decoration-color: currentColor }
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover { background: var(--accent-dd) }
+  .btn-paper:hover { background: var(--tint) }
+  .link:hover { text-decoration-color: currentColor }
+  .link-strong:hover { color: var(--accent-d) }
 }
 
+/* ── top bar ── */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--m) }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; --mark-ground: var(--bg) }
+.brand-name { font-size: 18px; font-weight: 800; font-style: italic; color: var(--ink); letter-spacing: -.01em }
+.brand-name b { font-weight: 800; color: var(--accent-d) }
+.top-links { display: flex; align-items: center; gap: 28px; font-size: 16px; font-weight: 500 }
 
-/* ═══ SETUP STEPS + BACKUP NOTE ═══ */
-.setup-steps{list-style:none;counter-reset:step;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;max-width:1100px;margin:0 auto;padding:0}
-.setup-steps li{counter-increment:step;background:rgba(255,255,255,.05);border-radius:var(--r);padding:1.4rem 1.3rem;display:flex;flex-direction:column;gap:.45rem}
-.setup-steps li::before{content:counter(step);width:2.1rem;height:2.1rem;border-radius:50%;background:var(--teal);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin-bottom:.35rem}
-.setup-steps b{font-size:1.06rem;color:#fff}
-.setup-steps span{font-size:.94rem;color:rgba(255,255,255,.74);line-height:1.55}
-.setup-cta{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-top:2.2rem}
-.backup-note{margin-top:1.2rem;font-size:.86rem;color:rgba(255,255,255,.6);max-width:46ch;line-height:1.55}
-@media (max-width:860px){.setup-steps{grid-template-columns:1fr 1fr}}
-@media (max-width:520px){.setup-steps{grid-template-columns:1fr}.setup-cta .btn{width:100%;justify-content:center}}
-/* ═══ MOBILE VARIANT (≤600px) ═══ */
-@media (max-width: 600px) {
-  section p,section li,.feat-p,.h-sub,.spot-b .p{font-weight:400!important}
-  .feat-p{font-size:1rem!important}
+/* ── hero ── */
+.hero { display: grid; grid-template-columns: 6fr 6fr; gap: 48px; align-items: center; padding: 40px var(--m) 0; min-height: calc(100svh - 88px) }
+.hero-copy { align-self: center; padding-bottom: 40px }
+h1 { font-size: var(--s1); font-weight: 750; line-height: 1.0; letter-spacing: -0.035em; color: var(--ink) }
+.lines .line { display: block; overflow: hidden; padding-bottom: 0.08em; margin-bottom: -0.08em }
+.lines [data-line] { display: block }
+.hero-sub { font-size: var(--s4); line-height: 1.55; color: var(--text); max-width: 34em; margin-top: 36px }
+.hero-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-top: 32px }
+.hero-note { font-size: var(--s5); color: var(--muted); margin-top: 18px }
+
+.stage { background: var(--stage); border-radius: var(--r) }
+.hero-stage { padding: 40px; align-self: center; display: flex; flex-direction: column; justify-content: center; margin-bottom: 40px }
+.stage-cap { color: #cfe3ea; font-size: var(--s5); margin-top: 16px; max-width: 46em }
+
+/* ── fragments: the app's own interface, at true size. Every rule below styles a [data-ui] fragment, whose own borders and rules are the product's. taste-skill-ignore ── */
+.frag { background: #fff; color: #0d1e26; border-radius: 12px; font-size: 14px; line-height: 1.4 } /* taste-skill-ignore */
+.dial { flex: none; transform: rotate(-90deg) }
+.dial circle { fill: none }
+.ui-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line2); /* taste-skill-ignore */
+  background: #fff; color: #0d1e26; font-size: 14px; font-weight: 600; transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease, border-color var(--t-hover) ease }
+.ui-btn:active { transform: scale(0.96) }
+.ui-btn:disabled { opacity: .45; cursor: not-allowed }
+.ui-pri { background: var(--accent-d); border-color: var(--accent-d); color: #fff }
+.ui-wa { background: var(--wa); border-color: var(--wa); color: #fff }
+.ui-wide { display: flex; width: 100%; margin-top: 14px }
+@media (hover: hover) and (pointer: fine) {
+  .ui-btn:not(:disabled):hover { border-color: var(--accent); background: var(--tint2) }
+  .ui-pri:not(:disabled):hover { background: var(--accent-dd); border-color: var(--accent-dd) }
+}
+.ui-pill { flex: none; white-space: nowrap; border-radius: 999px; padding: 3px 11px; background: var(--tint); color: var(--accent-dd); font-size: 12.5px; font-weight: 600 } /* taste-skill-ignore */
+.ui-flag { font-style: normal; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 600; margin-right: 6px } /* taste-skill-ignore */
+.ui-flag.bad { background: var(--bad-bg); color: #6d1c12 } .ui-flag.warn { background: var(--warn-bg); color: #6b3a00 }
+.ui-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line) } /* taste-skill-ignore */
+.ui-hd b { font-size: 15px; color: var(--ink) } .ui-hd span { font-size: 13px; color: var(--muted) }
+.ui-hd.tint { background: var(--tint); border-bottom: 0; border-radius: 12px 12px 0 0 } .ui-hd.tint b { color: var(--accent-dd) } /* taste-skill-ignore */
+.ui-segs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 18px }
+.ui-segs span { padding: 7px 11px; border: 1px solid var(--line2); border-radius: 9px; font-size: 13px; font-weight: 600 } /* taste-skill-ignore */
+.ui-segs .on { background: var(--tint); border-color: var(--accent); color: var(--accent-dd) }
+.ui-foot { display: flex; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted) } /* taste-skill-ignore */
+.ui-foot b { color: var(--ink); font-size: 15px }
+
+/* hero live insert */
+.live { padding: 24px 26px 22px }
+.lv-top { display: flex; align-items: center; gap: 18px }
+.lv-name { font-size: 20px; font-weight: 700; color: var(--ink) }
+.lv-spec { font-size: 13px; color: var(--muted); margin-top: 2px }
+.lv-state { font-size: 15px; font-weight: 600; margin-top: 6px; color: var(--text) }
+.lv-state.warn { color: var(--warn) } .lv-state.bad { color: var(--bad) }
+.lv-track { height: 10px; border-radius: 999px; background: var(--tint); margin-top: 20px; overflow: hidden } /* taste-skill-ignore */
+.lv-track i { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width var(--t-ui) var(--ease-out), background-color var(--t-ui) ease } /* taste-skill-ignore */
+.lv-track.warn i { background: #c77a12 } .lv-track.bad i { background: var(--bad) }
+.lv-trackl { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-top: 6px }
+.lv-log { display: grid; grid-template-columns: auto 1fr; gap: 12px 18px; align-items: center; margin-top: 20px; padding: 16px; background: var(--bg); border-radius: 12px } /* taste-skill-ignore */
+.lv-q { display: flex; flex-direction: column; min-width: 110px }
+.lv-ql { font-size: 13px; font-weight: 600 }
+.lv-qn { font-size: 38px; font-weight: 750; color: var(--ink); line-height: 1.1 }
+.lv-adj { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end }
+.lv-adj .ui-btn { min-width: 52px }
+.lv-go { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px }
+.lv-go .ui-pri { flex: 1 1 140px } .lv-go .ui-btn:not(.ui-pri) { flex: 1 1 180px }
+.lv-figs { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 18px; border-top: 1px solid var(--line) } /* taste-skill-ignore */
+.lv-figs > div { padding: 14px 4px 0; }
+.lv-figs > div + div { padding-left: 16px; border-left: 1px solid var(--line) } /* taste-skill-ignore */
+.lv-fl { display: block; font-size: 13px; color: var(--muted) }
+.lv-figs b { font-size: 26px; font-weight: 700; color: var(--ink); transition: color var(--t-ui) ease }
+.lv-figs b.flash { color: var(--accent-d) }
+.lv-figs small { font-size: 13px; color: var(--muted); margin-left: 4px }
+
+/* ── sections ── */
+section { padding-left: var(--m); padding-right: var(--m) }
+.sec-h { font-size: var(--s3); font-weight: 700; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink) }
+
+/* showcase: one corner, three states — columns 4–9, words in 1–3 */
+.corner { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 24px; padding-top: 160px }
+.corner .sec-h { grid-column: 4 / 12; margin-bottom: 72px }
+.cs-list { grid-column: 1 / 13; display: grid; gap: 40px }
+.cs-row { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 24px; align-items: center }
+.cs-word { grid-column: 1 / 4; text-align: right; font-size: var(--s3); color: var(--muted); font-weight: 500 }
+.cs-frag { grid-column: 4 / 12; display: flex; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid var(--line) } /* taste-skill-ignore */
+.cs-frag.is-hot { border-color: #e0a79f }
+.cs-txt { flex: 1; min-width: 0 }
+.cs-txt b { display: block; font-size: 16px; color: var(--ink) }
+.cs-txt span { font-size: 14px; color: var(--muted) } .cs-txt span.bad { color: var(--bad); font-weight: 600 }
+.cs-note { grid-column: 4 / 12; margin-top: 48px; max-width: 40em }
+
+/* how it works: two fields and one slider */
+.how { padding-top: 160px }
+.how-fields { display: grid; grid-template-columns: 1fr 1fr; min-height: 78svh; border-radius: var(--r); overflow: clip }
+.how-left { background: var(--tint); padding: 56px 48px; display: flex; flex-direction: column; justify-content: space-between }
+.how-right { border-radius: 0; display: flex; align-items: center; justify-content: center; padding: 48px 40px } /* taste-skill-ignore */
+.how-k { font-size: var(--s2); font-weight: 700; line-height: 1.08; letter-spacing: -0.025em; color: var(--ink); max-width: 11em; transition: opacity 200ms ease }
+.how-q { font-size: var(--s4); color: var(--text); margin-top: 28px; max-width: 26em; transition: opacity 200ms ease }
+.how-clause.fade .how-k, .how-clause.fade .how-q { opacity: 0 }
+.how-frags { display: grid; width: 100%; max-width: 440px }
+.how-frag { grid-area: 1 / 1; opacity: 0; visibility: hidden; transition: opacity 200ms ease, visibility 0s linear 200ms; padding-bottom: 16px; align-self: center }
+.how-frag.is-on { opacity: 1; visibility: visible; transition: opacity 200ms ease }
+.pl-op { padding: 12px 18px 4px } .pl-op + .pl-op { border-top: 1px solid var(--line) } /* taste-skill-ignore */
+.pl-opn { display: block; font-size: 13px; font-weight: 700; color: var(--accent-dd); margin-bottom: 6px }
+.pl-tool { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 8px 0 }
+.pl-tool b { font-size: 14px; color: var(--ink) } .pl-tool span { grid-column: 1; font-size: 12.5px; color: var(--muted) }
+.pl-tool em { grid-column: 2; grid-row: 1 / 3; align-self: center; font-style: normal; font-size: 13px; text-align: right }
+.lg-who { padding: 14px 18px 4px; font-size: 14px }
+.lg-qty { margin: 6px 18px 12px; border: 1.5px solid var(--line2); border-radius: 12px; text-align: center; font-size: 40px; font-weight: 750; color: var(--ink); padding: 4px } /* taste-skill-ignore */
+.lg-l { font-size: 13px; font-weight: 700; margin: 10px 18px 6px }
+.lg-rej { margin: 0 18px 8px; width: 90px; border: 1px solid var(--line2); border-radius: 10px; text-align: center; font-size: 22px; font-weight: 700; color: var(--bad); padding: 2px } /* taste-skill-ignore */
+.how-frag .ui-wide { width: auto; margin: 16px 18px 0 }
+.ov-kpis { display: grid; grid-template-columns: 1fr 1fr }
+.ov-kpis > div { padding: 12px 18px; border-bottom: 1px solid var(--line) } /* taste-skill-ignore */
+.ov-kpis > div:nth-child(odd) { border-right: 1px solid var(--line) } /* taste-skill-ignore */
+.ov-kpis span { display: block; font-size: 12.5px; color: var(--muted) }
+.ov-kpis b { display: block; font-size: 22px; font-weight: 700; color: var(--ink) } .ov-kpis b.bad { color: var(--bad) }
+.ov-kpis small { font-size: 12px; color: var(--muted) } .ov-kpis em { font-style: normal; font-weight: 600 } .ov-kpis em.up { color: var(--ok) }
+.ov-bars { display: flex; align-items: flex-end; gap: 10px; height: 120px; padding: 26px 18px 0 }
+.ov-bars i { flex: 1; height: calc(var(--h) * 1%); background: #bfe3ec; border-radius: 3px 3px 0 0; position: relative } /* taste-skill-ignore */
+.ov-bars i.now { background: var(--accent) }
+.ov-bars span { position: absolute; top: -19px; left: 0; right: 0; text-align: center; font-size: 12px; font-style: normal; color: var(--muted) }
+.by-row { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line) } /* taste-skill-ignore */
+.by-row > div { flex: 1 } .by-row b { display: block; font-size: 14px; color: var(--ink) } .by-row span { font-size: 12.5px; color: var(--muted); line-height: 1.8 }
+.by-row strong { font-size: 24px; font-weight: 700; color: var(--ink); text-align: right; line-height: 1 } .by-row strong small { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted) }
+.by-note { margin: 10px 18px 0; font-size: 12.5px; color: var(--muted) }
+.how-ctl { padding: 28px 0 0 }
+#how-range { width: 100%; height: 32px; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; --p: 0% }
+#how-range::-webkit-slider-runnable-track { height: 8px; background: var(--line2); border-radius: 0 } /* taste-skill-ignore */
+#how-range::-moz-range-track { height: 8px; background: var(--line2) }
+#how-range::-moz-range-progress { height: 8px; background: var(--ink) }
+#how-range::-webkit-slider-thumb { -webkit-appearance: none; width: 32px; height: 32px; margin-top: -12px; background: var(--accent-d); border: 0; border-radius: 0 } /* taste-skill-ignore */
+#how-range::-moz-range-thumb { width: 32px; height: 32px; background: var(--accent-d); border: 0; border-radius: 0 } /* taste-skill-ignore */
+.how-names { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 10px; font-size: 16px; color: var(--muted) }
+.how-names li { cursor: pointer } .how-names li:nth-child(2) { text-align: center; padding-right: 16% } .how-names li:nth-child(3) { text-align: center; padding-left: 16% } .how-names li:last-child { text-align: right }
+.how-names li.on { color: var(--ink); font-weight: 650 }
+
+/* features: one paragraph with picture words */
+.feats { padding-top: 160px }
+.statement { font-size: var(--s3); font-weight: 500; line-height: 1.32; letter-spacing: -0.01em; color: var(--ink); max-width: 30em }
+.slot { display: inline-block; vertical-align: -0.16em; height: 1.08em; margin: 0 0.08em }
+.slot-photo { width: 1.9em; border-radius: 0.18em; overflow: clip } /* taste-skill-ignore */
+.slot-photo img { width: 100%; height: 100%; object-fit: cover; object-position: 72% 46% }
+.chip { display: inline-flex; align-items: center; gap: 0.35em; height: 100%; padding: 0 0.6em; border-radius: 0.3em; background: #fff; border: 1px solid var(--line2); /* taste-skill-ignore */
+  font-size: max(0.42em, 12px); font-weight: 650; color: var(--text); white-space: nowrap; vertical-align: top; line-height: 1 }
+.chip-wa { background: var(--wa); border-color: var(--wa); color: #fff }
+.chip-ok { background: var(--ok-bg); border-color: var(--ok-bg); color: #0e4a34 }
+.chip-ok i { width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--ok) } /* taste-skill-ignore */
+.feats-more { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; margin-top: 88px }
+.report { padding: 26px 28px; border: 1px solid var(--line); font-size: 13px } /* taste-skill-ignore */
+.rp-hd { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 12px } /* taste-skill-ignore */
+.rp-hd b { display: block; font-size: 15px; color: #111 } .rp-hd span { font-size: 12px; color: #444 } .rp-t { font-size: 16px }
+.report table { width: 100%; border-collapse: collapse }
+.report th { text-align: left; font-size: 12px; font-weight: 600; color: #333; padding: 6px 8px; border-bottom: 1px solid #999 } /* taste-skill-ignore */
+.report td { padding: 7px 8px; border-bottom: 1px solid #ddd; color: #111 } /* taste-skill-ignore */
+.report .n { text-align: right }
+.rp-ft { display: flex; justify-content: flex-end; gap: 10px; align-items: flex-end; margin-top: 18px; font-size: 12px; color: #444 }
+.rp-sign { width: 160px; border-bottom: 1px solid #111; height: 18px } /* taste-skill-ignore */
+.feats-side p { margin-bottom: 18px; max-width: 30em }
+
+/* pricing: plan names, one live figure */
+.pricing { padding-top: 160px }
+.pr-grid { display: grid; grid-template-columns: repeat(12, 1fr); column-gap: 24px; align-items: center }
+.pr-names { grid-column: 1 / 7 }
+.pr-name { display: flex; align-items: center; gap: 0.3em; background: none; border: 0; font-size: var(--s1); font-weight: 750; line-height: 1.1; letter-spacing: -0.035em; color: #6f838e; padding: 0; transition: color var(--t-hover) ease } /* taste-skill-ignore */
+.pr-name::before { content: ""; width: 0.3em; height: 0.3em; border-radius: 50%; background: transparent; flex: none; transition: background-color var(--t-hover) ease } /* taste-skill-ignore */
+.pr-name[aria-selected="true"] { color: var(--ink) } .pr-name[aria-selected="true"]::before { background: var(--accent) }
+@media (hover: hover) and (pointer: fine) { .pr-name:hover { color: var(--accent-dd) } }
+.pr-all { font-size: var(--s5); color: var(--muted); margin-top: 28px; max-width: 32em }
+.pr-stage { grid-column: 8 / 13; transition: opacity 200ms ease }
+.pr-stage.fade { opacity: 0 }
+.pr-fig { display: flex; align-items: baseline; font-size: var(--s1); font-weight: 750; letter-spacing: -0.035em; color: var(--ink); line-height: 1 }
+.pr-cur { font-size: 0.5em; align-self: flex-start; margin-top: 0.12em; margin-right: 0.04em }
+.pr-per { font-size: var(--s4); font-weight: 500; letter-spacing: 0; color: var(--muted); margin-left: 12px }
+.pr-text { font-size: var(--s4); margin: 24px 0 28px; max-width: 24em }
+
+/* the action tile */
+.cta { padding: 160px 0 0 }
+.cta-row { display: grid; grid-template-columns: 1fr minmax(0, 8fr) 1fr; gap: 12px; height: 380px }
+.cta-flank { border-radius: 0 var(--r) var(--r) 0; overflow: clip; background: var(--tint) } /* taste-skill-ignore */
+.cta-flat { background: var(--stage) }
+.cta-photo2 { border-radius: var(--r) 0 0 var(--r) }
+.cta-flank img { width: 100%; height: 100%; object-fit: cover; transform: scale(var(--z, 2.2)); transform-origin: var(--o, 70% 45%) }
+.cta-photo img { --z: 2.6; --o: 61% 15%; object-position: 61% 15% } .cta-photo2 img { --z: 2.2; --o: 72% 48%; object-position: 72% 48% }
+.cta-tile { background: var(--accent-d); color: #fff; border-radius: var(--r); padding: 48px 56px; display: flex; flex-direction: column; justify-content: center }
+.cta-tile h2 { font-size: var(--s2); font-weight: 700; line-height: 1.08; letter-spacing: -0.025em }
+.cta-tile p { font-size: var(--s4); margin-top: 18px; max-width: 34em; color: #eaf6f9 }
+.cta-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; margin-top: 30px }
+
+/* footer: one quiet line */
+.foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 22svh var(--m) 30px; font-size: 16px; color: var(--muted) }
+.foot-links { display: flex; gap: 24px } .foot-links a { color: var(--ink) }
+.foot-r { justify-self: end; display: inline-flex; align-items: center; gap: 8px }
+.rood { width: 84px; height: auto; opacity: .75 }
+
+/* ── motion ── */
+@media (prefers-reduced-motion: no-preference) {
+  .js .lines [data-line] { transform: translateY(105%); animation: line-up 900ms var(--ease-expo) forwards; animation-delay: calc(var(--i) * 110ms + 150ms) }
+  .js [data-after] { opacity: 0; transform: translateY(16px); animation: rise 700ms var(--ease-out) forwards; animation-delay: 700ms }
+  .js .hero-stage[data-after] { animation-delay: 820ms }
+  .js [data-reveal] { opacity: 0; transform: translateY(24px); transition: opacity 700ms var(--ease-out), transform 900ms var(--ease-expo) }
+  .js [data-reveal].is-in { opacity: 1; transform: none }
+  .js .cs-row[data-reveal]:nth-child(2) { transition-delay: 80ms } .js .cs-row[data-reveal]:nth-child(3) { transition-delay: 160ms }
+  .js .feats-side[data-reveal] { transition-delay: 90ms }
+  .cta-flank img { animation: drift 14s var(--ease-soft) infinite alternate }
+  .cta-photo2 img { animation-duration: 17s }
+}
+@keyframes line-up { to { transform: none } }
+@keyframes rise { to { opacity: 1; transform: none } }
+@keyframes drift { from { transform: scale(var(--z, 2.2)) } to { transform: scale(calc(var(--z, 2.2) * 1.08)) translateY(-2%) } }
+
+/* ── tablet ── */
+@media (max-width: 1100px) {
+  .hero { grid-template-columns: 1fr; min-height: 0; gap: 40px }
+  .hero-copy { padding-bottom: 0 }
+  .hero-stage { margin-bottom: 0 }
+  .how-fields { grid-template-columns: 1fr }
+  .how-right { order: -1; padding: 40px 24px }
+  .how-left { padding: 40px 32px }
+  .feats-more { grid-template-columns: 1fr }
+  .corner { display: block }
+  .corner .sec-h { margin-bottom: 40px }
+  .cs-row { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 10px }
+  .cs-word { text-align: left; font-size: var(--s4) }
+  .cs-note { margin-top: 40px }
+  .foot { grid-template-columns: 1fr; gap: 10px }
+  .foot-links { flex-wrap: wrap; gap: 6px 20px } .foot-r { justify-self: start }
+}
+
+/* ── phone ── */
+@media (max-width: 700px) {
+  :root { --m: 16px; --s1: 10.4vw; --s2: 8.6vw; --s3: 24px; --s4: 17px }
+  .top { padding: 16px var(--m) }
+  .top-links { gap: 16px } .top-links .link { display: none }
+  .hero { padding-top: 24px }
+  .hero-sub { font-size: 17px; margin-top: 24px }
+  .hero-acts .btn { width: 100% }
+  .hero-stage { padding: 14px; margin: 0 calc(var(--m) * -1); border-radius: 0 } /* taste-skill-ignore */
+  .live { padding: 18px 16px }
+  .lv-top { gap: 12px } .lv-top .dial { width: 60px; height: 60px }
+  .lv-name { font-size: 18px }
+  .lv-log { grid-template-columns: 1fr; padding: 12px }
+  .lv-adj { justify-content: stretch } .lv-adj .ui-btn { flex: 1; min-height: 44px }
+  .lv-go .ui-btn { min-height: 48px; flex-basis: 100% }
+  .lv-figs b { font-size: 21px } .lv-figs > div + div { padding-left: 10px }
+  .stage-cap { padding: 0 4px }
+  .corner { padding-top: 112px; display: block }
+  .corner .sec-h { margin-bottom: 32px }
+  .cs-list { gap: 32px }
+  .cs-row { display: flex; flex-direction: column-reverse; align-items: stretch; gap: 10px }
+  .cs-word { text-align: left; font-size: 17px }
+  .cs-frag { display: grid; grid-template-columns: 44px 1fr; gap: 10px 14px; padding: 14px }
+  .cs-frag .ui-btn, .cs-frag .ui-pill { grid-column: 2; justify-self: start }
+  .cs-frag .ui-btn { min-height: 44px }
+  .cs-note { margin-top: 32px }
+  .how { padding-top: 112px }
+  .how-fields { min-height: 0; border-radius: 0; margin: 0 calc(var(--m) * -1) } /* taste-skill-ignore */
+  .how-right { padding: 24px 14px; min-height: 46svh }
+  .how-left { padding: 28px var(--m) 32px }
+  #how-range::-webkit-slider-thumb { width: 40px; height: 40px; margin-top: -16px }
+  #how-range::-moz-range-thumb { width: 40px; height: 40px }
+  .how-names { grid-template-columns: 1fr 1fr; gap: 6px; font-size: 15px }
+  .how-names li, .how-names li:nth-child(n) { text-align: left; padding: 0 }
+  .feats { padding-top: 112px }
+  .statement { line-height: 1.38 }
+  .slot-photo { width: 1.5em }
+  .feats-more { margin-top: 48px; gap: 32px }
+  .report { padding: 16px; overflow-x: auto } .report table { min-width: 460px }
+  .pricing { padding-top: 112px }
+  .pr-grid { display: block; min-height: 0 }
+  .pr-name { font-size: 12vw; margin-top: 4px }
+  .pr-stage { margin-top: 28px }
+  .pr-fig { font-size: 18vw }
+  .pr-stage .btn { width: 100% }
+  .cta { padding-top: 112px }
+  .cta-row { grid-template-columns: 1fr 1fr; height: auto; gap: 10px }
+  .cta-tile { grid-column: 1 / -1; grid-row: 1; padding: 32px var(--m) 36px; border-radius: 0 } /* taste-skill-ignore */
+  .cta-flank { height: 140px; border-radius: 0 } /* taste-skill-ignore */
+  .cta-tile .btn { width: 100% }
+  .foot { grid-template-columns: 1fr; gap: 8px; padding: 20svh var(--m) 24px; font-size: 14px }
+  .foot-links { flex-wrap: wrap; gap: 6px 18px } .foot-r { justify-self: start }
 }
 </style>
 <link rel="canonical" href="https://www.toolflux.co.in/machining-log.html">
@@ -313,454 +362,380 @@ footer .fwm{font-family:var(--mono); font-weight:800; letter-spacing:.14em; colo
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.toolflux.co.in/"},{"@type":"ListItem","position":2,"name":"Machlog App","item":"https://www.toolflux.co.in/machining-log.html"}]}</script>
 </head>
 <body>
+<a class="skip" href="#main">Skip to the page</a>
+<header class="top">
+  <a class="brand" href="#main" aria-label="Machlog, top of the page">
+    <svg class="brand-mark" width="34" height="34" viewBox="0 0 72 72" aria-hidden="true"><clipPath id="ml-a"><path d="M-4 -4H50L24 76H-4Z"/></clipPath><clipPath id="ml-b"><path d="M50 -4H76V76H24Z"/></clipPath><g clip-path="url(#ml-a)"><path d="M28.51 11.15L29.39 3.34L38.61 3.34L39.49 11.15A23.5 23.5 0 0 1 46.28 13.96L46.28 13.96L52.42 9.06L58.94 15.58L54.04 21.72A23.5 23.5 0 0 1 56.85 28.51L56.85 28.51L64.66 29.39L64.66 38.61L56.85 39.49A23.5 23.5 0 0 1 54.04 46.28L54.04 46.28L58.94 52.42L52.42 58.94L46.28 54.04A23.5 23.5 0 0 1 39.49 56.85L39.49 56.85L38.61 64.66L29.39 64.66L28.51 56.85A23.5 23.5 0 0 1 21.72 54.04L21.72 54.04L15.58 58.94L9.06 52.42L13.96 46.28A23.5 23.5 0 0 1 11.15 39.49L11.15 39.49L3.34 38.61L3.34 29.39L11.15 28.51A23.5 23.5 0 0 1 13.96 21.72L13.96 21.72L9.06 15.58L15.58 9.06L21.72 13.96A23.5 23.5 0 0 1 28.51 11.15Z" fill="#012B42"/></g><g clip-path="url(#ml-b)"><path d="M32.51 15.15L33.39 7.34L42.61 7.34L43.49 15.15A23.5 23.5 0 0 1 50.28 17.96L50.28 17.96L56.42 13.06L62.94 19.58L58.04 25.72A23.5 23.5 0 0 1 60.85 32.51L60.85 32.51L68.66 33.39L68.66 42.61L60.85 43.49A23.5 23.5 0 0 1 58.04 50.28L58.04 50.28L62.94 56.42L56.42 62.94L50.28 58.04A23.5 23.5 0 0 1 43.49 60.85L43.49 60.85L42.61 68.66L33.39 68.66L32.51 60.85A23.5 23.5 0 0 1 25.72 58.04L25.72 58.04L19.58 62.94L13.06 56.42L17.96 50.28A23.5 23.5 0 0 1 15.15 43.49L15.15 43.49L7.34 42.61L7.34 33.39L15.15 32.51A23.5 23.5 0 0 1 17.96 25.72L17.96 25.72L13.06 19.58L19.58 13.06L25.72 17.96A23.5 23.5 0 0 1 32.51 15.15Z" fill="#0097B2"/></g><circle cx="36" cy="36" r="17.5" fill="var(--mark-ground, #fff)"/><g transform="translate(36.6 36) skewX(-12)" fill="none" stroke-width="5.2" stroke-linejoin="miter" stroke-miterlimit="6"><path d="M-9 9.5V-9.5L0.4 4.5" stroke="#012B42"/><path d="M0.4 4.5L9 -9.5V9.5" stroke="#0097B2"/></g></svg>
+    <span class="brand-name">MACH<b>LOG</b></span>
+  </a>
+  <nav class="top-links" aria-label="Page">
+    <a class="link" href="#how">How it works</a>
+    <a class="link" href="#pricing">Pricing</a>
+    <a class="link" href="machlog-guide.html">Setup guide</a>
+    <a class="btn btn-sm" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">Open the app</a>
+  </nav>
+</header>
 
-<div id="bgfx"></div>
-<div id="sprog"></div>
+<main id="main">
 
-<nav id="nav">
-  <a href="index.html" class="navback">&#8592; toolflux.co.in</a>
-  <a href="#hero" class="navlogo"><span class="dot"></span>MACHLOG</a>
-  <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-sm">Start free</a>
-</nav>
-
-<!-- ══ HERO ══ -->
-<section id="hero">
-  <div class="wrap">
-    <div class="hero-eyebrow"><span class="lbl">TOOLFLUX Machlog · Shop-Floor Software · From ₹299/month</span></div>
-    <h1 class="h-title">Your production, <span class="tl">in rupees.</span></h1>
-    <p class="h-sub">Machlog shows you what every shift produced, what was rejected, and what each component really cost in tooling. Operators log at the machine in seconds. Built for Indian machine shops, and it works without internet.</p>
-    <div class="h-ctas">
-      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
-      <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-olw btn-lg">&#8595; Download for a shop PC</a>
+<!-- ═══ HERO: the product doing its job ═══ -->
+<section class="hero" aria-labelledby="h-title">
+  <div class="hero-copy">
+    <h1 id="h-title" class="lines">
+      <span class="line"><span data-line style="--i:0">Your production,</span></span>
+      <span class="line"><span data-line style="--i:1">in rupees.</span></span>
+    </h1>
+    <p class="hero-sub" data-after>Machlog is the production log for Indian machine shops. Operators log pieces and insert changes at the machine; you see output, rejections and tooling cost per piece, even without internet.</p>
+    <div class="hero-acts" data-after>
+      <a class="btn btn-lg" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">Start free in your browser</a>
+      <a class="link link-strong" href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html">Download for a shop PC</a>
     </div>
-    <div class="h-note">Free for 14 days · No card required · Plans from ₹299/month</div>
-    <div class="h-pills">
-      <span class="h-pill">Cost per component</span>
-      <span class="h-pill">Shift output</span>
-      <span class="h-pill">Rejections</span>
-      <span class="h-pill">Works offline</span>
-    </div>
+    <p class="hero-note" data-after>Free for 14 days, no card. Plans from ₹299 a month.</p>
   </div>
 
-  <!-- FULL-WINDOW DASHBOARD GLIMPSE -->
-  <div class="wrap wide demo-wrap rv d1">
-    <div class="demo-cap">A real look at the owner dashboard</div>
-    <div class="win">
-      <div class="win-bar"><span></span><span></span><span></span><span class="url">machlog · Owner Dashboard</span></div>
-      <div class="mk">
-        <div class="mk-bar"><span class="lg">TOOLFLUX</span><span class="sub">Machining Log</span><span class="chip">&#128275; OWNER MODE</span></div>
-        <div class="mk-tabs"><span class="mk-tab on">&#8962; Dashboard</span><span class="mk-tab">Jobs</span><span class="mk-tab">Inventory</span><span class="mk-tab">Settings</span></div>
-        <div class="mk-pad">
-          <div class="mk-panel">
-            <div class="mk-ph"><span class="t">Attention Required</span><span class="n">3</span></div>
-            <div class="mk-att bad"><span class="d"></span>HSG-4020 · OD Turning — <b>abnormal insert failure</b><span class="ar">&#8594;</span></div>
-            <div class="mk-att bad"><span class="d"></span>Out of stock: CNMG120408-PM<span class="ar">&#8594;</span></div>
-            <div class="mk-att warn"><span class="d"></span>FLG-210 is paused<span class="ar">&#8594;</span></div>
+  <div class="stage hero-stage" data-after>
+    <div class="frag live" data-ui id="live" aria-label="Try it: log pieces against one insert">
+      <div class="lv-top">
+        <svg class="dial" id="lv-dial" width="76" height="76" viewBox="0 0 76 76" aria-hidden="true"></svg>
+        <div class="lv-tool">
+          <div class="lv-name">OD Turning</div>
+          <div class="lv-spec">FLG-2210 · CNMG 120408 TFX-P25 · ₹420 an insert, 4 corners</div>
+          <div class="lv-state" id="lv-state" aria-live="polite">Corner 2 of 4 · 37 pieces · about 51 left</div>
+        </div>
+      </div>
+      <div class="lv-track"><i id="lv-bar" style="width:42%"></i></div>
+      <div class="lv-trackl"><span>0</span><span>Usual life 88 pcs a corner</span></div>
+
+      <div class="lv-log">
+        <div class="lv-q">
+          <span class="lv-ql">Pieces made</span>
+          <output class="lv-qn" id="lv-qty">25</output>
+        </div>
+        <div class="lv-adj" role="group" aria-label="Change the count">
+          <button type="button" class="ui-btn" data-add="-5" aria-label="Five fewer">−5</button>
+          <button type="button" class="ui-btn" data-add="5">+5</button>
+          <button type="button" class="ui-btn" data-add="10">+10</button>
+          <button type="button" class="ui-btn" data-add="25">+25</button>
+        </div>
+        <div class="lv-go">
+          <button type="button" class="ui-btn ui-pri" id="lv-save">Save entry</button>
+          <button type="button" class="ui-btn" id="lv-index">Index to the next corner</button>
+        </div>
+      </div>
+
+      <div class="lv-figs">
+        <div><span class="lv-fl">Made today</span><b id="lv-today">85</b><small>pcs</small></div>
+        <div><span class="lv-fl">On this insert</span><b id="lv-total">125</b><small>pcs</small></div>
+        <div><span class="lv-fl">Tooling per piece</span><b id="lv-cpc">₹1.68</b></div>
+      </div>
+    </div>
+    <p class="stage-cap">Try it. Save a few entries and watch the corner wear and the cost per piece fall; index when it is due.</p>
+  </div>
+</section>
+
+<!-- ═══ SHOWCASE: one corner, three states ═══ -->
+<section class="corner" aria-labelledby="corner-h">
+  <h2 id="corner-h" class="sec-h" data-reveal>Every corner, counted</h2>
+  <div class="cs-list">
+    <div class="cs-row" data-reveal>
+      <span class="cs-word">Cutting</span>
+      <div class="frag cs-frag" data-ui>
+        <svg class="dial" width="44" height="44" viewBox="0 0 76 76" data-dial="2,0.59" aria-hidden="true"></svg>
+        <div class="cs-txt"><b>OD Turning</b><span>Corner 2 of 4 · 52 pieces · about 36 left</span></div>
+        <span class="ui-pill">In the machine</span>
+      </div>
+    </div>
+    <div class="cs-row" data-reveal>
+      <span class="cs-word" id="cs-mid-word">Due</span>
+      <div class="frag cs-frag is-hot" data-ui id="cs-mid">
+        <svg class="dial" width="44" height="44" viewBox="0 0 76 76" data-dial="2,1,due" aria-hidden="true" id="cs-mid-dial"></svg>
+        <div class="cs-txt"><b>OD Turning</b><span id="cs-mid-s" class="bad">Corner 2 of 4 · 91 pieces · past the usual 88</span></div>
+        <button type="button" class="ui-btn ui-pri" id="cs-mid-btn">Index to the next corner</button>
+      </div>
+    </div>
+    <div class="cs-row" data-reveal>
+      <span class="cs-word">Indexed</span>
+      <div class="frag cs-frag" data-ui>
+        <svg class="dial" width="44" height="44" viewBox="0 0 76 76" data-dial="3,0.08" aria-hidden="true"></svg>
+        <div class="cs-txt"><b>OD Turning</b><span>Corner 3 of 4 · corner 2 lasted 91 pieces</span></div>
+        <span class="ui-pill">Logged by Ravi, 11:42</span>
+      </div>
+    </div>
+  </div>
+  <p class="cs-note" data-reveal>Machlog learns the usual life of each insert from your own shop. A corner that breaks well before it is flagged as an early failure the same day, so a wrong grade or a bad speed does not repeat for the rest of the batch.</p>
+</section>
+
+<!-- ═══ HOW IT WORKS: drag through the stages ═══ -->
+<section class="how" id="how" aria-labelledby="how-h">
+  <h2 id="how-h" class="sr-only">How Machlog works</h2>
+  <div class="how-fields">
+    <div class="how-left">
+      <div class="how-clause" aria-live="polite">
+        <p class="how-k" id="how-k">Plan the job before the first cut.</p>
+        <p class="how-q" id="how-q">The owner sets the operations in order and the tool for each one. The shop floor never edits it.</p>
+      </div>
+    </div>
+    <div class="how-right stage">
+      <div class="how-frags">
+        <!-- 1 · plan -->
+        <div class="frag how-frag is-on" data-ui data-stage="0">
+          <div class="ui-hd"><b>FLG-2210</b><span>Process plan</span></div>
+          <div class="pl-op"><span class="pl-opn">Op-1 · Turning</span>
+            <div class="pl-tool"><b>OD Turning</b><span>CNMG 120408 TFX-P25 · LT-01</span><em>₹420 a set · 4 corners</em></div>
+            <div class="pl-tool"><b>Grooving</b><span>MGMN 300 TFX-P25 · LT-01</span><em>₹300 a set · 2 corners</em></div>
           </div>
-          <div class="mk-panel">
-            <div class="mk-stats">
-              <div class="mk-stat"><div class="l">Active Jobs</div><div class="v">3</div><div class="s">1 paused</div></div>
-              <div class="mk-stat"><div class="l">Good Components</div><div class="v">1,847</div><div class="s">All time</div></div>
-              <div class="mk-stat"><div class="l">Rejections</div><div class="v bad">2.1%</div><div class="s">39 pcs</div></div>
-              <div class="mk-stat"><div class="l">Today</div><div class="v">248</div><div class="s">Pcs logged</div></div>
-              <div class="mk-stat"><div class="l">This Week</div><div class="v">1,612</div><div class="s">Last 7 days</div></div>
-              <div class="mk-stat"><div class="l">Avg Corner Life</div><div class="v">105</div><div class="s">pcs/corner</div></div>
-            </div>
+          <div class="pl-op"><span class="pl-opn">Op-2 · VMC</span>
+            <div class="pl-tool"><b>Ø12 Drilling</b><span>Ø12 solid carbide drill · VMC-01</span><em>₹2,800 a tool</em></div>
           </div>
-          <div class="mk-cols">
-            <div class="mk-panel">
-              <div class="mk-ph"><span class="t">Operator Performance</span><span class="n">This week</span></div>
-              <div class="mk-hero"><span class="em">&#127942;</span><div><div class="l">Today's Top Performer</div><div class="n">Ravi</div><div class="s">118 pcs today · 98% good</div></div></div>
-              <div style="padding:.3rem 0">
-                <div class="mk-perf"><span class="mk-rank r1">1</span><span class="mk-pname">Ravi</span><div class="mk-pbar"><i style="width:100%"></i></div><span class="mk-pgood">217</span><span class="mk-peff g">99%</span></div>
-                <div class="mk-perf"><span class="mk-rank r2">2</span><span class="mk-pname">Suresh</span><div class="mk-pbar"><i style="width:28%"></i></div><span class="mk-pgood">60</span><span class="mk-peff w">75%</span></div>
-                <div class="mk-perf"><span class="mk-rank r3">3</span><span class="mk-pname">Kumar</span><div class="mk-pbar"><i style="width:23%"></i></div><span class="mk-pgood">50</span><span class="mk-peff g">100%</span></div>
-              </div>
-            </div>
-            <div class="mk-panel">
-              <div class="mk-ph"><span class="t">Job Status</span><span class="n">3 jobs</span></div>
-              <table class="mk-jtbl">
-                <thead><tr><th>Component</th><th>Op</th><th>Progress</th><th class="n">Good</th><th>Status</th></tr></thead>
-                <tbody>
-                  <tr><td class="code">HSG-4020</td><td>Op-1</td><td><span class="mk-prog"><i style="width:64%"></i></span></td><td class="n">320</td><td><span class="mk-jst run">RUN</span></td></tr>
-                  <tr><td class="code">PIN-88</td><td>Op-1</td><td><span class="mk-prog"><i style="width:15%"></i></span></td><td class="n">148</td><td><span class="mk-jst run">RUN</span></td></tr>
-                  <tr><td class="code">FLG-210</td><td>Op-1</td><td><span class="mk-prog"><i style="width:30%"></i></span></td><td class="n">60</td><td><span class="mk-jst pause">PAUSE</span></td></tr>
-                </tbody>
-              </table>
-              <div class="mk-chart">
-                <div class="mk-cbar"><i style="height:40%"></i><span class="cl">Mon</span></div>
-                <div class="mk-cbar"><i style="height:62%"><em style="height:8%"></em></i><span class="cl">Tue</span></div>
-                <div class="mk-cbar"><i style="height:48%"></i><span class="cl">Wed</span></div>
-                <div class="mk-cbar"><i style="height:80%"><em style="height:6%"></em></i><span class="cl">Thu</span></div>
-                <div class="mk-cbar"><i style="height:70%"></i><span class="cl">Fri</span></div>
-                <div class="mk-cbar"><i style="height:90%"><em style="height:10%"></em></i><span class="cl">Sat</span></div>
-                <div class="mk-cbar"><i style="height:55%"></i><span class="cl">Sun</span></div>
-              </div>
-            </div>
+          <div class="ui-foot"><span>One full load</span><b>₹3,520</b></div>
+        </div>
+        <!-- 2 · log -->
+        <div class="frag how-frag" data-ui data-stage="1">
+          <div class="ui-hd tint"><b>FLG-2210 — pieces made</b><span>Today so far <b>45</b></span></div>
+          <div class="lg-who">Logging as <b>Ravi</b></div>
+          <div class="lg-qty">48</div>
+          <div class="lg-l">Rejected</div>
+          <div class="lg-rej">2</div>
+          <div class="ui-segs"><span>Dimensional</span><span class="on">Tool mark</span><span>Burr</span><span>Setup error</span></div>
+          <div class="lg-l">Tool change</div>
+          <div class="ui-segs"><span>No change</span><span class="on">Indexed</span><span>Replaced</span></div>
+          <div class="ui-btn ui-pri ui-wide">Save entry</div>
+        </div>
+        <!-- 3 · watch -->
+        <div class="frag how-frag" data-ui data-stage="2">
+          <div class="ui-hd"><b>Overview</b><span>Sharma Engineering Works</span></div>
+          <div class="ov-kpis">
+            <div><span>Made today</span><b>175</b><small>Yesterday 148, <em class="up">+18%</em></small></div>
+            <div><span>Rejected this week</span><b class="bad">11</b><small>1.5%, mostly dimensional</small></div>
+            <div><span>Tooling spend, 30 days</span><b>₹5,420</b><small>Inserts and tools loaded</small></div>
+            <div><span>Tooling per good piece</span><b>₹7.99</b><small>30-day spend ÷ good pieces</small></div>
           </div>
+          <div class="ov-bars" aria-hidden="true">
+            <i style="--h:23"><span>40</span></i><i style="--h:60"><span>105</span></i><i style="--h:70"><span>122</span></i><i style="--h:78"><span>136</span></i><i style="--h:85"><span>148</span></i><i class="now" style="--h:100"><span>175</span></i>
+          </div>
+        </div>
+        <!-- 4 · buy -->
+        <div class="frag how-frag" data-ui data-stage="3">
+          <div class="ui-hd"><b>To buy</b><span>2 items · about ₹7,000</span></div>
+          <div class="by-row"><div><b>Ø12 solid carbide drill</b><span><em class="ui-flag bad">Out of stock</em> 0 in stock · 1 used in 30 days</span></div><strong>1<small>order</small></strong></div>
+          <div class="by-row"><div><b>CNMG 120408 TFX-P25</b><span><em class="ui-flag warn">At reorder level (10)</em> 10 in stock · 6 used in 30 days</span></div><strong>10<small>order</small></strong></div>
+          <div class="ui-btn ui-wa ui-wide">Send list on WhatsApp</div>
+          <p class="by-note">The message carries items and quantities only, no prices.</p>
         </div>
       </div>
     </div>
   </div>
-</section>
-
-<!-- ══ SETUP — four plain steps ══ -->
-<section class="feat setup" id="start">
-  <div class="wrap">
-    <div class="rv" style="text-align:center;max-width:820px;margin:0 auto 2.4rem">
-      <h2 class="feat-h">Set up in 30 seconds. <span class="tl">No card needed.</span></h2>
-      <p class="feat-p" style="margin:0 auto">Four steps, on the phone or PC you already have.</p>
-    </div>
-    <ol class="setup-steps rv d1">
-      <li><b>Open the app</b><span>Open it in Chrome on your phone or PC. Bookmark it, or add it to your home screen.</span></li>
-      <li><b>Name your workshop</b><span>Workshop name, your name, your main machine and your email.</span></li>
-      <li><b>Set your Owner PIN</b><span>4 to 8 digits. It keeps costs and reports away from operators.</span></li>
-      <li><b>Tap Start tracking</b><span>Your 14-day free trial starts, with every feature switched on.</span></li>
+  <div class="how-ctl">
+    <label class="sr-only" for="how-range">Stage</label>
+    <input type="range" id="how-range" min="0" max="3" step="1" value="0" aria-valuetext="Plan">
+    <ol class="how-names">
+      <li class="on">Plan</li><li>Log</li><li>Watch</li><li>Buy</li>
     </ol>
-    <div class="setup-cta rv d2">
-      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
-      <a href="machlog-guide.html" class="btn btn-olw btn-lg">Read the setup guide</a>
+  </div>
+</section>
+
+<!-- ═══ FEATURES: paragraph with picture words ═══ -->
+<section class="feats" aria-labelledby="feats-h">
+  <h2 id="feats-h" class="sr-only">What else it does</h2>
+  <p class="statement" data-reveal>Every insert <span class="slot slot-photo"><img src="assets/img/turning-inserts.jpg" alt="TOOLFLUX turning inserts" width="900" height="1200" loading="lazy"></span> is counted corner by corner. Shift proof <span class="slot" data-ui><span class="chip chip-wa">Send on WhatsApp</span></span> reaches your phone, the owner PIN <span class="slot" data-ui><span class="chip">Owner mode · Lock</span></span> keeps costs private, and every entry backs up <span class="slot" data-ui><span class="chip chip-ok"><i></i>Backed up</span></span> by itself.</p>
+  <div class="feats-more">
+    <div class="report frag" data-ui data-reveal aria-label="An A4 report for one job">
+      <div class="rp-hd"><div><b>TOOLFLUX — Sharma Engineering Works</b><span>Machining efficiency report · 10 Nov 2026</span></div><b class="rp-t">FLG-2210</b></div>
+      <table>
+        <thead><tr><th>Tool</th><th class="n">Sets</th><th class="n">Usual life</th><th class="n">Pieces</th><th class="n">Per piece</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>OD Turning</td><td class="n">2</td><td class="n">88</td><td class="n">704</td><td class="n">₹1.19</td><td>OK</td></tr>
+          <tr><td>Grooving</td><td class="n">3</td><td class="n">48</td><td class="n">270</td><td class="n">₹3.33</td><td>1 early failure</td></tr>
+          <tr><td>Ø12 Drilling</td><td class="n">1</td><td class="n">—</td><td class="n">300</td><td class="n">₹9.33</td><td>First drill still cutting</td></tr>
+        </tbody>
+      </table>
+      <div class="rp-ft"><span>Approved by</span><span class="rp-sign"></span></div>
+    </div>
+    <div class="feats-side" data-reveal>
+      <p>Any job prints as a black-and-white A4 report: each tool's sets, usual life, pieces and cost per piece, with early failures marked. Tape it to the file, hand it to your CA, or use it when a supplier promises longer tool life.</p>
+      <p>Operators see production only. Costs, reports and edits to past entries stay behind your PIN.</p>
+      <a class="link link-strong" href="machlog-guide.html">Read the setup guide</a>
     </div>
   </div>
 </section>
 
-<!-- ══ PROBLEM STRIP ══ -->
-<section id="problem">
-  <div class="wrap">
-    <div class="prob-grid">
-      <div class="prob-item rv"><div class="prob-q">"Kitna bana aaj?"</div><div class="prob-a">Know today's production <span class="tl">in one glance.</span></div></div>
-      <div class="prob-item rv d1"><div class="prob-q">"Koi hera-pheri toh nahi?"</div><div class="prob-a">Every entry synced <span class="tl">the moment it's logged.</span></div></div>
-      <div class="prob-item rv d2"><div class="prob-q">"Insert ka kharcha kahaan?"</div><div class="prob-a">See your real cost <span class="tl">per component.</span></div></div>
+<!-- ═══ PRICING: plan names, one live figure ═══ -->
+<section class="pricing" id="pricing" aria-labelledby="pricing-h">
+  <h2 id="pricing-h" class="sr-only">Pricing</h2>
+  <div class="pr-grid">
+    <div class="pr-names" role="tablist" aria-label="Plans">
+      <button type="button" role="tab" class="pr-name" aria-selected="false" aria-controls="pr-stage" data-plan="solo">Solo</button>
+      <button type="button" role="tab" class="pr-name" aria-selected="true" aria-controls="pr-stage" data-plan="shop">Shop</button>
+      <button type="button" role="tab" class="pr-name" aria-selected="false" aria-controls="pr-stage" data-plan="works">Works</button>
+      <p class="pr-all">Every plan has every feature and starts with 14 days free. Plans differ only in how many operator phones can log.</p>
+    </div>
+    <div class="pr-stage" id="pr-stage" role="tabpanel" aria-live="polite">
+      <p class="pr-fig"><span class="pr-cur">₹</span><span id="pr-num">799</span><span class="pr-per">a month</span></p>
+      <p class="pr-text" id="pr-text">Up to 5 operator phones. For shops with 4 to 10 machines and operators on shifts.</p>
+      <a class="btn btn-lg" id="pr-btn" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">Start the Shop trial</a>
     </div>
   </div>
 </section>
 
-<!-- ══ FEATURE 01 — INSERT LIFE ══ -->
-<section class="feat" data-glow="insert">
-  <div class="wrap feat-grid">
-    <div class="feat-copy rv">
-      <div class="feat-num">01 — INSERT LIFE &amp; ANOMALIES</div>
-      <h2 class="feat-h">Catch a dying insert <span class="tl">before it costs you.</span></h2>
-      <p class="feat-p">Every corner's life is logged automatically. The app learns your average — and flags the moment an insert dies early, so a bad batch or wrong speed doesn't repeat ten more times.</p>
-      <ul class="feat-list">
-        <li>One-tap Index Corner and Replace Inserts on the shop floor</li>
-        <li>Anomaly detection compares every corner to your own history</li>
-        <li>Big, glove-friendly buttons built for a phone at the machine</li>
-      </ul>
-    </div>
-    <div class="feat-mk rv d2">
-      <div class="frame-phone">
-        <div class="pnotch"></div>
-        <div class="pscreen mk">
-          <div class="mk-life overdue" style="margin-top:.55rem">
-            <div class="t">Set 1 · Corner 2 of 4</div>
-            <div class="m">Broke at 35 pcs — well below your 105 pc average</div>
-            <div class="bar"><i style="width:33%"></i></div>
-          </div>
-          <div class="mk-actbar">
-            <div class="mk-actbtn pri">&#8635; Index Corner</div>
-            <div class="mk-actbtn ghost">Replace Inserts</div>
-            <div class="mk-actbtn teal">+ Log Production</div>
-          </div>
-        </div>
+<!-- ═══ CTA: the action tile ═══ -->
+<section class="cta" aria-labelledby="cta-h">
+  <div class="cta-row">
+    <div class="cta-flank cta-photo" aria-hidden="true"><img src="assets/img/carbide-drills.jpg" alt="" width="900" height="1125" loading="lazy"></div>
+    <div class="cta-tile" data-reveal>
+      <h2 id="cta-h">Start in two questions</h2>
+      <p>Open Machlog in Chrome on any phone or PC, name your workshop, then plan your first job. Free for 14 days, no card, and nothing is deleted if you stop.</p>
+      <div class="cta-acts">
+        <a class="btn btn-paper btn-lg" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">Start free in your browser</a>
+        <a class="link link-paper" href="https://wa.me/918660234766" target="_blank" rel="noopener">Ask on WhatsApp</a>
       </div>
     </div>
+    <div class="cta-flank cta-photo2" aria-hidden="true"><img src="assets/img/turning-inserts.jpg" alt="" width="900" height="1200" loading="lazy"></div>
   </div>
 </section>
 
-<!-- ══ FEATURE 02 — CPC ══ -->
-<section class="feat" data-glow="cpc">
-  <div class="wrap feat-grid rev">
-    <div class="feat-copy rv">
-      <div class="feat-num">02 — COST PER COMPONENT</div>
-      <h2 class="feat-h">Stop guessing what tooling <span class="tl">really costs.</span></h2>
-      <p class="feat-p">CPC = insert money spent ÷ pieces produced. Calculated from the sets you actually loaded and the pieces you actually logged — never an estimate. Only the owner ever sees it.</p>
-      <div class="calc-box">
-        <div class="calc-line"><span>Insert: CNMG 12 04 08, 4 corners</span><span class="mono">₹420 / insert</span></div>
-        <div class="calc-line"><span>Set fully used, all corners</span><span class="mono">₹420 spent</span></div>
-        <div class="calc-line"><span>Pieces made on that set</span><span class="mono">440 pcs</span></div>
-        <div class="calc-line"><span>Confirmed CPC</span><span class="mono">₹0.95 / pc</span></div>
-      </div>
-    </div>
-    <div class="feat-mk rv d2">
-      <div class="frame">
-        <div class="dbar"><span></span><span></span><span></span></div>
-        <div class="mk">
-          <div class="mk-bar"><span class="lg" style="font-size:.68rem">HSG-4020</span><span class="sub">OD Turning</span></div>
-          <div class="mk-cpc">
-            <div class="c"><div class="l">Confirmed CPC</div><div class="v teal">₹0.95</div><div class="s">Fully spent sets</div></div>
-            <div class="c"><div class="l">Running CPC</div><div class="v">₹1.12</div><div class="s">Live set</div></div>
-            <div class="c"><div class="l">Total Pcs</div><div class="v">1,240</div><div class="s">All sets</div></div>
-            <div class="c"><div class="l">Avg Corner Life</div><div class="v">105</div><div class="s">pcs/corner</div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
+</main>
 
-<!-- ══ SPOTLIGHT — REPORTS ══ -->
-<section class="spotlight" data-glow="report">
-  <div class="wrap">
-    <div class="spot-head rv">
-      <span class="spot-badge">The feature owners love most</span>
-      <h2 class="feat-h" style="margin-bottom:.8rem">One click turns a month of work into <span class="tl">a report you can sign.</span></h2>
-      <p class="feat-p" style="margin:0 auto">Machlog prints a clean A4 efficiency report for any job — every station's insert life, cost per piece, and flagged anomalies. Proof for audits, ammunition when a supplier claims "30% more tool life," and the numbers you need to justify a purchase to management.</p>
-    </div>
-
-    <div class="rv d1">
-      <div class="mk-report">
-        <div class="mr-hd">
-          <div>
-            <div class="mr-co">TOOLFLUX — Sharma Engineering Works</div>
-            <div class="mr-meta">Machining Efficiency Report · 13 Jul 2026, 07:30 PM</div>
-          </div>
-          <div class="mr-tt">
-            <div class="mr-title">Production Report</div>
-            <div class="mr-id">RPT-HSG-4020-2026-07-13</div>
-          </div>
-        </div>
-        <table class="mr-tbl">
-          <thead><tr><th>Station</th><th class="n">Sets</th><th class="n">Set Cost</th><th class="n">Avg Life</th><th class="n">Total Pcs</th><th class="n">CPC</th><th>Anomaly</th></tr></thead>
-          <tbody>
-            <tr><td class="code">OD Turning</td><td class="n">2</td><td class="n">₹420</td><td class="n">105</td><td class="n">440</td><td class="n">₹0.95</td><td>OK</td></tr>
-            <tr class="flag"><td class="code">Grooving</td><td class="n">3</td><td class="n">₹300</td><td class="n">48</td><td class="n">190</td><td class="n">₹1.58*</td><td class="warnc">&#9888; 1</td></tr>
-            <tr><td class="code">Face Milling</td><td class="n">1</td><td class="n">₹1,900</td><td class="n">210</td><td class="n">200</td><td class="n">₹1.12</td><td>OK</td></tr>
-            <tr><td class="code">Ø12 Drilling</td><td class="n">1</td><td class="n">₹2,800</td><td class="n">380</td><td class="n">300</td><td class="n">₹0.74</td><td>OK</td></tr>
-          </tbody>
-        </table>
-        <div class="mr-foot"><span>* provisional — set not fully spent</span><span>Approved: ________________</span></div>
-      </div>
-    </div>
-
-    <div class="spot-benefits rv d2">
-      <div class="spot-b"><div class="h">Print &amp; sign</div><div class="p">Perfect black-and-white A4. Tape it to the file, hand it to your CA.</div></div>
-      <div class="spot-b"><div class="h">Win the argument</div><div class="p">Real numbers when a rep claims their insert lasts longer.</div></div>
-      <div class="spot-b"><div class="h">Justify the spend</div><div class="p">Show management exactly where the tooling money goes.</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FEATURE 03 — OPERATOR PERFORMANCE ══ -->
-<section class="feat" data-glow="perf">
-  <div class="wrap feat-grid">
-    <div class="feat-copy rv">
-      <div class="feat-num">03 — OPERATOR PERFORMANCE</div>
-      <h2 class="feat-h">See who's leading, <span class="tl">every single day.</span></h2>
-      <p class="feat-p">A weekly leaderboard ranks every operator by good pieces — with a week-over-week arrow showing who's improving and who's slipping.</p>
-      <ul class="feat-list">
-        <li>Today's Top Performer, front and centre on the dashboard</li>
-        <li>Efficiency % colour-coded — green, amber, red</li>
-        <li>New operators get a neutral tag, never an unfair comparison</li>
-      </ul>
-    </div>
-    <div class="feat-mk rv d2">
-      <div class="frame">
-        <div class="dbar"><span></span><span></span><span></span></div>
-        <div class="mk">
-          <div class="mk-hero"><span class="em">&#127942;</span><div><div class="l">Today's Top Performer</div><div class="n">Ravi</div><div class="s">118 pcs today · 98% good</div></div></div>
-          <div style="padding:.3rem 0 .6rem">
-            <div class="mk-perf"><span class="mk-rank r1">1</span><span class="mk-pname">Ravi</span><div class="mk-pbar"><i style="width:100%"></i></div><span class="mk-pgood">217</span><span class="mk-peff g">99%</span></div>
-            <div class="mk-perf"><span class="mk-rank r2">2</span><span class="mk-pname">Suresh</span><div class="mk-pbar"><i style="width:28%"></i></div><span class="mk-pgood">60</span><span class="mk-peff w">75%</span></div>
-            <div class="mk-perf"><span class="mk-rank r3">3</span><span class="mk-pname">Kumar</span><div class="mk-pbar"><i style="width:23%"></i></div><span class="mk-pgood">50</span><span class="mk-peff g">100%</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FEATURE 04 — SHIFT PROOF ══ -->
-<section class="feat" data-glow="proof">
-  <div class="wrap feat-grid rev">
-    <div class="feat-copy rv">
-      <div class="feat-num">04 — SHIFT PROOF</div>
-      <h2 class="feat-h">One screenshot. <span class="tl">Total transparency.</span></h2>
-      <p class="feat-p">End of shift, the operator opens Shift Proof and taps Send on WhatsApp. You see who worked, what was made, and whether it already reached the cloud — from home, in seconds.</p>
-      <ul class="feat-list">
-        <li>Pre-typed WhatsApp message — no copy-paste, no explaining</li>
-        <li>Sync status always visible: Synced, Waiting, or Offline</li>
-        <li>Fits one phone screen, readable inside a WhatsApp preview</li>
-      </ul>
-    </div>
-    <div class="feat-mk rv d2">
-      <div class="frame-phone">
-        <div class="pnotch"></div>
-        <div class="pscreen mk">
-          <div class="mk-proof">
-            <div class="mk-proof-hd">
-              <div><div class="mk-proof-co">Sharma Engineering</div><div class="mk-proof-t">PROOF OF PRODUCTION</div></div>
-              <span class="mk-proof-sync">&#10003; SYNCED</span>
-            </div>
-            <div class="mk-proof-job">
-              <div style="display:flex;justify-content:space-between"><span class="mk-proof-code">HSG-4020</span><span style="font-size:.54rem;color:#9aa9b0">Op-1</span></div>
-              <div><span class="mk-proof-good">113</span> <small style="color:#9aa9b0">good</small> &nbsp; <span class="mk-proof-rej">2</span> <small style="color:#9aa9b0">rejected</small></div>
-            </div>
-            <div class="mk-proof-tot">
-              <div><div class="mk-proof-tn">113</div><div class="mk-proof-tl">GOOD</div></div>
-              <div><div class="mk-proof-tn">2</div><div class="mk-proof-tl">REJECTED</div></div>
-              <div><div class="mk-proof-tn">1</div><div class="mk-proof-tl">INDEXES</div></div>
-            </div>
-          </div>
-          <div class="mk-wabtn">&#9993; Send on WhatsApp</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FEATURE 05 — OWNER VS OPERATOR ══ -->
-<section class="feat" data-glow="pin">
-  <div class="wrap">
-    <div class="rv" style="text-align:center;max-width:640px;margin:0 auto 2.6rem">
-      <div class="feat-num" style="justify-content:center;display:flex">05 — OWNER &amp; OPERATOR MODES</div>
-      <h2 class="feat-h">Costs stay private. <span class="tl">Production stays honest.</span></h2>
-      <p class="feat-p" style="margin:0 auto">The app opens in restricted Operator Mode. Only your PIN unlocks costs, reports, and the ability to edit past entries — so floor staff can log freely, but the numbers can't be quietly changed.</p>
-    </div>
-    <div class="compare rv d2">
-      <div class="cmp-col">
-        <div class="cmp-tag op">&#128274; Operator sees</div>
-        <div class="frame-phone" style="width:210px">
-          <div class="pnotch"></div>
-          <div class="pscreen mk">
-            <div class="mk-bar"><span class="lg" style="font-size:.62rem">TOOLFLUX</span><span class="chip" style="border-color:#cfd8dc;color:#6b8494;background:none">OPERATOR</span></div>
-            <div class="mk-stats" style="grid-template-columns:1fr"><div class="mk-stat" style="border:0"><div class="l">Good Pcs Today</div><div class="v">116</div><div class="s">Logged this shift</div></div></div>
-          </div>
-        </div>
-      </div>
-      <div class="cmp-col">
-        <div class="cmp-tag ow">&#128275; Owner sees</div>
-        <div class="frame-phone" style="width:210px">
-          <div class="pnotch"></div>
-          <div class="pscreen mk">
-            <div class="mk-bar"><span class="lg" style="font-size:.62rem">TOOLFLUX</span><span class="chip">OWNER</span></div>
-            <div class="mk-stats" style="grid-template-columns:1fr"><div class="mk-stat" style="border:0"><div class="l">Insert CPC</div><div class="v teal" style="color:var(--teal-d)">₹0.95</div><div class="s">Per component</div></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FEATURE 06 — OFFLINE / SYNC ══ -->
-<section class="feat" data-glow="sync">
-  <div class="wrap feat-grid rev">
-    <div class="feat-copy rv">
-      <div class="feat-num">06 — YOUR DATA IS SAFE</div>
-        <h2 class="feat-h">Your numbers are <span class="tl">backed up.</span></h2>
-        <p class="feat-p">Every entry is saved on the device first, so the app works with no signal at all. It is then copied to your cloud sheet within seconds.</p>
-        <ul class="feat-list">
-          <li>Every production entry, insert change, edit and delete is copied to your cloud sheet</li>
-          <li>No signal? Changes wait and retry by themselves, even after the browser restarts</li>
-          <li>The Cloud Backup panel always shows where you stand: Backed up, Waiting or Offline</li>
-          <li>Keep your own copy any time: one-click Excel export, or a backup file for a pen drive</li>
-          <li>Trial ends before you subscribe? Nothing is deleted</li>
-        </ul>
-        <p class="backup-note">Clearing the browser's site data removes the copy on that device. The cloud sheet keeps everything that synced.</p>
-    </div>
-    <div class="feat-mk rv d2">
-      <div class="frame">
-        <div class="dbar"><span></span><span></span><span></span></div>
-        <div class="mk">
-          <div class="mk-panel" style="margin:.8rem">
-            <div class="mk-ph"><span class="t">Cloud Backup</span></div>
-            <div style="display:flex;align-items:center;gap:.55rem;padding:.7rem .8rem"><span style="width:10px;height:10px;border-radius:50%;background:var(--ok)"></span><span style="font-weight:700;color:var(--navy);font-size:.85rem">Backed up</span></div>
-            <div style="padding:0 .8rem .7rem;font-size:.66rem;color:#6b8494">Last successful sync: just now · No pending changes</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══ PRICING ══ -->
-<section id="pricing">
-  <div class="wrap">
-    <div class="rv">
-      <div class="lbl" style="display:block">Simple Pricing</div>
-      <h2 class="feat-h" style="margin-top:.8rem">Try everything, <span class="tl">free for 14 days.</span></h2>
-    </div>
-    <div class="price-grid rv d1">
-      <div class="price-card">
-        <div class="price-tier">Solo</div>
-        <div class="price-num">₹299<span>/month</span></div>
-        <div class="price-dev">1 operator phone</div>
-        <div class="price-for">1–3 machine job shops</div>
-      </div>
-      <div class="price-card feat">
-        <div class="price-tier">Shop</div>
-        <div class="price-num">₹799<span>/month</span></div>
-        <div class="price-dev">Up to 5 operator phones</div>
-        <div class="price-for">4–10 machines, operators on shifts</div>
-      </div>
-      <div class="price-card">
-        <div class="price-tier">Works</div>
-        <div class="price-num">₹2,499<span>/month</span></div>
-        <div class="price-dev">Unlimited operator phones</div>
-        <div class="price-for">10+ machines, supervisor-run</div>
-      </div>
-    </div>
-    <div class="price-card price-all rv d2">
-      <div class="price-trial">14-Day Free Trial · Every plan, every feature</div>
-      <ul class="price-list">
-        <li>Unlimited jobs and tooling stations</li>
-        <li>Insert lifecycle tracking per corner</li>
-        <li>Owner dashboard &amp; operator performance</li>
-        <li>Printable owner reports &amp; Excel export</li>
-        <li>Shift Proof &amp; WhatsApp sharing</li>
-        <li>Works fully offline, no cloud lock-in</li>
-      </ul>
-      <a href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html" class="btn btn-teal" style="width:100%;justify-content:center">Start Free Trial</a>
-    </div>
-  </div>
-</section>
-
-<!-- ══ FINAL CTA ══ -->
-<section id="finalcta">
-  <div class="wrap">
-    <div class="rv">
-      <h2>Know what every shift <span class="tl">really cost you.</span></h2>
-      <p class="h-sub" style="margin-bottom:0">Start in your browser in 30 seconds. 14 days free, no card, and nothing is deleted if you stop.</p>
-    </div>
-    <div class="h-ctas rv d2">
-      <a href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener" class="btn btn-teal btn-lg">Start free in your browser &#8594;</a>
-      <a href="https://wa.me/918660234766" target="_blank" class="btn btn-olw btn-lg">WhatsApp Us a Question</a>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="fwm">TOOLFLUX</div>
-  <div>Engineering Precision. Every Cut.</div>
-  <div style="margin-top:.6rem"><a href="index.html">&#8592; Back to toolflux.co.in</a> &middot; <a href="https://wa.me/918660234766">WhatsApp: 86602 34766</a></div>
+<footer class="foot">
+  <span>Machlog, the machining log by TOOLFLUX</span>
+  <nav class="foot-links" aria-label="Footer">
+    <a class="link" href="index.html">toolflux.co.in</a>
+    <a class="link" href="machlog-guide.html">Setup guide</a>
+    <a class="link" href="https://wa.me/918660234766" target="_blank" rel="noopener">WhatsApp 86602 34766</a>
+  </nav>
+  <span class="foot-r">A product of <img class="rood" src="assets/rood-dynamics.png" alt="ROOD Dynamics" width="84" height="14"> · 2026</span>
 </footer>
-
 <script>
-const nav = document.getElementById('nav');
-const sprog = document.getElementById('sprog');
-const bgfx = document.getElementById('bgfx');
-const glowColors = {
-  insert:'rgba(224,90,74,.13)', cpc:'rgba(0,151,178,.18)', report:'rgba(0,151,178,.20)',
-  perf:'rgba(47,174,110,.12)', proof:'rgba(29,168,81,.14)', pin:'rgba(0,151,178,.14)', sync:'rgba(0,151,178,.16)',
-};
-let ticking = false;
-function onScroll(){
-  if(ticking) return; ticking = true;
-  requestAnimationFrame(()=>{
-    const y = window.scrollY;
-    const h = document.documentElement.scrollHeight - window.innerHeight;
-    sprog.style.width = (h>0 ? Math.min(100,(y/h)*100) : 0) + '%';
-    nav.classList.toggle('scrolled', y>40);
-    bgfx.style.setProperty('--grid-shift', (y*0.06)+'px');
-    ticking = false;
+(function () {
+  // ── the insert ring: one segment per corner (same drawing as the app) ──
+  function dial(svg, corners, n, curFrac, due) {
+    var size = 76, sw = 9, c = size / 2, r = c - sw / 2 - 1, circ = 2 * Math.PI * r;
+    var gap = Math.max(3, sw * 0.7), slot = circ / n, seg = slot - gap, out = '';
+    for (var i = 0; i < n; i++) {
+      var off = -(i * slot + gap / 2);
+      out += '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="#e3f3f7" stroke-width="' + sw + '" stroke-dasharray="' + seg.toFixed(2) + ' ' + (circ - seg).toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>';
+      var col = null, len = 0;
+      if (i < corners - 1) { col = '#012B42'; len = seg; }
+      else if (i === corners - 1) { col = due ? '#a62d1e' : '#0097B2'; len = seg * Math.max(0.12, Math.min(1, curFrac)); }
+      if (col) out += '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" stroke="' + col + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (circ - len).toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>';
+    }
+    svg.innerHTML = out;
+  }
+  document.querySelectorAll('svg[data-dial]').forEach(function (s) {
+    var p = s.getAttribute('data-dial').split(',');
+    dial(s, +p[0], 4, p[1] === undefined ? 0.5 : +p[1], p[2] === 'due');
   });
-}
-window.addEventListener('scroll', onScroll, {passive:true}); onScroll();
-const glowObserver = new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){const k=e.target.dataset.glow; if(k&&glowColors[k]) bgfx.style.setProperty('--glow-c',glowColors[k]); bgfx.style.setProperty('--glow-y','30%');}});},{threshold:0.4});
-document.querySelectorAll('[data-glow]').forEach(s=>glowObserver.observe(s));
-const rvo = new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting) e.target.classList.add('in');});},{threshold:0.08});
-document.querySelectorAll('.rv').forEach(el=>rvo.observe(el));
-</script>
 
+  // ── hero: log pieces against one insert ──
+  var COST = 420, N = 4;
+  var st = { done: [88], hist: [88], cur: 37, sets: 1, today: 85, qty: 25 };
+  var $ = function (id) { return document.getElementById(id); };
+  function usual() { var d = st.hist; if (!d.length) return null; return Math.round(d.reduce(function (a, b) { return a + b; }, 0) / d.length); }
+  function rupees(v) { return '₹' + v.toFixed(2); }
+  function paint(flash) {
+    var u = usual(), cornerNum = st.done.length + 1;
+    var total = st.hist.reduce(function (a, b) { return a + b; }, 0) + st.cur;
+    var started = Math.min(N, st.done.length + 1);
+    var cost = (st.sets - 1) * COST + started / N * COST;
+    var frac = u ? st.cur / u : 0.5;
+    var s = $('lv-state'), bar = $('lv-bar'), track = bar.parentNode, cls = '';
+    if (u && st.cur >= u) { cls = 'bad'; s.textContent = 'Corner ' + cornerNum + ' of ' + N + ' · ' + st.cur + ' pieces · past the usual ' + u + ', index now'; }
+    else if (u && frac >= 0.7) { cls = 'warn'; s.textContent = 'Corner ' + cornerNum + ' of ' + N + ' · ' + st.cur + ' pieces · about ' + (u - st.cur) + ' left'; }
+    else s.textContent = 'Corner ' + cornerNum + ' of ' + N + ' · ' + st.cur + ' pieces' + (u ? ' · about ' + (u - st.cur) + ' left' : '');
+    s.className = 'lv-state ' + cls; track.className = 'lv-track ' + cls;
+    bar.style.width = Math.min(100, Math.round(frac * 100)) + '%';
+    dial($('lv-dial'), cornerNum, N, frac, cls === 'bad');
+    $('lv-qty').textContent = st.qty;
+    $('lv-today').textContent = st.today.toLocaleString('en-IN');
+    $('lv-total').textContent = total.toLocaleString('en-IN');
+    $('lv-cpc').textContent = total ? rupees(cost / total) : '—';
+    $('lv-save').disabled = st.qty < 1;
+    $('lv-index').textContent = st.done.length === N - 1 ? 'Insert used up — load a new one' : 'Index to the next corner';
+    $('lv-index').disabled = st.cur < 1;
+    if (flash) ['lv-today', 'lv-total', 'lv-cpc'].forEach(function (id) { var e = $(id); e.classList.add('flash'); setTimeout(function () { e.classList.remove('flash'); }, 500); });
+  }
+  if ($('live')) {
+    document.querySelectorAll('#live [data-add]').forEach(function (b) {
+      b.addEventListener('click', function () { st.qty = Math.max(0, Math.min(500, st.qty + +b.getAttribute('data-add'))); paint(); });
+    });
+    $('lv-save').addEventListener('click', function () { st.cur += st.qty; st.today += st.qty; paint(true); });
+    $('lv-index').addEventListener('click', function () {
+      st.done.push(st.cur); st.hist.push(st.cur); st.cur = 0;
+      if (st.done.length >= N) { st.sets++; st.done = []; }
+      paint(true);
+    });
+    paint();
+  }
+
+  // ── showcase: the due corner is indexed in place ──
+  var midBtn = $('cs-mid-btn');
+  if (midBtn) midBtn.addEventListener('click', function () {
+    var on = midBtn.getAttribute('data-done') === '1';
+    midBtn.setAttribute('data-done', on ? '0' : '1');
+    $('cs-mid').classList.toggle('is-hot', on);
+    $('cs-mid-word').textContent = on ? 'Due' : 'Indexed';
+    var s = $('cs-mid-s');
+    s.textContent = on ? 'Corner 2 of 4 · 91 pieces · past the usual 88' : 'Corner 3 of 4 · corner 2 lasted 91 pieces';
+    s.className = on ? 'bad' : '';
+    dial($('cs-mid-dial'), on ? 2 : 3, 4, on ? 1 : 0.08, on);
+    midBtn.textContent = on ? 'Index to the next corner' : 'Undo';
+    midBtn.classList.toggle('ui-pri', on);
+  });
+
+  // ── how it works: one slider drives both fields ──
+  var STAGES = [
+    ['Plan the job before the first cut.', 'The owner sets the operations in order and the tool for each one. The shop floor never edits it.', 'Plan'],
+    ['Log it at the machine.', 'One count, a tap for any rejects and a tap for any tool change. The operator’s phone already knows who is logging.', 'Log'],
+    ['Read it in rupees.', '“Kitna bana aaj?” Today against yesterday, rejections with their main reason, and what tooling cost on every good piece.', 'Watch'],
+    ['Buy before it runs out.', 'Stock comes down each time inserts are loaded. The list of what to reorder goes to your supplier on WhatsApp, without prices.', 'Buy'],
+  ];
+  var range = $('how-range');
+  if (range) {
+    var names = document.querySelectorAll('.how-names li'), frags = document.querySelectorAll('.how-frag'), clause = document.querySelector('.how-clause');
+    var cur = 0;
+    function go(i) {
+      i = +i; if (i === cur) return; cur = i;
+      range.value = i; range.setAttribute('aria-valuetext', STAGES[i][2]); range.style.setProperty('--p', (i / 3 * 100) + '%');
+      names.forEach(function (n, k) { n.classList.toggle('on', k === i); });
+      frags.forEach(function (f, k) { f.classList.toggle('is-on', k === i); });
+      clause.classList.add('fade');
+      setTimeout(function () { $('how-k').textContent = STAGES[i][0]; $('how-q').textContent = STAGES[i][1]; clause.classList.remove('fade'); }, 200);
+    }
+    range.addEventListener('input', function () { go(range.value); });
+    names.forEach(function (n, k) { n.addEventListener('click', function () { go(k); range.focus(); }); });
+  }
+
+  // ── pricing: plan names, one live figure ──
+  var PLANS = {
+    solo: ['299', 'One operator phone. For 1 to 3 machine job shops where the owner logs too.', 'Start the Solo trial'],
+    shop: ['799', 'Up to 5 operator phones. For shops with 4 to 10 machines and operators on shifts.', 'Start the Shop trial'],
+    works: ['2,499', 'Unlimited operator phones. For 10 machines and more, run by a supervisor.', 'Start the Works trial'],
+  };
+  var tabs = document.querySelectorAll('.pr-name'), stage = $('pr-stage');
+  function pick(btn) {
+    if (btn.getAttribute('aria-selected') === 'true') return;
+    tabs.forEach(function (t) { t.setAttribute('aria-selected', t === btn ? 'true' : 'false'); });
+    var p = PLANS[btn.getAttribute('data-plan')];
+    stage.classList.add('fade');
+    setTimeout(function () { $('pr-num').textContent = p[0]; $('pr-text').textContent = p[1]; $('pr-btn').textContent = p[2]; stage.classList.remove('fade'); }, 200);
+  }
+  tabs.forEach(function (t, k) {
+    t.addEventListener('click', function () { pick(t); });
+    t.addEventListener('focus', function () { pick(t); });
+    t.addEventListener('keydown', function (e) {
+      var d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { e.preventDefault(); tabs[(k + d + tabs.length) % tabs.length].focus(); }
+    });
+  });
+
+  // ── entrances, once ──
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); io.unobserve(e.target); } });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.1 });
+    document.querySelectorAll('[data-reveal]').forEach(function (el) { io.observe(el); });
+  } else document.querySelectorAll('[data-reveal]').forEach(function (el) { el.classList.add('is-in'); });
+})();
+</script>
 </body>
+
 </html>
