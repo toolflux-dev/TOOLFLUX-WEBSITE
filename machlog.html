@@ -1254,6 +1254,105 @@ table.rt { width: 100%; border-collapse: collapse; margin-bottom: 1mm }
 @media (max-width: 720px) {
   .setup-form-side, .setup-brand { padding-left: 1.5rem; padding-right: 1.5rem }
 }
+
+/* ─── status in words ─── */
+/* A coloured dot says nothing under glare; every state carries its label. */
+.flag {
+  display: inline-block; padding: .12rem .45rem; border: 1px solid; border-radius: var(--r);
+  font-size: .72rem; font-weight: 700; letter-spacing: .02em; line-height: 1.35; white-space: nowrap;
+  text-transform: none; vertical-align: middle;
+}
+.flag.bad  { color: var(--bad);  background: var(--bad-bg);  border-color: var(--bad) }
+.flag.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn) }
+
+/* ─── tap choices (log form) ─── */
+.seg-wrap { display: flex; flex-wrap: wrap; gap: .4rem }
+.seg {
+  min-height: 44px; padding: .4rem .8rem;
+  border: 1.5px solid var(--rule2); border-radius: var(--r);
+  background: var(--W); color: var(--navy); font-size: .82rem; font-weight: 600;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.seg:hover { border-color: var(--navy) }
+.seg[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff }
+.seg.seg-bad[aria-pressed=true] { background: var(--bad); border-color: var(--bad) }
+.lf-sec { margin: .7rem 0 0; padding: .7rem .75rem .75rem; background: var(--W); border: 1px solid var(--rule); border-radius: var(--r) }
+.lf-sec-hd { display: block; font-size: .9rem; font-weight: 700; color: var(--navy); margin-bottom: .5rem }
+.lf-rej-inp {
+  width: 110px; min-height: 48px; padding: .3rem .5rem; margin-bottom: .1rem;
+  border: 1.5px solid var(--rule2); border-radius: var(--r);
+  font-family: var(--mono); font-size: 1.4rem; font-weight: 700; text-align: center; color: var(--bad);
+}
+.lf-rej-inp:focus { border-color: var(--teal); outline: none }
+#lf-reasons { margin-top: .55rem }
+#lf-reasons[hidden] { display: none }
+.lf-who { font-size: .9rem; color: var(--T); margin-bottom: .6rem }
+.lf-today { margin-left: auto; font-size: .8rem; color: rgba(255,255,255,.85); white-space: nowrap }
+.lf-today b { font-family: var(--mono); font-size: 1rem; color: #fff }
+.log-form-hd .title { font-size: .9rem }
+.lf-sec .ev-station-list { margin: 0 }
+.lf-sec .ev-station-row { grid-template-columns: minmax(130px, 1fr) 2fr; background: var(--off) }
+.lf-save { min-width: 180px }
+
+/* ─── job card ─── */
+.jc-last { font-size: .8rem; color: var(--mut); margin-top: .55rem }
+.jc-flags { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem }
+.hero-order { font-size: .8rem; color: rgba(255,255,255,.8); margin-top: .35rem; text-align: right }
+.hero-link { background: none; border: 0; padding: .2rem 0; color: #7fd6e6; font-size: .8rem; text-decoration: underline; text-underline-offset: 3px }
+.hero-link:hover { color: #fff }
+
+/* ─── dashboard ─── */
+.dash-total { padding: .5rem 1rem; font-size: .78rem; color: var(--mut); border-top: 1px solid var(--rule) }
+.dash-eta { font-size: .72rem; color: var(--mut); font-weight: 400; white-space: nowrap }
+@media (max-width: 860px) { body.has-bnav #toasts { bottom: calc(70px + env(safe-area-inset-bottom, 0px)) } }
+.stat-strip { margin-bottom: -1px }
+
+/* ─── inventory & buying ─── */
+.buy-panel { border-color: var(--warn) }
+.buy-row { display: flex; align-items: center; gap: .8rem; padding: .65rem 1rem; border-bottom: 1px solid var(--rule) }
+.buy-main { flex: 1; min-width: 0 }
+.buy-name { font-family: var(--mono); font-size: .92rem; font-weight: 700; color: var(--navy) }
+.buy-why { font-size: .8rem; color: var(--mut); margin-top: .2rem; line-height: 1.7 }
+.buy-qty { text-align: right; flex-shrink: 0 }
+.buy-n { display: block; font-family: var(--mono); font-size: 1.5rem; font-weight: 700; color: var(--navy); line-height: 1 }
+.buy-l { font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mut) }
+.buy-acts { display: flex; gap: .55rem; flex-wrap: wrap; padding: .75rem 1rem .4rem }
+.buy-note { padding: 0 1rem .75rem; font-size: .75rem; color: var(--mut); line-height: 1.5 }
+.buy-clear { padding: .7rem 1rem; font-size: .82rem; font-weight: 600; color: var(--ok) }
+.inv-tbl th.n { text-align: right }
+.dash-progcol { min-width: 110px }
+.fold > summary { cursor: pointer; list-style: none; min-height: 44px }
+.fold > summary::-webkit-details-marker { display: none }
+.fold:not([open]) > summary { border-bottom: 0 }
+.fold > summary .lbl:first-child { color: var(--navy) }
+.inv-tbl td { vertical-align: middle; padding: .5rem }
+.inv-sub { font-size: .74rem; color: var(--mut) }
+.inv-qty { font-weight: 700; color: var(--navy) }
+.inv-qty.low { color: var(--warn) }
+.inv-qty.out { color: var(--bad) }
+.inv-acts { text-align: right; white-space: nowrap }
+.inv-edit { padding: .2rem .5rem .6rem }
+.inv-edit .field { margin-bottom: .8rem }
+.inv-edit-now { font-size: .9rem; color: var(--mut); margin-bottom: .8rem }
+.inv-edit-now b { font-family: var(--mono); font-size: 1.15rem; color: var(--navy); margin-left: .3rem }
+
+@media (max-width: 640px) {
+  .hide-sm { display: none }
+  .lf-sec .ev-station-row { grid-template-columns: 1fr }
+  .seg { flex: 1 1 calc(50% - .4rem); font-size: .88rem; min-height: 48px }
+  .lf-rej-inp { width: 100%; min-height: 56px; font-size: 1.7rem }
+  .lf-save { flex: 1; min-height: 56px; font-size: .8rem }
+  .hero-order { text-align: left }
+  .buy-acts .btn { flex: 1 }
+  .inv-tbl th:nth-child(3), .inv-tbl td:nth-child(3),
+  .inv-tbl th:nth-child(5), .inv-tbl td:nth-child(5) { display: none }
+  .inv-tbl { display: table }
+  .inv-tbl th { white-space: nowrap; letter-spacing: 0; font-size: .7rem }
+  .dash-progcol { min-width: 0 }
+  .dash-prog { width: 44px }
+  .dash-tbl th, .dash-tbl td { padding-left: .45rem; padding-right: .45rem }
+  .inv-tbl td { white-space: normal }
+}
 </style>
 </head>
 <body>
