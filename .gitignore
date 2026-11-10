@@ -27,3 +27,9 @@ MACHLOG-HANDOFF.md
 
 # local parser fixtures (not shipped)
 _test/
+
+# design-taste-frontend working files
+.taste-skill/
+
+# Python bytecode
+__pycache__/
