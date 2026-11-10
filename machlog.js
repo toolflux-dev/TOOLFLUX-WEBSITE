@@ -554,7 +554,7 @@ function trialBanner() {
   const days = getTrialDaysLeft();
   return `<div class="trial-bar">
     <span class="trial-bar-txt"><strong>${days} day${days !== 1 ? 's' : ''} left</strong> in your free trial</span>
-    <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe Now</button>
+    <button class="btn-trial-sub" onclick="navigate('paywall')">Subscribe</button>
   </div>`;
 }
 
@@ -901,7 +901,7 @@ function syncModeChip() {
   el.style.display = '';
   const owner = isOwner();
   el.className = 'mode-chip ' + (owner ? 'owner' : 'operator');
-  el.textContent = owner ? '\u{1F513} OWNER MODE' : '\u{1F512} OPERATOR';
+  el.textContent = owner ? 'Owner mode · Lock' : 'Operator mode · Unlock';
   el.title = owner ? 'Tap to lock into Operator Mode' : 'Tap to unlock Owner Mode';
 }
 
@@ -916,7 +916,6 @@ function vOperatorLocked(licenseIssue) {
   setBarCrumb('', false);
   return `
     <div style="max-width:380px;margin:4rem auto;text-align:center;padding:0 1rem">
-      <div style="font-size:1.6rem;margin-bottom:.6rem">&#128274;</div>
       <div style="font-weight:800;color:var(--navy);margin-bottom:.4rem">${licenseIssue ? 'License needs attention' : 'Owner access required'}</div>
       <div style="font-size:.78rem;color:var(--mut);margin-bottom:1.2rem;line-height:1.5">${licenseIssue
         ? 'The subscription for this app needs to be renewed. Please ask the owner to unlock and handle it.'
@@ -1134,205 +1133,237 @@ function fmtAgo(iso) {
   return fmtDate(iso);
 }
 
+// ── the insert, corner by corner ──────────────────────────────────
+// A ring with one segment per cutting corner: used corners in ink, the corner
+// in the cut filled as far as its usual life, corners still to come in tint.
+function cornerDial(st, size, sw) {
+  size = size || 34; sw = sw || 4;
+  const sc = calcStation(st);
+  const n = Math.max(1, sc.totalCorners);
+  const c = size / 2, r = c - sw / 2 - 1, circ = 2 * Math.PI * r;
+  const gap = n > 1 ? Math.max(3, sw * .7) : 0, slot = circ / n, seg = slot - gap;
+  const corners = sc.activeSet ? (sc.activeSet.corners || []) : [];
+  let marks = '';
+  for (let i = 0; i < n; i++) {
+    const off = -(i * slot + gap / 2);
+    marks += `<circle class="dial-t" cx="${c}" cy="${c}" r="${r}" stroke-dasharray="${seg.toFixed(2)} ${(circ - seg).toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`;
+    const cn = corners.find(x => x.num === i + 1);
+    if (!cn) continue;
+    let cls = 'done', frac = 1;
+    if (cn.status === 'broken') cls = 'brk';
+    else if (cn.status === 'active') {
+      cls = sc.lifeStatus === 'overdue' ? 'due' : 'cur';
+      frac = sc.cornerLifePct != null ? Math.max(.14, Math.min(1, sc.cornerLifePct / 100)) : (cn.componentsMade ? .5 : .14);
+    }
+    const len = seg * frac;
+    marks += `<circle class="dial-${cls}" cx="${c}" cy="${c}" r="${r}" stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}"/>`;
+  }
+  return `<svg class="dial" style="--sw:${sw}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true">${marks}</svg>`;
+}
+
+// What a tool is doing right now, in one line.
+function toolState(st) {
+  const sc = calcStation(st);
+  const solid = isSolidTool(st.opType);
+  if (!(st.insertSets || []).length) return { cls: '', text: solid ? 'No tool loaded' : 'No inserts loaded' };
+  if (!sc.activeSet) return { cls: 'warn', text: solid ? 'Worn — load a new tool' : 'Set used up — load new inserts' };
+  const where = solid ? `Tool ${sc.currentSetNum}` : `Corner ${sc.currentCornerNum} of ${sc.totalCorners}`;
+  if (sc.lifeStatus === 'overdue') return { cls: 'bad', text: `${where} · ${solid ? 'replace now' : 'index now'}` };
+  if (sc.lifeStatus === 'warn' && sc.pcsRemainingOnCorner != null) return { cls: 'warn', text: `${where} · about ${sc.pcsRemainingOnCorner} pcs left` };
+  return { cls: '', text: `${where} · ${fmtN(sc.currentCornerPcs)} pcs` };
+}
+
+function toolChip(st, size) {
+  const s = toolState(st);
+  return `<div class="tool">${cornerDial(st, size)}<div><div class="tool-t">${esc(st.name)}</div><div class="tool-s ${s.cls}">${esc(s.text)}</div></div></div>`;
+}
+
+// Order progress as a track with both ends named.
+function orderTrack(good, batch, pace) {
+  if (!(batch > 0)) return '';
+  const pct = Math.min(100, Math.round(good / batch * 100));
+  const left = Math.max(0, batch - good);
+  return `<div class="track" role="img" aria-label="${pct}% of the order made"><i style="width:${pct}%"></i></div>
+    <div class="track-l"><span>${fmtN(good)} of ${fmtN(batch)} good</span><span>${left > 0 ? `${fmtN(left)} left${pace && pace.daysLeft ? ` · about ${pace.daysLeft} working day${pace.daysLeft === 1 ? '' : 's'}` : ''}` : 'Order complete'}</span></div>`;
+}
+
+// Seven days of output as columns: good pieces in the one hue (today at full
+// strength), rejected pieces stacked on top in the negative colour.
+function weekChart(days) {
+  const phone = typeof window !== 'undefined' && window.innerWidth <= 860;
+  const W = phone ? Math.max(300, Math.min(520, window.innerWidth - 58)) : 720, H = phone ? 200 : 236, L = 36, R = 4, T = 22, B = 28;
+  const max = Math.max(1, ...days.map(d => d.qty));
+  const step = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(s => max / s <= 4) || 10000;
+  const top = Math.ceil((max * 1.05) / step) * step;
+  const ph = H - T - B, pw = W - L - R, slot = pw / days.length, bw = Math.min(64, slot * .6);
+  const y = v => T + ph - (v / top) * ph;
+  let g = '';
+  for (let v = 0; v <= top; v += step) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${v === 0 ? 'var(--rule2)' : 'var(--rule)'}" stroke-width="1"/>`;
+    g += `<text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${fmtN(v)}</text>`;
+  }
+  days.forEach((d, i) => {
+    const x = L + i * slot + (slot - bw) / 2, now = i === days.length - 1;
+    const good = d.qty - d.rej;
+    if (d.qty > 0) {
+      const yg = y(good), yq = y(d.qty);
+      if (good > 0) g += `<rect x="${x}" y="${yg}" width="${bw}" height="${T + ph - yg}" rx="3" fill="${now ? 'var(--teal)' : 'var(--t200)'}"><title>${good} good</title></rect>`;
+      if (d.rej > 0) g += `<rect x="${x}" y="${yq}" width="${bw}" height="${Math.max(2, yg - yq - 2)}" rx="2" fill="var(--bad)"><title>${d.rej} rejected</title></rect>`;
+      g += `<text class="${now ? 'now' : 'v'}" x="${x + bw / 2}" y="${yq - 7}" text-anchor="middle">${fmtN(d.qty)}</text>`;
+    }
+    g += `<text class="${now ? 'now' : ''}" x="${x + bw / 2}" y="${H - 8}" text-anchor="middle">${now ? 'Today' : esc(d.label)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" style="max-width:${phone ? W : 900}px" role="img" aria-label="Pieces made per day, last 7 days">${g}</svg>`;
+}
+
 function vDashboard() {
   const d = computeDashData();
-  setTabs(`
-    <button class="tab tab-place" aria-selected="true">Dashboard</button>
-    <button class="tab tab-place" onclick="navigate('jobs')">Jobs</button>
-    <button class="tab tab-place" onclick="navigate('inventory')">Inventory</button>
-    <button class="tab tab-place" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`);
-  setBarCrumb('Dashboard', true);
+  setTabs('');
+  const owner = isOwner();
 
-  const rejPct = d.totalProduced > 0 ? (d.totalRejected / d.totalProduced * 100) : 0;
+  // the finding: one sentence on today, read before anything else
+  const dayDelta = d.prodYesterday > 0 && d.prodToday > 0 ? Math.round((d.prodToday - d.prodYesterday) / d.prodYesterday * 100) : null;
+  const buy = invToBuy();
+  const bad = d.attention.filter(a => a.sev === 'bad').length;
+  ui._sub = [
+    d.prodToday > 0
+      ? `${fmtN(d.prodToday)} pieces logged today${dayDelta != null ? `, ${Math.abs(dayDelta)}% ${dayDelta >= 0 ? 'up' : 'down'} on yesterday` : ''}.`
+      : 'Nothing logged yet today.',
+    bad ? `${bad} thing${bad === 1 ? '' : 's'} need${bad === 1 ? 's' : ''} you now.` : '',
+    buy.length ? `${buy.length} item${buy.length === 1 ? '' : 's'} to buy.` : '',
+  ].filter(Boolean).join(' ');
 
-  const attHtml = d.attention.length ? `
-    <div class="panel" style="margin-bottom:.6rem">
-      <div class="panel-hd"><span class="lbl">Attention Required</span><div class="hr"></div><span class="lbl muted">${d.attention.length}</span></div>
-      ${d.attention.map(a => `
+  const rejWeekPct = d.prodWeek > 0 ? (d.rejWeek / d.prodWeek * 100) : 0;
+  const perGood30 = d.good30 > 0 && d.spend30 > 0 ? d.spend30 / d.good30 : null;
+  const deltaHtml = dayDelta == null ? '' : ` <span class="delta ${dayDelta >= 0 ? 'up' : 'down'}">${dayDelta >= 0 ? '+' : '−'}${Math.abs(dayDelta)}%</span>`;
+
+  const kpiHtml = `
+    <div class="panel">
+      <div class="kpis">
+        <div class="s-stat lead"><div class="lbl">Made today</div><div><span class="s-val">${fmtN(d.prodToday)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Yesterday ${fmtN(d.prodYesterday)}${deltaHtml}</div></div>
+        <div class="s-stat"><div class="lbl">Made this week</div><div><span class="s-val">${fmtN(d.prodWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Last 7 days, ${fmtN(d.activeJobs)} active job${d.activeJobs === 1 ? '' : 's'}</div></div>
+        <div class="s-stat"><div class="lbl">Rejected this week</div><div><span class="s-val ${d.rejWeek > 0 ? 'bad-c' : ''}">${fmtN(d.rejWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">${rejWeekPct.toFixed(1)}% of output${d.topRejReason ? `, mostly ${esc(d.topRejReason.reason.toLowerCase())}` : ''}</div></div>
+        <div class="s-stat"><div class="lbl">Tooling spend, 7 days</div><div><span class="s-val">${fmtRs(d.spend7, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
+        <div class="s-stat"><div class="lbl">Tooling spend, 30 days</div><div><span class="s-val">${fmtRs(d.spend30, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
+        <div class="s-stat"><div class="lbl">Tooling per good piece</div><div><span class="s-val">${perGood30 != null ? fmtRs(perGood30, 2) : '—'}</span></div><div class="s-sub">30-day spend ÷ good pieces</div></div>
+      </div>
+    </div>`;
+
+  const lifeNote = d.lifeRecent != null
+    ? `An insert corner lasted ${fmtN(d.lifeRecent)} pieces on average this week${d.lifePrior != null ? `, against ${fmtN(d.lifePrior)} the week before` : ''}.`
+    : '';
+  const chartHtml = `
+    <div class="panel">
+      <div class="chart-hd">
+        <h2>Pieces made, last 7 days</h2>
+        <span class="sum">${fmtN(d.prodWeek)} in all</span>
+        <div class="legend"><span><i style="background:var(--teal)"></i>Good</span>${d.rejWeek > 0 ? '<span><i style="background:var(--bad)"></i>Rejected</span>' : ''}</div>
+      </div>
+      <div class="chart">${weekChart(d.days)}</div>
+      ${lifeNote ? `<div class="chart-note">${lifeNote}</div>` : ''}
+    </div>`;
+
+  const rows = d.jobRows.slice(0, 8);
+  const jobsHtml = `
+    <div class="panel">
+      <div class="panel-hd"><span class="lbl">On the machines</span><div class="hr"></div>${d.jobRows.length > rows.length ? `<button class="btn btn-ghost btn-sm" onclick="navigate('jobs')">View all ${d.jobRows.length}</button>` : `<span class="lbl muted">${d.jobRows.length} job${d.jobRows.length === 1 ? '' : 's'}</span>`}</div>
+      ${!rows.length ? `<div class="rail-empty">No job is running. <a href="#" onclick="event.preventDefault();navigate('newjob')">Add a job</a> to start logging.</div>` : rows.map(r => {
+        const job = db.jobs.find(j => j.id === r.jobId);
+        const tools = jobAllStations(job).slice(0, 4);
+        const pill = r.status === 'paused' ? '<span class="pill pause">Paused</span>'
+          : r.behind ? '<span class="pill stale">No log in 2 days</span>' : '<span class="pill run">Running</span>';
+        return `
+        <div class="run-row" role="button" tabindex="0" onclick="navigate('job',{jobId:'${r.jobId}'})" onkeydown="if(event.key==='Enter')navigate('job',{jobId:'${r.jobId}'})">
+          <div><div class="run-code">${esc(r.code)} ${pill}</div><div class="run-sub">${esc(r.customer || 'No customer set')}</div></div>
+          <div class="run-prog">${r.batch > 0 ? orderTrack(r.good, r.batch, r.pace) : `<span class="run-sub">${fmtN(r.good)} good so far · no order quantity set</span>`}</div>
+          <div class="run-today"><b>${fmtN(jobTodayQty(job))}</b><span>today</span></div>
+          ${tools.length ? `<div class="run-tools">${tools.map(st => toolChip(st, 30)).join('')}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  const maxOpGood = Math.max(1, ...d.operatorBoard.map(o => o.good));
+  const perfHtml = `
+    <div class="panel">
+      <div class="panel-hd"><span class="lbl">Operators this week</span><div class="hr"></div><span class="lbl muted">Good pieces</span></div>
+      ${d.operatorBoard.length ? d.operatorBoard.map((o, i) => {
+        const effCls = o.effPct == null ? '' : o.effPct >= 95 ? 'good' : o.effPct >= 85 ? 'warn' : 'bad';
+        let delta = '';
+        if (o.priorGood != null && o.priorGood > 0) {
+          const pct = Math.round(((o.good - o.priorGood) / o.priorGood) * 100);
+          delta = pct === 0 ? '' : `<span class="perf-delta ${pct > 0 ? 'up' : 'down'}">${pct > 0 ? '+' : '−'}${Math.abs(pct)}%</span>`;
+        }
+        return `
+        <div class="perf-row">
+          <span class="perf-rank r${i < 3 ? i + 1 : ''}">${i + 1}</span>
+          <span class="perf-name">${esc(o.name)}</span>
+          <div class="perf-bar"><div class="perf-bar-fill" style="width:${Math.round(o.good / maxOpGood * 100)}%"></div></div>
+          <span class="perf-good">${fmtN(o.good)}</span>
+          ${o.effPct != null ? `<span class="perf-eff ${effCls}">${o.effPct}% good</span>` : ''}
+          ${delta}
+        </div>`;
+      }).join('') + `<div class="perf-note">${d.topToday ? `${esc(d.topToday.name)} leads today with ${fmtN(d.topToday.todayGood)} pieces. ` : ''}Percent good is good pieces out of all pieces logged in 7 days.</div>`
+      : `<div class="rail-empty">Once operators log under their own name, their week shows here.</div>`}
+    </div>`;
+
+  const attHtml = `
+    <div class="panel">
+      <div class="panel-hd"><span class="lbl">Needs you</span><div class="hr"></div>${d.attention.length ? `<span class="lbl muted">${d.attention.length}</span>` : ''}</div>
+      ${d.attention.length ? d.attention.map(a => `
         <div class="att-row att-${a.sev}" ${a.go ? `role="button" tabindex="0" onclick="${esc(a.go)}"` : ''}>
           <span class="att-dot"></span>
           <span class="att-msg">${esc(a.msg)}</span>
           ${a.go ? '<span class="att-arrow">&#8594;</span>' : ''}
-        </div>`).join('')}
-    </div>` : `
-    <div class="panel" style="margin-bottom:.6rem">
-      <div style="padding:.6rem 1rem;font-size:.75rem;color:var(--ok,#2e7d4f);font-weight:600">All clear — nothing needs your attention right now.</div>
+        </div>`).join('') : '<div class="rail-empty">All clear. Nothing needs you right now.</div>'}
     </div>`;
 
-  const rejWeekPct = d.prodWeek > 0 ? (d.rejWeek / d.prodWeek * 100) : 0;
-  const dayDelta = d.prodYesterday > 0 ? Math.round((d.prodToday - d.prodYesterday) / d.prodYesterday * 100) : null;
-  const perGood30 = d.good30 > 0 && d.spend30 > 0 ? d.spend30 / d.good30 : null;
-  const summaryHtml = `
-    <div class="panel" style="margin-bottom:.6rem">
-      <div class="stat-strip">
-        <div class="s-stat"><div class="lbl">Today</div><div><span class="s-val">${fmtN(d.prodToday)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Yesterday ${fmtN(d.prodYesterday)}${dayDelta != null && d.prodToday > 0 ? ` (${dayDelta >= 0 ? '+' : ''}${dayDelta}%)` : ''}</div></div>
-        <div class="s-stat"><div class="lbl">This Week</div><div><span class="s-val">${fmtN(d.prodWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Last 7 days · ${fmtN(d.activeJobs)} active job${d.activeJobs === 1 ? '' : 's'}</div></div>
-        <div class="s-stat"><div class="lbl">Rejected This Week</div><div><span class="s-val ${d.rejWeek > 0 ? 'bad-c' : ''}">${fmtN(d.rejWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">${rejWeekPct.toFixed(1)}%${d.topRejReason ? ` · mostly ${esc(d.topRejReason.reason)}` : ''}</div></div>
-        <div class="s-stat"><div class="lbl">Tooling Spend · 7 Days</div><div><span class="s-val">${fmtRs(d.spend7, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
-        <div class="s-stat"><div class="lbl">Tooling Spend · 30 Days</div><div><span class="s-val">${fmtRs(d.spend30, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
-        <div class="s-stat"><div class="lbl">Tooling per Good Piece</div><div><span class="s-val">${perGood30 != null ? fmtRs(perGood30, 2) : '—'}</span></div><div class="s-sub">30-day spend ÷ good pieces</div></div>
-      </div>
-      <div class="dash-total">All time: ${fmtN(d.totalGood)} good pieces · ${fmtN(d.totalRejected)} rejected (${rejPct.toFixed(1)}%) · ${fmtN(d.completedJobs)} job${d.completedJobs === 1 ? '' : 's'} completed</div>
-    </div>`;
-
-  const topPerfHtml = d.topToday ? `
-    <div class="perf-hero">
-      <div class="perf-hero-crown">&#127942;</div>
-      <div class="perf-hero-body">
-        <div class="perf-hero-lbl">Today's Top Performer</div>
-        <div class="perf-hero-name">${esc(d.topToday.name)}</div>
-        <div class="perf-hero-stat">${fmtN(d.topToday.todayGood)} pcs today${d.topToday.todayGood + d.topToday.todayRejected > 0 ? ` &middot; ${Math.round(d.topToday.todayGood / (d.topToday.todayGood + d.topToday.todayRejected) * 100)}% good` : ''}</div>
-      </div>
-    </div>` : '';
-
-  const maxOpGood = Math.max(1, ...d.operatorBoard.map(o => o.good));
-  const perfRows = d.operatorBoard.map((o, i) => {
-    const barPct = Math.round((o.good / maxOpGood) * 100);
-    const effCls = o.effPct == null ? '' : o.effPct >= 95 ? 'good' : o.effPct >= 85 ? 'warn' : 'bad';
-    let delta = '';
-    if (o.priorGood != null && o.priorGood > 0) {
-      const pct = Math.round(((o.good - o.priorGood) / o.priorGood) * 100);
-      delta = pct === 0 ? '<span class="perf-delta flat">&#8212;</span>'
-        : pct > 0 ? `<span class="perf-delta up">&#9650; ${pct}%</span>`
-        : `<span class="perf-delta down">&#9660; ${Math.abs(pct)}%</span>`;
-    } else if (o.priorGood == null) {
-      delta = '<span class="perf-delta new">NEW</span>';
-    }
-    return `
-      <div class="perf-row">
-        <span class="perf-rank r${i + 1 <= 3 ? i + 1 : ''}">${i + 1}</span>
-        <span class="perf-name">${esc(o.name)}</span>
-        <div class="perf-bar"><div class="perf-bar-fill" style="width:${barPct}%"></div></div>
-        <span class="perf-good">${fmtN(o.good)}</span>
-        ${o.effPct != null ? `<span class="perf-eff ${effCls}">${o.effPct}%</span>` : ''}
-        ${delta}
-      </div>`;
-  }).join('');
-
-  const perfHtml = `
-    <div class="panel" style="margin-bottom:.6rem">
-      <div class="panel-hd"><span class="lbl">Operator Performance</span><div class="hr"></div><span class="lbl muted">This week</span></div>
-      ${topPerfHtml}
-      ${d.operatorBoard.length ? `
-        <div class="perf-list">${perfRows}</div>
-        <div style="padding:.5rem 1rem .6rem;font-size:.66rem;color:var(--mut);border-top:1px solid var(--rule2)">Efficiency = good pieces &divide; total logged, last 7 days. Arrow compares to the 7 days before that.</div>`
-      : `<div style="padding:.8rem 1rem;font-size:.75rem;color:var(--mut)">Once operators log production under their name, you'll see who's leading here.</div>`}
-    </div>`;
-
-  const jobRowsShown = d.jobRows.slice(0, 30);
-  const jobsHtml = `
-    <div class="panel" style="margin-bottom:.6rem">
-      <div class="panel-hd"><span class="lbl">Job Status</span><div class="hr"></div><span class="lbl muted">${d.jobRows.length} job${d.jobRows.length === 1 ? '' : 's'}</span></div>
-      ${!d.jobRows.length ? '<div style="padding:.8rem 1rem;font-size:.75rem;color:var(--mut)">No active jobs.</div>' : `
-      <div style="overflow-x:auto"><table class="dash-tbl">
-        <thead><tr><th>Component</th><th class="hide-sm">Customer</th><th class="hide-sm">Op</th><th class="dash-progcol">Progress</th><th class="hide-sm" style="text-align:right">Good</th><th class="hide-sm" style="text-align:right">Order</th><th style="text-align:right">Left</th><th>Status</th></tr></thead>
-        <tbody>
-        ${jobRowsShown.map(r => {
-          const pct = r.batch > 0 ? Math.min(100, Math.round(r.good / r.batch * 100)) : null;
-          const stTxt = r.status === 'paused' ? '<span class="dash-st paused">PAUSED</span>'
-            : r.behind ? '<span class="dash-st behind">NO RECENT LOG</span>'
-            : '<span class="dash-st running">RUNNING</span>';
-          return `<tr role="button" tabindex="0" onclick="navigate('job',{jobId:'${r.jobId}'})">
-            <td class="mono" style="font-weight:700">${esc(r.code)}</td>
-            <td class="hide-sm" style="color:var(--mut)">${esc(r.customer || '—')}</td>
-            <td class="hide-sm">${esc(r.opName)}</td>
-            <td>${pct != null ? `<div class="dash-prog"><div class="dash-prog-fill" style="width:${pct}%"></div></div><span class="dash-prog-lbl">${pct}%</span>` : '<span style="color:var(--mut);font-size:.72rem">no order qty set</span>'}</td>
-            <td class="num hide-sm" style="text-align:right;font-weight:700">${fmtN(r.good)}</td>
-            <td class="num hide-sm" style="text-align:right;color:var(--mut)">${r.batch ? fmtN(r.batch) : '—'}</td>
-            <td class="num" style="text-align:right">${r.remaining != null ? fmtN(r.remaining) : '—'}${r.pace.daysLeft ? `<div class="dash-eta">~${r.pace.daysLeft} day${r.pace.daysLeft === 1 ? '' : 's'}</div>` : ''}</td>
-            <td>${stTxt}</td>
-          </tr>`;
-        }).join('')}
-        </tbody>
-      </table></div>
-      ${d.jobRows.length > 30 ? `<div style="padding:.4rem 1rem;font-size:.7rem"><a href="#" onclick="event.preventDefault();navigate('jobs')">View all ${d.jobRows.length} jobs &#8594;</a></div>` : ''}`}
+  const buyHtml = `
+    <div class="panel">
+      <div class="panel-hd"><span class="lbl">To buy</span><div class="hr"></div>${buy.length ? `<span class="lbl muted">${buy.length} item${buy.length === 1 ? '' : 's'}</span>` : ''}</div>
+      ${buy.length ? buy.slice(0, 4).map(x => `
+        <div class="buy-mini"><div><b>${esc(x.item.designation)}</b><span>${esc(x.p.why)} · ${x.p.qty} in stock</span></div><div class="q">${x.p.suggest} nos</div></div>`).join('') + `
+        <div class="rail-foot"><button class="btn btn-ghost btn-sm" onclick="navigate('inventory')">Open buying list</button></div>`
+      : `<div class="rail-empty">${(db.inventory || []).length ? 'Every item is above its reorder level.' : 'Add your inserts to Inventory and this list tells you what to reorder.'}</div>`}
     </div>`;
 
   const healthRows = [
-    ...d.anomalyStations.slice(0, 4).map(s => `<div class="att-row att-bad" role="button" tabindex="0" onclick="navigate('station',{jobId:'${s.jobId}',stationId:'${s.stationId}'})"><span class="att-dot"></span><span class="att-msg">${esc(s.code)} &middot; ${esc(s.name)} — ${s.n} anomal${s.n === 1 ? 'y' : 'ies'}</span><span class="att-arrow">&#8594;</span></div>`),
-    ...d.nearingStations.slice(0, 4).map(s => `<div class="att-row att-warn" role="button" tabindex="0" onclick="navigate('station',{jobId:'${s.jobId}',stationId:'${s.stationId}'})"><span class="att-dot"></span><span class="att-msg">${esc(s.code)} &middot; ${esc(s.name)} — ${s.status === 'overdue' ? 'index/replace due' : `~${s.remaining != null ? s.remaining + ' pcs left' : 'nearing replacement'}`}</span><span class="att-arrow">&#8594;</span></div>`),
-    ...d.lowLifeStations.slice(0, 3).map(s => `<div class="att-row att-warn" role="button" tabindex="0" onclick="navigate('station',{jobId:'${s.jobId}',stationId:'${s.stationId}'})"><span class="att-dot"></span><span class="att-msg">${esc(s.code)} &middot; ${esc(s.name)} — low corner life (${s.avg} vs job avg ${s.jobAvg})</span><span class="att-arrow">&#8594;</span></div>`),
-    ...(d.costliest ? [`<div class="att-row att-info" role="button" tabindex="0" onclick="navigate('station',{jobId:'${d.costliest.jobId}',stationId:'${d.costliest.stationId}'})"><span class="att-dot"></span><span class="att-msg">Highest tooling spend: ${esc(d.costliest.code)} &middot; ${esc(d.costliest.name)} — ${fmtRs(d.costliest.spend, 0)}</span><span class="att-arrow">&#8594;</span></div>`] : []),
+    ...d.anomalyStations.slice(0, 3).map(s => ({ sev: 'bad', msg: `${s.code} · ${s.name}: ${s.n} insert${s.n === 1 ? '' : 's'} failed early`, s })),
+    ...d.lowLifeStations.slice(0, 3).map(s => ({ sev: 'warn', msg: `${s.code} · ${s.name}: ${s.avg} pcs a corner, the job averages ${s.jobAvg}`, s })),
+    ...(d.costliest && owner ? [{ sev: 'info', msg: `Costliest tool: ${d.costliest.code} · ${d.costliest.name}, ${fmtRs(d.costliest.spend, 0)} so far`, s: d.costliest }] : []),
   ];
-  const healthHtml = `
+  const healthHtml = healthRows.length ? `
     <div class="panel">
-      <div class="panel-hd"><span class="lbl">Insert Health</span><div class="hr"></div></div>
-      ${healthRows.length ? healthRows.join('') : '<div style="padding:.7rem 1rem;font-size:.73rem;color:var(--mut)">No insert issues detected.</div>'}
-    </div>`;
+      <div class="panel-hd"><span class="lbl">Tool watch</span><div class="hr"></div></div>
+      ${healthRows.map(h => `
+        <div class="att-row att-${h.sev}" role="button" tabindex="0" onclick="navigate('station',{jobId:'${h.s.jobId}',stationId:'${h.s.stationId}'})">
+          <span class="att-dot"></span><span class="att-msg">${esc(h.msg)}</span><span class="att-arrow">&#8594;</span>
+        </div>`).join('')}
+    </div>` : '';
 
-  const invHtml = `
-    <div class="panel">
-      <div class="panel-hd"><span class="lbl">Inventory Alerts</span><div class="hr"></div></div>
-      ${d.invAlerts.length ? d.invAlerts.map(a => `
-        <div class="att-row att-${a.kind}" role="button" tabindex="0" onclick="navigate('inventory')">
-          <span class="att-dot"></span>
-          <span class="att-msg">${esc(a.label)}: ${esc(a.item)}${a.kind !== 'info' ? ` (${a.qty})` : ''}</span>
-          <span class="att-arrow">&#8594;</span>
-        </div>`).join('') : '<div style="padding:.7rem 1rem;font-size:.73rem;color:var(--mut)">No inventory alerts.</div>'}
-    </div>`;
-
-  const syncStates = {
-    ok:       { cls: 'ok',   label: 'Backed up',        detail: 'Last sync ' + fmtAgo(d.sync.lastOk) },
-    pending:  { cls: 'warn', label: 'Sync in progress', detail: 'Changes queued ' + (d.sync.pendingAgeMin || 0) + ' min ago' },
-    failing:  { cls: 'bad',  label: 'Sync failing',     detail: 'Pending for ' + (d.sync.pendingAgeMin > 120 ? Math.round(d.sync.pendingAgeMin / 60) + ' h' : d.sync.pendingAgeMin + ' min') + ' — retrying automatically' },
-    offline:  { cls: 'warn', label: 'Offline',          detail: 'Changes queued — will sync when back online' },
-    idle:     { cls: 'info', label: 'Waiting',          detail: 'No sync completed yet this device' },
-    disabled: { cls: 'info', label: 'Sync disabled',    detail: '' },
-  };
-  const ss = syncStates[d.sync.state] || syncStates.idle;
-  const syncHtml = `
-    <div class="panel">
-      <div class="panel-hd"><span class="lbl">Cloud Backup</span><div class="hr"></div></div>
-      <div style="padding:.7rem 1rem">
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">
-          <span class="sync-dot ${ss.cls}"></span>
-          <span style="font-weight:700;font-size:.85rem;color:var(--navy)">${ss.label}</span>
-          ${!d.sync.online ? '<span class="lbl" style="color:var(--warn)">OFFLINE</span>' : ''}
-        </div>
-        <div style="font-size:.72rem;color:var(--mut)">${esc(ss.detail)}</div>
-        <div style="font-size:.68rem;color:var(--mut);margin-top:.35rem">Last successful: ${fmtAgo(d.sync.lastOk)} &middot; Pending changes: ${d.sync.pendingSince ? 'yes' : 'none'}</div>
-      </div>
-    </div>`;
-
-  const maxQty = Math.max(1, ...d.days.map(b => b.qty));
-  const lifeTrend = d.lifeRecent != null
-    ? `Avg corner life 7d: <strong>${d.lifeRecent} pcs</strong>${d.lifePrior != null ? ` (prior 7d: ${d.lifePrior}) ${d.lifeRecent >= d.lifePrior ? '<span style="color:var(--ok,#2e7d4f)">&#9650;</span>' : '<span style="color:var(--bad)">&#9660;</span>'}` : ''}`
-    : 'No spent corners in the last 7 days.';
-  const trendHtml = `
-    <div class="panel">
-      <div class="panel-hd"><span class="lbl">Production — Last 7 Days</span><div class="hr"></div><span class="lbl muted">${fmtN(d.prodWeek)} pcs</span></div>
-      <div style="padding:.7rem 1rem .5rem">
-        <div class="trend-bars">
-          ${d.days.map(b => {
-            const h = Math.round(b.qty / maxQty * 46);
-            const rejH = b.qty > 0 ? Math.round(b.rej / maxQty * 46) : 0;
-            return `<div class="trend-col" title="${b.qty} pcs${b.rej ? ', ' + b.rej + ' rejected' : ''}">
-              <div class="trend-val">${b.qty > 0 ? fmtN(b.qty) : ''}</div>
-              <div class="trend-bar-wrap">
-                <div class="trend-bar" style="height:${Math.max(b.qty > 0 ? 3 : 0, h)}px">
-                  ${rejH > 0 ? `<div class="trend-bar-rej" style="height:${Math.max(2, rejH)}px"></div>` : ''}
-                </div>
-              </div>
-              <div class="trend-lbl">${b.label}</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div style="font-size:.7rem;color:var(--mut);margin-top:.5rem;border-top:1px solid var(--rule2);padding-top:.45rem">${lifeTrend}</div>
-      </div>
-    </div>`;
+  const syncWords = {
+    ok: ['ok', 'Backed up', 'last sync ' + fmtAgo(d.sync.lastOk)],
+    pending: ['warn', 'Backing up', 'changes queued ' + (d.sync.pendingAgeMin || 0) + ' min ago'],
+    failing: ['bad', 'Backup failing', 'retrying by itself; last good ' + fmtAgo(d.sync.lastOk)],
+    offline: ['warn', 'Offline', 'changes will back up when the internet returns'],
+    idle: ['info', 'Not backed up yet', 'no backup has finished on this device'],
+    disabled: ['info', 'Backup off', ''],
+  }[d.sync.state] || ['info', 'Not backed up yet', ''];
+  const syncHtml = `<div class="sync-line"><span class="sync-dot ${syncWords[0]}"></span><span><b>${syncWords[1]}</b>${syncWords[2] ? ' · ' + esc(syncWords[2]) : ''}</span></div>`;
 
   return `
-    ${attHtml}
-    ${summaryHtml}
-    ${perfHtml}
-    ${jobsHtml}
-    <div class="dash-2col">
-      ${healthHtml}
-      ${invHtml}
-    </div>
-    <div class="dash-2col">
-      ${syncHtml}
-      ${trendHtml}
+    <div class="dash">
+      <div class="dash-main">
+        ${kpiHtml}
+        ${chartHtml}
+        ${jobsHtml}
+        ${perfHtml}
+      </div>
+      <div class="dash-rail">
+        ${attHtml}
+        ${buyHtml}
+        ${healthHtml}
+        ${syncHtml}
+      </div>
     </div>`;
 }
 
@@ -1485,7 +1516,7 @@ function vShiftProof() {
         </div>
       </div>
       <div class="proof-acts">
-        <button class="btn btn-wa" onclick="whatsappShiftSummary()">&#9993; Send on WhatsApp</button>
+        <button class="btn btn-wa" onclick="whatsappShiftSummary()">Send on WhatsApp</button>
         <button class="btn btn-ghost" onclick="copyShiftSummary()">Copy</button>
         <button class="btn btn-ghost" onclick="printShiftProof()">Print / PDF</button>
       </div>
@@ -1777,6 +1808,7 @@ function navigate(view, params = {}) {
   ui.jobId = params.jobId || null;
   ui.stationId = params.stationId || null;
   ui.logOpen = params.logOpen || false;
+  ui.jobTab = params.plan ? 'plan' : 'run';
   ui.addStationOpen = false;
   ui.editStationOpen = false;
   render();
@@ -1793,24 +1825,6 @@ function opSelectOptions(selected) {
   return OP_TYPES.map(([v, lbl]) =>
     `<option value="${v}"${selected===v?' selected':''}>${lbl}</option>`
   ).join('');
-}
-
-// ── pips ─────────────────────────────────────────────────────────
-function cornerPips(set, totalCorners) {
-  const corners = set ? (set.corners || []) : [];
-  const maxVis = Math.min(totalCorners, 12);
-  let html = '';
-  for (let i = 1; i <= maxVis; i++) {
-    const c = corners.find(x => x.num === i);
-    let cls = 'empty';
-    if (c) {
-      if (c.status === 'active') cls = 'current';
-      else if (c.status === 'broken') cls = 'broken';
-      else cls = 'done';
-    }
-    html += `<span class="pip ${cls}" title="Corner ${i}"></span>`;
-  }
-  return html;
 }
 
 // ── station tile ─────────────────────────────────────────────────
@@ -1862,7 +1876,7 @@ function stationTile(st, jobId) {
     <div class="station-tile ${tierClass}" role="button" tabindex="0"
       onclick="navigate('station',{jobId:'${jobId}',stationId:'${st.id}'})"
       onkeydown="if(event.key==='Enter')navigate('station',{jobId:'${jobId}',stationId:'${st.id}'})">
-      <span class="st-type badge-op ${opCls(st.opType)}">${esc(opLabel(st.opType))}</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><span class="st-type badge-op ${opCls(st.opType)}">${esc(opLabel(st.opType))}</span>${hasInserts ? cornerDial(st, 36) : ''}</div>
       <div class="st-name">${esc(st.name)}</div>
       ${cat === 'milling' && st.cutterDiameter
         ? `<div class="st-sub">\xf8${st.cutterDiameter}mm \xb7 ${sc.insertsInCutter}\xd7${esc(st.insertDesig ? ' '+st.insertDesig : '')}</div>`
@@ -1892,7 +1906,7 @@ function vJobs() {
     const sel = filter === key ? 'aria-selected="true"' : '';
     return `<button class="tab${key === 'cpc' ? ' tab-place' : ''}" ${sel} onclick="setJobFilter('${key}')">${lbl}${count ? `<span class="n">${count}</span>` : ''}</button>`;
   }).join('');
-  setTabs((owner ? `<button class="tab tab-place" onclick="navigate('dash')">&#8962; Dashboard</button>` : '') + tabHtml
+  setTabs((owner ? `<button class="tab tab-place" onclick="navigate('dash')">Dashboard</button>` : '') + tabHtml
     + `<button class="tab tab-place" onclick="navigate('shift')">Shift Proof</button>`
     + (owner
     ? `<button class="tab tab-place" onclick="navigate('inventory')">Inventory</button><button class="tab tab-place" onclick="navigate('settings')" style="margin-left:auto">Settings</button>`
@@ -1901,19 +1915,14 @@ function vJobs() {
 
   const hd = `
     ${isOperatorDevice() ? syncStatusBar() : ''}
-    <div class="jobs-hd">
-      <h2>Component Jobs</h2>
-      ${owner ? `<div style="display:flex;gap:.45rem;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="exportToExcel()" title="Export all data to Excel">&#8595; Excel</button>
-        ${isReadOnly() ? '' : `<button class="btn btn-pri" onclick="navigate('newjob')">+ New Job</button>`}
-      </div>` : ''}
-    </div>`;
+`;
+  ui._acts = owner ? `<button class="btn btn-ghost" onclick="exportToExcel()" title="Export all data to Excel">Export to Excel</button>
+    ${isReadOnly() ? '' : `<button class="btn btn-pri" onclick="navigate('newjob')">+ New job</button>`}` : '';
 
   // Operator device that hasn't received the shop's jobs yet
   if (isOperatorDevice() && !(db.jobs || []).length) {
     return hd + `
       <div class="panel"><div style="text-align:center;padding:3rem 1.2rem;color:var(--mut)">
-        <div style="font-size:1.8rem;margin-bottom:.6rem">&#128225;</div>
         <div style="font-weight:800;color:var(--navy);margin-bottom:.4rem">Connected to your shop</div>
         <div style="font-size:.8rem;max-width:340px;margin:0 auto;line-height:1.55">You're set up as an operator${db.settings.defaultOperator ? ', ' + esc(db.settings.defaultOperator) : ''}. Your jobs will appear here once the owner's device syncs them to you.</div>
       </div></div>`;
@@ -1934,7 +1943,6 @@ function vJobs() {
   if (!jobs.length) {
     listHtml = `
       <div style="text-align:center;padding:3.5rem 1rem;color:var(--mut)">
-        <div style="font-size:2rem;margin-bottom:.6rem">&#9881;</div>
         <div style="font-weight:700;color:var(--navy);margin-bottom:.4rem">No ${filter === 'all' ? '' : filter + ' '}jobs</div>
         <div style="font-size:.78rem">${filter === 'all' ? 'Create your first component job to start tracking' : 'No jobs with this status'}</div>
       </div>`;
@@ -1951,7 +1959,6 @@ function vJobs() {
       }).join('');
 
       if ((j.status || 'active') === 'active' && filter === 'active') {
-        const toolFlags = jobToolFlags(j);
         return `
           <div class="job-card" role="button" tabindex="0"
             onclick="navigate('job',{jobId:'${j.id}'})"
@@ -1961,7 +1968,7 @@ function vJobs() {
                 <div class="jc-code">${esc(j.componentCode)}</div>
                 <div class="jc-desc">${esc(j.componentDesc || '')}${j.customer ? ' — ' + esc(j.customer) : ''}</div>
               </div>
-              <span class="job-status-badge active">active</span>
+              <span class="job-status-badge active">Running</span>
             </div>
             <div class="jc-stats">
               <div>
@@ -1970,18 +1977,19 @@ function vJobs() {
               </div>
               <div>
                 <div class="jc-stat-n">${fmtN(jc.totalProduced)}</div>
-                <div class="jc-stat-l">${Number(j.batchQty) > 0 ? 'of ' + fmtN(j.batchQty) + ' ordered' : 'pcs made total'}</div>
+                <div class="jc-stat-l">made in all</div>
               </div>
               ${owner && jc.totalCpc != null ? `<div>
                 <div class="jc-stat-n cpc">${fmtRs(jc.totalCpc, 2)}</div>
-                <div class="jc-stat-l">per piece (insert)</div>
+                <div class="jc-stat-l">tooling per piece</div>
               </div>` : ''}
             </div>
+            ${Number(j.batchQty) > 0 ? `<div class="jc-prog">${orderTrack(jc.totalGood, Number(j.batchQty), jobPace(j, Math.max(0, j.batchQty - jc.totalGood)))}</div>` : ''}
+            ${stations.length ? `<div class="jc-tools">${stations.slice(0, 4).map(st => toolChip(st, 30)).join('')}</div>` : `<div class="jc-tools"><span class="flag warn">No tools planned yet</span></div>`}
             <div class="jc-last">${jc.lastEntry ? `Last logged ${fmtAgo(jc.lastEntry.timestamp)}${jc.lastEntry.operator ? ' by ' + esc(jc.lastEntry.operator) : ''}` : 'Nothing logged yet'}</div>
-            ${toolFlags.length ? `<div class="jc-flags">${toolFlags.map(fl => `<span class="flag ${fl.cls}">${esc(fl.text)}</span>`).join('')}</div>` : ''}
             <div class="jc-acts">
-              <button class="btn btn-teal" onclick="event.stopPropagation();quickLog('${j.id}')">+ Log Production</button>
-              <button class="btn btn-ghost" onclick="event.stopPropagation();navigate('job',{jobId:'${j.id}'})">View Details</button>
+              <button class="btn btn-teal" onclick="event.stopPropagation();quickLog('${j.id}')">+ Log production</button>
+              <button class="btn btn-ghost" onclick="event.stopPropagation();navigate('job',{jobId:'${j.id}'})">Open job</button>
             </div>
           </div>`;
       }
@@ -2001,7 +2009,7 @@ function vJobs() {
           <div>
             <div class="job-count">${fmtN(jc.totalProduced)}</div>
             <div class="job-count-lbl">pcs made</div>
-            ${owner && jc.totalCpc ? `<div style="font-family:var(--mono);font-size:.72rem;color:var(--teal);text-align:right;margin-top:.2rem;font-weight:700">${fmtRs(jc.totalCpc,2)}/pc</div>` : ''}
+            ${owner && jc.totalCpc ? `<div style="font-family:var(--mono);font-size:.8rem;color:var(--teal);text-align:right;margin-top:.2rem;font-weight:700">${fmtRs(jc.totalCpc,2)}/pc</div>` : ''}
           </div>
         </div>`;
     }).join('');
@@ -2046,7 +2054,7 @@ function vCPCContent() {
 
   const tableRows = rows.map(r => {
     const cpc = r.cpc != null
-      ? `<span class="cpc-val">${fmtRs(r.cpc, 2)}</span>${!r.confirmed ? '<span style="color:var(--mut);font-size:.65rem"> est.</span>' : ''}`
+      ? `<span class="cpc-val">${fmtRs(r.cpc, 2)}</span>${!r.confirmed ? '<span style="color:var(--mut);font-size:.75rem"> est.</span>' : ''}`
       : '<span style="color:var(--mut)">—</span>';
     return `<tr>
       <td class="insert-name">${esc(r.insert)}</td>
@@ -2070,7 +2078,7 @@ function vCPCContent() {
         <tbody>${tableRows}</tbody>
       </table>
     </div>
-    <div style="padding:.5rem 1rem;font-size:.63rem;color:var(--mut)">est. = provisional, insert set not yet fully spent. CPC = insert cost ÷ total pieces made with that insert.</div>
+    <div style="padding:.5rem 1rem;font-size:.75rem;color:var(--mut)">est. = provisional, insert set not yet fully spent. CPC = insert cost ÷ total pieces made with that insert.</div>
   </div>`;
 }
 
@@ -2145,8 +2153,109 @@ function buildOpsPipeline(job, ops) {
   return `
     <div class="ops-pipeline">
       <div class="ops-steps">${steps}</div>
-      ${isOwner() ? `<button class="btn-icon-sm" onclick="addOperation('${job.id}')" title="Add operation" style="margin-left:.5rem;align-self:center">+ Op</button>` : ''}
     </div>`;
+}
+
+// The process plan: every operation in order and the tools each one needs.
+// Done by the owner when the job is taken on, before anything is logged.
+function vJobPlan(job) {
+  const ops = job.operations || [];
+  const jc = calcJob(job);
+  let toolCount = 0, loadCost = 0;
+  const opCards = ops.map((op, idx) => {
+    const stations = op.stations || [];
+    toolCount += stations.length;
+    const logged = (job.productionLog || []).some(e => e.operationId === op.id);
+    const adding = ui.addStationOpen && ui.activeOpId === op.id;
+    const rows = stations.map(st => {
+      const sc = calcStation(st);
+      const solid = isSolidTool(st.opType);
+      loadCost += sc.setCost;
+      const what = [st.insertDesig, st.toolHolder, st.machine].filter(Boolean).map(esc).join(' · ') || 'No insert or machine entered';
+      const cost = sc.setCost > 0
+        ? (solid ? `${fmtRs(sc.setCost, 0)} a tool` : `${fmtRs(sc.setCost, 0)} a set · ${sc.totalCorners} corner${sc.totalCorners === 1 ? '' : 's'}`)
+        : 'No cost entered';
+      const loaded = (st.insertSets || []).some(s => s.status === 'active');
+      return `
+        <div class="plan-tool" role="button" tabindex="0" onclick="navigate('station',{jobId:'${job.id}',stationId:'${st.id}'})" onkeydown="if(event.key==='Enter')navigate('station',{jobId:'${job.id}',stationId:'${st.id}'})">
+          <div class="plan-tool-main"><b>${esc(st.name)}</b> ${opBadge(st.opType)}<span>${what}</span></div>
+          <div class="plan-tool-cost">${cost}</div>
+          <div class="plan-tool-state">${loaded ? '<span class="pill run">Loaded</span>' : '<span class="pill done">Not loaded yet</span>'}</div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="panel plan-op">
+        <div class="panel-hd">
+          <span class="lbl">${esc(op.name)}</span>
+          <span class="lbl muted">${idx === 0 ? 'First operation' : 'After ' + esc(ops[idx - 1].name)}</span>
+          <div class="hr"></div>
+          <button class="btn btn-ghost btn-sm" onclick="renameOperation('${job.id}','${op.id}')">Rename</button>
+          ${!stations.length && !logged && ops.length > 1 ? `<button class="btn btn-ghost btn-sm" onclick="removeOperation('${job.id}','${op.id}')">Remove</button>` : ''}
+        </div>
+        ${rows || (adding ? '' : `<div class="rail-empty">No tool planned for this operation yet.</div>`)}
+        ${adding
+          ? `<div class="plan-add">${buildAddStationForm(job)}</div>`
+          : `<div class="rail-foot"><button class="btn ${stations.length ? 'btn-ghost' : 'btn-pri'}" onclick="planAddTool('${op.id}')">+ Add a tool to ${esc(op.name)}</button></div>`}
+      </div>`;
+  }).join('');
+
+  ui._sub = `Process plan${job.componentDesc ? ' for ' + job.componentDesc : ''}. Set the operations and the tool for each one before production starts.`;
+  const batch = Number(job.batchQty) || 0;
+  return `
+    <div class="job-grid">
+      <div class="job-main">
+        ${opCards}
+        <button class="btn btn-ghost plan-addop" onclick="addOperation('${job.id}')">+ Add another operation</button>
+      </div>
+      <aside class="job-rail">
+        <div class="panel kv">
+          <div class="panel-hd"><span class="lbl">The plan so far</span><div class="hr"></div></div>
+          <div class="kv-row"><span>Operations<small>In the order the part is machined</small></span><b>${fmtN(ops.length)}</b></div>
+          <div class="kv-row"><span>Tools<small>Across every operation</small></span><b>${fmtN(toolCount)}</b></div>
+          <div class="kv-row"><span>One full load<small>Every tool loaded once</small></span><b>${loadCost > 0 ? fmtRs(loadCost, 0) : 'Not yet'}</b></div>
+          <div class="kv-row"><span>Order quantity<small><button type="button" class="hero-link" onclick="setBatchQty('${job.id}')">${batch ? 'Change' : 'Set it'}</button></small></span><b>${batch ? fmtN(batch) + ' pcs' : 'Not set'}</b></div>
+        </div>
+        <button class="btn btn-pri btn-lg plan-go" onclick="navigate('job',{jobId:'${job.id}'})">${jc.totalProduced > 0 ? 'Back to production' : 'Plan done — go to production'}</button>
+        <p class="plan-note">Operators only see the Production tab. They log pieces and tool changes against the tools planned here.</p>
+      </aside>
+    </div>`;
+}
+
+function planAddTool(opId) {
+  if (!requireOwner() || !requireActive()) return;
+  ui.activeOpId = opId;
+  ui.addStationOpen = true;
+  render();
+  setTimeout(() => { const f = document.querySelector('.plan-add'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'center' }); }, 40);
+}
+
+function renameOperation(jobId, opId) {
+  if (!requireOwner() || !requireActive()) return;
+  const job = db.jobs.find(j => j.id === jobId);
+  const op = job && (job.operations || []).find(o => o.id === opId);
+  if (!op) return;
+  const v = prompt('Name of this operation (for example: Turning, VMC first setup, Drilling)', op.name);
+  if (v === null) return;
+  const name = v.trim().slice(0, 40);
+  if (!name) return;
+  op.name = name;
+  saveDB();
+  render();
+}
+
+// Only an operation with no tools and nothing logged against it can go.
+function removeOperation(jobId, opId) {
+  if (!requireOwner() || !requireActive()) return;
+  const job = db.jobs.find(j => j.id === jobId);
+  if (!job || (job.operations || []).length < 2) return;
+  const op = job.operations.find(o => o.id === opId);
+  if (!op || (op.stations || []).length || (job.productionLog || []).some(e => e.operationId === opId)) return;
+  job.operations = job.operations.filter(o => o.id !== opId);
+  job.operations.forEach((o, i) => { o.sequence = i + 1; });
+  if (ui.activeOpId === opId) ui.activeOpId = job.operations[0].id;
+  saveDB();
+  toast(`${op.name} removed`);
+  render();
 }
 
 function setActiveOp(jobId, opId) {
@@ -2185,26 +2294,23 @@ function vJobDetail() {
   const log = (job.productionLog || []).slice().reverse();
 
   const owner = isOwner();
+  const planMode = ui.jobTab === 'plan' && owner && !isOperatorDevice();
   const tabHtml = `
     <button class="tab" onclick="navigate('jobs')">&#8592; Jobs</button>
-    <button class="tab" aria-selected="true">${esc(job.componentCode)}</button>
-    ${owner ? `<button class="tab" onclick="navigate('report',{jobId:'${job.id}'})">Report</button>
-    <button class="tab" onclick="navigate('settings')" style="margin-left:auto">Settings</button>` : ''}
+    <button class="tab" aria-selected="${!planMode}" onclick="navigate('job',{jobId:'${job.id}'})">Production</button>
+    ${owner && !isOperatorDevice() ? `<button class="tab" aria-selected="${planMode}" onclick="navigate('job',{jobId:'${job.id}',plan:true})">Process plan</button>` : ''}
+    ${owner ? `<button class="tab" onclick="navigate('report',{jobId:'${job.id}'})">Report</button>` : ''}
   `;
   setTabs(tabHtml);
   setBarCrumb(job.componentCode, true);
   setTimeout(buildDataLists, 0);
+  if (planMode) return vJobPlan(job);
+  const allTools = jobAllStations(job).length;
 
   // Operations pipeline bar + add/rename ops
   const opsPipeline = buildOpsPipeline(job, ops);
 
   const stationTiles = stations.map(st => stationTile(st, job.id)).join('');
-  const addTile = owner ? `
-    <button class="add-tile" onclick="toggleAddStation()" title="Add tooling station">
-      <span class="plus">+</span>
-      <span>Add Station</span>
-    </button>` : '';
-
   const statusOptions = ['active','paused','complete'].map(s =>
     `<option value="${s}"${(job.status||'active')===s?' selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`
   ).join('');
@@ -2227,9 +2333,9 @@ function vJobDetail() {
           <td>${esc(entry.operator || '—')}</td>
           <td class="mono" style="color:var(--mut)">${esc(entry.machine || '—')}</td>
           <td class="qty-cell">${fmtN(entry.qty)}</td>
-          <td class="mono">${entry.cycleTimeMins > 0 ? fmtN(entry.cycleTimeMins,1)+' min' : '—'}</td>
-          <td><div class="ev-chips">${evChips || '—'}</div></td>
-          ${owner ? `<td><button class="btn-icon-sm" onclick="openLogEdit('${job.id}','${entry.id}')" title="Edit entry">&#9998;</button></td>` : ''}
+          <td class="n">${entry.cycleTimeMins > 0 ? fmtN(entry.cycleTimeMins,1)+' min' : '<span class="muted">—</span>'}</td>
+          <td><div class="ev-chips">${evChips || '<span class="muted">None</span>'}</div></td>
+          ${owner ? `<td><button class="btn-icon-sm" onclick="openLogEdit('${job.id}','${entry.id}')" title="Edit entry">Edit</button></td>` : ''}
         </tr>`;
     }).join('');
 
@@ -2237,7 +2343,7 @@ function vJobDetail() {
       <div class="log-tbl-wrap">
         <table class="log-tbl">
           <thead><tr>
-            <th>Date / Time</th><th>Operator</th><th>Machine</th><th>Qty</th><th>Cycle</th><th>Events</th>${owner ? '<th></th>' : ''}
+            <th>Date and time</th><th>Operator</th><th>Machine</th><th class="n">Pieces</th><th class="n">Cycle</th><th>Tool changes</th>${owner ? '<th></th>' : ''}
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -2248,7 +2354,7 @@ function vJobDetail() {
   const left = batch > 0 ? Math.max(0, batch - jc.totalGood) : null;
   const pace = jobPace(job, left);
   const orderHtml = batch > 0
-    ? `<div class="hero-order">${left > 0 ? `${fmtN(left)} left of ${fmtN(batch)}` : `Order of ${fmtN(batch)} done`}${pace.daysLeft ? ` · about ${pace.daysLeft} working day${pace.daysLeft === 1 ? '' : 's'} at ${fmtN(pace.perDay)}/day` : ''}${owner ? ` <button type="button" class="hero-link" onclick="setBatchQty('${job.id}')">Change</button>` : ''}</div>`
+    ? `<div class="hero-order">${pace.perDay ? `Running at ${fmtN(pace.perDay)} good pieces a working day.` : ''}${owner ? ` <button type="button" class="hero-link" onclick="setBatchQty('${job.id}')">Change order quantity</button>` : ''}</div>`
     : owner ? `<div class="hero-order"><button type="button" class="hero-link" onclick="setBatchQty('${job.id}')">Set order quantity</button></div>` : '';
   const cpcHtml = jc.totalCpc != null
     ? `<span class="s-val">${fmtRs(jc.totalCpc,2)}</span><span class="s-unit"> /pc</span>`
@@ -2259,6 +2365,7 @@ function vJobDetail() {
 
   return `
     ${isOperatorDevice() ? syncStatusBar() : ''}
+    <div class="job-grid"><div class="job-main">
     <div class="job-hero">
       <div class="hero-top">
         <div class="hero-main">
@@ -2268,22 +2375,22 @@ function vJobDetail() {
             Started ${fmtDate(job.createdAt)}
             ${jc.lastEntry ? ' &middot; Last run ' + fmtDate(jc.lastEntry.timestamp) : ''}
             &middot; ${owner
-              ? `<select style="background:none;border:0;color:rgba(255,255,255,.45);font-size:.62rem;padding:0;cursor:pointer"
+              ? `<select aria-label="Job status"
                 onchange="setJobStatus('${job.id}',this.value)">${statusOptions}</select>`
               : `<span style="text-transform:capitalize">${esc(job.status || 'active')}</span>`}
           </div>
         </div>
         <div class="hero-count-wrap">
           <div class="hero-num">${fmtN(jc.totalProduced)}</div>
-          <div class="hero-num-lbl">Pcs Made</div>
-          ${orderHtml}
-          ${owner && jc.totalCpc != null ? `<div class="hero-cpc">${fmtRs(jc.totalCpc,2)}/pc insert cost</div>` : ''}
+          <div class="hero-num-lbl">pieces made in all · ${fmtN(jobTodayQty(job))} today</div>
         </div>
       </div>
+      ${batch > 0 ? `<div class="jc-prog">${orderTrack(jc.totalGood, batch, pace)}</div>` : ''}
+      ${orderHtml}
       <div class="hero-acts">
-        ${isReadOnly() ? '' : `<button class="btn btn-teal btn-lg" onclick="toggleLogForm()">${ui.logOpen ? '&#10005; Close' : '+ Log Production'}</button>`}
-        <button class="btn btn-ghost" onclick="navigate('shift')">Shift Proof</button>
-        ${owner ? `<button class="btn btn-ghost" onclick="navigate('report',{jobId:'${job.id}'})">Owner Report</button>` : ''}
+        ${isReadOnly() ? '' : `<button class="btn btn-teal btn-lg" onclick="toggleLogForm()">${ui.logOpen ? 'Close' : '+ Log production'}</button>`}
+        <button class="btn btn-ghost" onclick="navigate('shift')">Shift proof</button>
+        ${owner ? `<button class="btn btn-ghost" onclick="navigate('report',{jobId:'${job.id}'})">Report</button>` : ''}
       </div>
     </div>
 
@@ -2291,70 +2398,51 @@ function vJobDetail() {
 
     ${jc.totalAnomalies ? `
       <div class="anomaly-flag" style="margin-top:.85rem">
-        <span class="ic">&#9888;</span>
+        
         <div>
-          <div class="msg">${jc.totalAnomalies} insert anomal${jc.totalAnomalies===1?'y':'ies'} detected</div>
-          <div class="detail">Early insert replacement found. View Owner Report for details.</div>
+          <div class="msg">${jc.totalAnomalies} insert${jc.totalAnomalies===1?'':'s'} failed early</div>
+          <div class="detail">Replaced well before the usual life. The report shows which and when.</div>
         </div>
       </div>` : ''}
 
-    ${opsPipeline}
-
+    ${ops.length > 1 ? opsPipeline : ''}
     <div class="panel" style="margin-top:.5rem;margin-bottom:.5rem">
       <div class="panel-hd">
-        <span class="lbl">${activeOp ? esc(activeOp.name) : 'Tooling'} — Stations</span>
+        <span class="lbl">Tools${ops.length > 1 && activeOp ? ' on ' + esc(activeOp.name) : ' on this job'}</span>
         <div class="hr"></div>
-        <span class="lbl muted">${stations.length} station${stations.length===1?'':'s'}</span>
+        ${owner && !isOperatorDevice() && allTools ? `<button class="btn btn-ghost btn-sm" onclick="navigate('job',{jobId:'${job.id}',plan:true})">Change the plan</button>` : `<span class="lbl muted">${stations.length} tool${stations.length===1?'':'s'}</span>`}
       </div>
-      ${stations.length === 0 && !ui.addStationOpen ? `
-        <div style="padding:1.5rem 1.2rem;text-align:center">
-          <div style="font-size:.82rem;font-weight:700;color:var(--navy);margin-bottom:.3rem">No tooling stations for ${activeOp ? esc(activeOp.name) : 'this op'}</div>
-          ${owner ? `<div style="font-size:.72rem;color:var(--mut);margin-bottom:1rem;max-width:340px;margin-left:auto;margin-right:auto">Add one station per cutting tool — e.g. OD Turning, M8 Tapping, Face Milling. CPC tracks automatically once you start logging.</div>
-          <button class="btn btn-pri" onclick="toggleAddStation()">+ Add First Station</button>`
-          : `<div style="font-size:.72rem;color:var(--mut)">Stations are set up by the owner.</div>`}
+      ${stations.length === 0 ? `
+        <div class="empty">
+          <b>${allTools ? 'No tools planned for ' + esc(activeOp ? activeOp.name : 'this operation') : 'No tools planned yet'}</b>
+          <p>${owner && !isOperatorDevice()
+            ? 'Plan the operations and the tool for each one. Insert life and cost per piece are tracked from the first entry after that.'
+            : 'The owner plans the tools for this job. You can log pieces in the meantime.'}</p>
+          ${owner && !isOperatorDevice() ? `<button class="btn btn-pri" onclick="navigate('job',{jobId:'${job.id}',plan:true})">Plan the process</button>` : ''}
         </div>` : `
       <div class="station-scroll">
         ${stationTiles}
-        ${addTile}
       </div>`}
     </div>
-
-    ${ui.addStationOpen ? `<div id="add-station-container" class="panel" style="margin-bottom:.5rem">${buildAddStationForm(job)}</div>` : ''}
-
-    <div class="panel" style="margin-bottom:.5rem">
-      <div class="stat-strip">
-        ${owner ? `<div class="s-stat">
-          <div class="lbl">Insert CPC</div>
-          <div>${cpcHtml}</div>
-          <div class="s-sub">Tooling cost per piece</div>
-        </div>` : ''}
-        <div class="s-stat">
-          <div class="lbl">Avg Corner Life</div>
-          <div>${cornerLifeHtml}</div>
-          <div class="s-sub">Pcs per insert corner</div>
-        </div>
-        ${owner ? `<div class="s-stat">
-          <div class="lbl">Insert Spend</div>
-          <div><span class="s-val">${fmtRs(jc.totalInsertCost,0)}</span></div>
-          <div class="s-sub">Total committed</div>
-        </div>` : ''}
-        <div class="s-stat">
-          <div class="lbl">Anomalies</div>
-          <div><span class="s-val ${jc.totalAnomalies ? 'bad-c' : ''}">${fmtN(jc.totalAnomalies)}</span></div>
-          <div class="s-sub">Early insert failures</div>
-        </div>
-      </div>
-    </div>
-
     <div class="panel">
       <div class="panel-hd">
-        <span class="lbl">Production Log</span>
+        <span class="lbl">Production log</span>
         <div class="hr"></div>
-        <button class="btn-icon-sm" onclick="navigate('shift')" title="Today's shift proof" style="font-size:.62rem;letter-spacing:.08em">SHIFT PROOF</button>
         <span class="lbl muted">${log.length} entr${log.length===1?'y':'ies'}</span>
       </div>
       ${logHtml}
-    </div>`;
+    </div>
+    </div>
+    <aside class="job-rail">
+      <div class="panel kv">
+        <div class="panel-hd"><span class="lbl">This job in numbers</span><div class="hr"></div></div>
+        ${owner ? `<div class="kv-row"><span>Tooling per piece<small>Insert cost ÷ good pieces</small></span><b>${jc.totalCpc != null ? fmtRs(jc.totalCpc, 2) : 'Not yet'}</b></div>` : ''}
+        ${owner ? `<div class="kv-row"><span>Tooling spend<small>Inserts and tools loaded so far</small></span><b>${fmtRs(jc.totalInsertCost, 0)}</b></div>` : ''}
+        <div class="kv-row"><span>Corner life<small>Average pieces per insert corner</small></span><b>${jc.avgCornerLife != null ? fmtN(jc.avgCornerLife) + ' pcs' : 'Not yet'}</b></div>
+        <div class="kv-row"><span>Rejected<small>${jc.totalProduced > 0 ? ((jc.totalProduced - jc.totalGood) / jc.totalProduced * 100).toFixed(1) + '% of pieces made' : 'Nothing made yet'}</small></span><b class="${jc.totalProduced - jc.totalGood > 0 ? 'bad-c' : ''}">${fmtN(Math.max(0, jc.totalProduced - jc.totalGood))}</b></div>
+        <div class="kv-row"><span>Early insert failures<small>Broke well before the usual life</small></span><b class="${jc.totalAnomalies ? 'bad-c' : ''}">${fmtN(jc.totalAnomalies)}</b></div>
+      </div>
+    </aside></div>`;
 }
 
 // Pieces logged against a job since midnight (every operation).
@@ -2441,10 +2529,11 @@ function buildLogForm(job) {
 
   const stRows = stations.map(st => {
     const sc = calcStation(st);
-    const noInsert = (st.insertSets || []).length === 0;
+    const noInsert = !sc.activeSet;
     const stCat = toolCategory(st.opType);
     const solid = stCat === 'solid';
     const milling = stCat === 'milling';
+    const loadChoices = [['none', 'Not loaded'], ['insert_load', solid ? 'Loaded a new tool' : 'Loaded new inserts']];
     const choices = solid
       ? [['none', 'No change'], ['insert_replace', 'Replaced — worn'], ['insert_replace_broken', 'Replaced — broke']]
       : [['none', 'No change'], ['corner_index', milling ? 'Indexed all' : 'Indexed'], ['insert_replace', 'Replaced — worn'], ['insert_replace_broken', 'Replaced — broke']];
@@ -2466,8 +2555,10 @@ function buildLogForm(job) {
           <div class="ev-st-sub small muted">${esc(setInfo)}</div>
         </div>
         ${noInsert
-          ? `<div class="ev-st-sub small muted">${solid ? 'No tool loaded' : 'No inserts loaded'} — the owner sets this up</div>
-             <input type="hidden" id="ev_${st.id}" value="none" disabled>`
+          ? `<div class="seg-wrap" role="group" aria-label="${esc(st.name)} tool load">
+               ${loadChoices.map(([v, l], i) => `<button type="button" class="seg" aria-pressed="${i === 0}" data-v="${v}" onclick="pickSeg(this,'ev_${st.id}')">${l}</button>`).join('')}
+             </div>
+             <input type="hidden" name="ev_${st.id}" id="ev_${st.id}" value="none">`
           : `<div class="seg-wrap" role="group" aria-label="${esc(st.name)} tool change">
                ${choices.map(([v, l], i) => `<button type="button" class="seg${v === 'insert_replace_broken' ? ' seg-bad' : ''}" aria-pressed="${i === 0}" data-v="${v}" onclick="pickSeg(this,'ev_${st.id}')">${l}</button>`).join('')}
              </div>
@@ -2676,14 +2767,14 @@ function buildAddStationForm(job) {
   const defaultOp = 'turning';
   return `
     <div class="panel-hd">
-      <span class="lbl">Add Tooling Station</span>
+      <span class="lbl">Add a tool to the plan</span>
       <div class="hr"></div>
     </div>
     <div class="panel-bd">
       <form id="sf-form" onsubmit="submitAddStation(event,'${job.id}')">
         <div class="fgrid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:.6rem">
           <div class="field">
-            <label for="sf-name">Station Name <span class="req">*</span></label>
+            <label for="sf-name">Tool name <span class="req">*</span></label>
             <input id="sf-name" list="dl-stnames" autocomplete="off" placeholder="e.g. OD Turning" required>
             <datalist id="dl-stnames"></datalist>
           </div>
@@ -2702,16 +2793,16 @@ function buildAddStationForm(job) {
         </div>
         <div style="display:flex;gap:1rem;align-items:center;margin-top:.6rem;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;cursor:pointer">
-            <input type="checkbox" id="sf-load-now" checked>
-            <span id="sf-load-now-lbl">Load inserts now</span>
+            <input type="checkbox" id="sf-load-now">
+            <span id="sf-load-now-lbl">Already loaded in the machine</span>
           </label>
           <div class="field" style="margin:0;min-width:160px">
-            <label for="sf-loaded-by" style="margin-bottom:.2rem">Loaded By</label>
+            <label for="sf-loaded-by" style="margin-bottom:.2rem">Loaded by</label>
             <input id="sf-loaded-by" list="dl-ops" autocomplete="off" placeholder="Operator" value="${esc(db.settings.defaultOperator||'')}">
           </div>
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.85rem;flex-wrap:wrap">
-          <button type="submit" class="btn btn-pri">Add Station</button>
+          <button type="submit" class="btn btn-pri">Add to the plan</button>
           <button type="button" class="btn btn-ghost" onclick="toggleAddStation()">Cancel</button>
         </div>
       </form>
@@ -2729,7 +2820,7 @@ function buildEditStationForm(job, st) {
       <form id="sf-form" onsubmit="submitEditStation(event,'${job.id}','${st.id}')">
         <div class="fgrid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:.6rem">
           <div class="field">
-            <label for="sf-name">Station Name <span class="req">*</span></label>
+            <label for="sf-name">Tool name <span class="req">*</span></label>
             <input id="sf-name" list="dl-stnames" autocomplete="off" value="${esc(st.name)}" required>
             <datalist id="dl-stnames"></datalist>
           </div>
@@ -2746,7 +2837,7 @@ function buildEditStationForm(job, st) {
         <div id="sf-var" class="fgrid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:.3rem">
           ${buildStationFields(st.opType, st)}
         </div>
-        <div class="hint" style="color:var(--mut);font-size:.65rem;margin:.4rem 0 .7rem">
+        <div class="hint" style="color:var(--mut);font-size:.75rem;margin:.4rem 0 .7rem">
           Changes apply going forward. Existing corner records are preserved.
         </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
@@ -2770,9 +2861,7 @@ function updateStationForm() {
   }
   const lbl = $('#sf-load-now-lbl');
   if (lbl) {
-    lbl.textContent = cat === 'solid'
-      ? (op === 'tapping' ? 'Load tap now' : 'Load drill now')
-      : 'Load inserts now';
+    lbl.textContent = 'Already loaded in the machine';
   }
 }
 
@@ -2783,183 +2872,131 @@ function vStationDetail() {
   if (!st) { navigate('job', { jobId: job.id }); return ''; }
 
   const sc = calcStation(st);
-  const tabHtml = `
-    <button class="tab" onclick="navigate('jobs')">&#8592; Jobs</button>
-    <button class="tab" onclick="navigate('job',{jobId:'${job.id}'})">${esc(job.componentCode)}</button>
-    <button class="tab" aria-selected="true">${esc(st.name)}</button>
-  `;
-  setTabs(tabHtml);
-  setBarCrumb(`${job.componentCode} / ${st.name}`, true);
-
-  let setsHtml = '';
-  if (!sc.sets.length) {
-    setsHtml = `
-      <div style="padding:.85rem 1rem">
-        <div class="muted small" style="margin-bottom:.75rem">${solid ? 'No tool loaded yet.' : 'No inserts loaded yet.'}</div>
-        <button class="btn btn-pri" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load Tool' : 'Load First Insert Set'}</button>
-      </div>`;
-  } else {
-    setsHtml = [...sc.sets].reverse().map((set, ri) => {
-      const si = sc.sets.length - ri;
-      const corners = set.corners || [];
-      const totalPcs = corners.reduce((s, c) => s + (c.componentsMade || 0), 0);
-      const cpc = totalPcs > 0 && sc.setCost > 0 ? sc.setCost / totalPcs : null;
-      const pip = cornerPips(set, sc.totalCorners);
-
-      const cornerRows = corners.map(c => {
-        const rowClass = c.status === 'active' ? 'active-row' : c.status === 'broken' ? 'broken-row' : '';
-        const warn = sc.avgCornerLife && c.status === 'broken' && (c.componentsMade||0) < sc.avgCornerLife * 0.55;
-        return `
-          <tr class="${rowClass}">
-            <td>C${c.num}</td>
-            <td>${esc(c.status)}</td>
-            <td class="n">${fmtN(c.componentsMade || 0)}</td>
-            <td class="n">${sc.avgCornerLife ? fmtN(sc.avgCornerLife, 0) : '—'}</td>
-            <td class="n" style="${warn ? 'color:var(--bad);font-weight:700' : ''}">${warn ? '&#9888; Early' : c.status === 'active' ? '<span class="lbl-t">ACTIVE</span>' : 'OK'}</td>
-            <td>${c.endedAt ? fmtDate(c.endedAt) : c.status === 'active' ? 'Running' : '—'}</td>
-          </tr>`;
-      }).join('');
-
-      const badgeClass = set.status === 'active' ? 'active' : set.status === 'broken' ? 'broken' : 'spent';
-      return `
-        <div class="set-block">
-          <div class="set-hd">
-            <span class="set-badge ${badgeClass}">SET #${si}</span>
-            <div class="pip-row" style="margin:0 .5rem 0 .3rem">${pip}</div>
-            <span class="small muted">${fmtDate(set.loadedAt)}${set.loadedBy ? ' · ' + esc(set.loadedBy) : ''}</span>
-            <span class="small mono" style="margin-left:auto">${fmtN(totalPcs)} pcs${isOwner() ? ` &middot; ${fmtRs(cpc,2)}/pc` : ''}</span>
-          </div>
-          <table class="corner-tbl">
-            <thead><tr>
-              <th>Corner</th><th>Status</th><th>Pcs Made</th><th>Avg Life</th><th>Flag</th><th>Ended</th>
-            </tr></thead>
-            <tbody>${cornerRows}</tbody>
-          </table>
-        </div>`;
-    }).join('');
-  }
-
   const cat = toolCategory(st.opType);
   const solid = cat === 'solid';
+  const owner = isOwner();
+  setTabs(`
+    <button class="tab" onclick="navigate('jobs')">&#8592; Jobs</button>
+    <button class="tab" onclick="navigate('job',{jobId:'${job.id}'})">${esc(job.componentCode)}</button>
+    <button class="tab" aria-selected="true">${esc(st.name)}</button>`);
+  setBarCrumb(`${job.componentCode} / ${st.name}`, true);
 
-  // Live status banner for active set
-  let statusBanner = '';
-  if (sc.activeSet) {
-    const barColor = sc.lifeStatus === 'overdue' ? 'var(--bad)'
-      : sc.lifeStatus === 'warn' ? 'var(--warn)' : 'var(--teal)';
-    const barPct = Math.min(100, sc.cornerLifePct || 0);
-    const avgStr = sc.avgCornerLife ? `avg life: ${Math.round(sc.avgCornerLife)} pcs` : '';
-    const lifeMsg = sc.lifeStatus === 'overdue'
-      ? solid
-        ? `Tool past average life (${Math.round(sc.avgCornerLife)} pcs avg) — replace when convenient`
-        : `Corner past average life (${Math.round(sc.avgCornerLife)} pcs avg) — index when convenient`
-      : sc.pcsRemainingOnCorner != null
-      ? `~${sc.pcsRemainingOnCorner} pcs remaining${avgStr ? ' (' + avgStr + ')' : ''}`
-      : `${fmtN(sc.currentCornerPcs)} pcs made on ${solid ? 'current tool' : 'current corner'}`;
-    const titleLine = solid
-      ? `Tool #${sc.currentSetNum}`
-      : `Set ${sc.currentSetNum} · Corner ${sc.currentCornerNum}/${sc.totalCorners}`;
-    statusBanner = `
-      <div style="background:${sc.lifeStatus === 'overdue' ? 'var(--bad-bg)' : sc.lifeStatus === 'warn' ? 'var(--warn-bg)' : 'var(--teal-tint)'};border:1px solid ${barColor};border-radius:var(--r);padding:.65rem .9rem;margin-bottom:.6rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:160px">
-          <div style="font-size:.72rem;font-weight:700;color:${barColor};letter-spacing:.06em;text-transform:uppercase;margin-bottom:.2rem">
-            ${titleLine}
-          </div>
-          <div style="font-size:.75rem;color:var(--T)">${esc(lifeMsg)}</div>
-        </div>
-        <div style="min-width:120px">
-          <div style="background:var(--rule2);border-radius:2px;height:5px;overflow:hidden;margin-bottom:.2rem">
-            <div style="height:100%;width:${barPct}%;background:${barColor}"></div>
-          </div>
-          <div style="font-size:.6rem;color:var(--mut);text-align:right">${barPct}% of avg life</div>
-        </div>
-      </div>`;
+  const spec = [];
+  if (st.machine) spec.push(esc(st.machine));
+  if (cat === 'milling' && st.cutterDiameter) spec.push(`\xf8${st.cutterDiameter} mm cutter`);
+  if (st.insertDesig) spec.push(esc(st.insertDesig) + (cat === 'milling' && sc.insertsInCutter > 1 ? ` × ${sc.insertsInCutter}` : ''));
+  if (st.toolHolder) spec.push(esc(st.toolHolder));
+  ui._sub = `${opLabel(st.opType)} on ${job.componentCode}${spec.length ? ' · ' + spec.join(' · ').replace(/&amp;/g, '&') : ''}`;
+
+  // ── now: the tool in the machine ──
+  const usual = sc.avgCornerLife ? Math.round(sc.avgCornerLife) : null;
+  let nowTitle, nowMsg, nowCls = '';
+  if (!sc.sets.length) {
+    nowTitle = solid ? 'No tool loaded yet' : 'No inserts loaded yet';
+    nowMsg = 'Load the first one and its life is tracked from the next entry.';
+  } else if (!sc.activeSet) {
+    nowTitle = solid ? 'The tool is worn out' : 'This set is used up';
+    nowMsg = solid ? 'Load a new tool to carry on.' : 'Load a new set of inserts to carry on.'; nowCls = 'warn';
+  } else {
+    nowTitle = solid ? `Tool ${sc.currentSetNum}` : `Corner ${sc.currentCornerNum} of ${sc.totalCorners}, set ${sc.currentSetNum}`;
+    if (sc.lifeStatus === 'overdue') { nowCls = 'bad'; nowMsg = `${fmtN(sc.currentCornerPcs)} pieces made — past the usual ${fmtN(usual)}. ${solid ? 'Replace it' : 'Index it'} when the machine stops.`; }
+    else if (sc.pcsRemainingOnCorner != null) { nowCls = sc.lifeStatus === 'warn' ? 'warn' : ''; nowMsg = `${fmtN(sc.currentCornerPcs)} pieces made. About ${fmtN(sc.pcsRemainingOnCorner)} left before the usual ${fmtN(usual)}.`; }
+    else nowMsg = `${fmtN(sc.currentCornerPcs)} pieces made. The usual life shows once ${solid ? 'a tool has' : 'a corner has'} been used up.`;
   }
+  const lifePct = sc.activeSet && sc.cornerLifePct != null ? Math.min(100, sc.cornerLifePct) : null;
+  const acts = [];
+  if (owner && !isReadOnly()) {
+    if (sc.activeSet && !solid) acts.push(`<button class="btn btn-pri" onclick="quickIndexCorner('${job.id}','${st.id}')">Index to the next corner</button>`);
+    acts.push(sc.activeSet
+      ? `<button class="btn btn-ghost" onclick="loadNewSet('${job.id}','${st.id}')">${solid ? 'Replace the tool' : 'Replace the inserts'}</button>`
+      : `<button class="btn btn-pri" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load a tool' : 'Load inserts'}</button>`);
+  }
+  if (!isReadOnly()) acts.push(`<button class="btn btn-ghost" onclick="quickLog('${job.id}')">+ Log production</button>`);
+  const nowHtml = `
+    <div class="panel st-now ${nowCls}">
+      <div class="st-now-top">
+        ${cornerDial(st, 84, 9)}
+        <div class="st-now-txt">
+          <h2>${esc(nowTitle)}</h2>
+          <p>${esc(nowMsg)}</p>
+        </div>
+      </div>
+      ${lifePct != null ? `<div class="track st-life" role="img" aria-label="${lifePct}% of the usual life used"><i style="width:${lifePct}%"></i></div>
+      <div class="track-l"><span>0</span><span>Usual life ${fmtN(usual)} pcs</span></div>` : ''}
+      ${acts.length ? `<div class="st-now-acts">${acts.join('')}</div>` : ''}
+    </div>`;
 
-  const cpcConfirmed = sc.confirmedCpc != null
-    ? `<span class="s-val ok-c">${fmtRs(sc.confirmedCpc,2)}</span><span class="s-unit"> /pc</span>`
-    : `<span class="s-val muted" style="font-size:.9rem">No spent sets yet</span>`;
-  const cpcProv = sc.provisionalCpc != null
-    ? `<span class="s-val">${fmtRs(sc.provisionalCpc,2)}</span><span class="s-unit"> /pc</span>`
-    : `<span class="s-val muted">—</span>`;
+  // ── history: every set, each corner a bar against the usual life ──
+  const longest = Math.max(1, usual || 0, ...sc.sets.flatMap(s => (s.corners || []).map(c => c.componentsMade || 0)));
+  const setsHtml = !sc.sets.length ? '' : [...sc.sets].reverse().map((set, ri) => {
+    const si = sc.sets.length - ri;
+    const corners = set.corners || [];
+    const totalPcs = corners.reduce((s, c) => s + (c.componentsMade || 0), 0);
+    const cpc = totalPcs > 0 && sc.setCost > 0 ? sc.setCost / totalPcs : null;
+    const state = set.status === 'active' ? '<span class="pill run">In the machine</span>'
+      : set.status === 'broken' ? '<span class="flag bad">Broke</span>' : '<span class="pill done">Used up</span>';
+    const rows = corners.map(c => {
+      const made = c.componentsMade || 0;
+      const early = usual && c.status === 'broken' && made < usual * 0.55;
+      const verdict = c.status === 'active' ? 'Cutting now'
+        : c.status === 'broken' ? (early ? 'Broke early' : 'Broke')
+        : `Used${c.endedAt ? ', ' + fmtDate(c.endedAt) : ''}`;
+      const cls = c.status === 'active' ? 'cur' : c.status === 'broken' ? 'brk' : 'done';
+      return `
+        <div class="cr-row">
+          <span class="cr-name">${solid ? 'Life' : 'Corner ' + c.num}</span>
+          <div class="cr-bar"><i class="${cls}" style="width:${Math.max(made > 0 ? 2 : 0, made / longest * 100).toFixed(1)}%"></i>${usual ? `<em style="left:${(usual / longest * 100).toFixed(1)}%"></em>` : ''}</div>
+          <span class="cr-n">${fmtN(made)} pcs</span>
+          <span class="cr-v ${c.status === 'broken' ? 'bad' : ''}">${esc(verdict)}</span>
+        </div>`;
+    }).join('');
+    return `
+      <div class="set-card">
+        <div class="set-top">
+          <b>${solid ? 'Tool' : 'Set'} ${si}</b> ${state}
+          <span class="set-meta">Loaded ${fmtDate(set.loadedAt)}${set.loadedBy ? ' by ' + esc(set.loadedBy) : ''}</span>
+          <span class="set-sum">${fmtN(totalPcs)} pcs${owner && cpc != null ? ` · ${fmtRs(cpc, 2)} a piece` : ''}</span>
+        </div>
+        ${rows}
+      </div>`;
+  }).join('');
+  const histHtml = sc.sets.length ? `
+    <div class="panel">
+      <div class="panel-hd"><span class="lbl">${solid ? 'Every tool used here' : 'Every set, corner by corner'}</span><div class="hr"></div>${usual ? `<span class="lbl muted">The mark on each bar is the usual life, ${fmtN(usual)} pcs</span>` : ''}</div>
+      <div class="set-list">${setsHtml}</div>
+    </div>` : '';
+
+  // ── rail: the tool in numbers, and what it is ──
+  const inv = st.inventoryItemId ? (db.inventory || []).find(i => i.id === st.inventoryItemId) : null;
+  const low = inv && (inv.qtyInStock || 0) <= stationLoadNeed(st);
+  const kv = (label, small, val, cls) => `<div class="kv-row"><span>${label}${small ? `<small>${small}</small>` : ''}</span><b class="${cls || ''}">${val}</b></div>`;
+  const railHtml = `
+    <aside class="job-rail">
+      <div class="panel kv">
+        <div class="panel-hd"><span class="lbl">This tool in numbers</span><div class="hr"></div></div>
+        ${owner ? kv('Cost per piece so far', solid ? 'Tool cost ÷ pieces made' : 'Counts only the corners already used', sc.provisionalCpc != null ? fmtRs(sc.provisionalCpc, 2) : 'Not yet') : ''}
+        ${owner ? kv('Cost per piece, finished', solid ? 'From tools fully worn out' : 'From sets fully used up', sc.confirmedCpc != null ? fmtRs(sc.confirmedCpc, 2) : 'Not yet') : ''}
+        ${kv('Pieces made', solid ? 'On every tool used here' : 'On every set used here', fmtN(sc.totalComponents))}
+        ${kv(solid ? 'Usual tool life' : 'Usual corner life', 'Average of those already used', usual ? fmtN(usual) + ' pcs' : 'Not yet')}
+        ${kv(solid ? 'Tools used' : 'Sets used', owner && sc.setCost > 0 ? `${fmtRs(sc.setCost, 0)} each` : '', fmtN(sc.sets.length))}
+        ${sc.anomalies.length ? kv('Failed early', 'Broke well before the usual life', fmtN(sc.anomalies.length), 'bad-c') : ''}
+        ${inv ? kv('In stock', esc(inv.designation), fmtN(inv.qtyInStock || 0), low ? 'bad-c' : '') : ''}
+      </div>
+      ${owner ? `<div class="st-rail-acts">
+        <button class="btn btn-ghost" onclick="toggleEditStation()">${ui.editStationOpen ? 'Close editing' : 'Edit this station'}</button>
+        <button class="btn btn-bad" onclick="confirmDeleteStation('${job.id}','${st.id}')">Delete this station</button>
+      </div>` : ''}
+    </aside>`;
 
   return `
-    ${statusBanner}
-    <div class="st-mobile-acts">
-      ${isOwner() ? `${sc.activeSet && !solid ? `<button class="btn btn-pri" onclick="quickIndexCorner('${job.id}','${st.id}')">&#8635; Index Corner</button>` : ''}
-      ${sc.activeSet
-        ? `<button class="btn btn-ghost" onclick="loadNewSet('${job.id}','${st.id}')">${solid ? 'Replace Tool' : 'Replace Inserts'}</button>`
-        : `<button class="btn btn-pri" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load Tool' : 'Load Inserts'}</button>`}` : ''}
-      <button class="btn btn-teal" onclick="quickLog('${job.id}')">+ Log Production</button>
-    </div>
-    <div class="panel" style="margin-bottom:.8rem">
-      <div class="panel-hd">
-        ${opBadge(st.opType)}
-        <span style="font-weight:700;color:var(--navy);margin-left:.3rem">${esc(st.name)}</span>
-        <div class="hr"></div>
-        <span class="muted small">${(() => {
-          let s = esc(st.machine || '');
-          if (cat === 'milling') {
-            if (st.cutterDiameter) s += ` \xb7 \xf8${st.cutterDiameter}mm`;
-            if (st.insertDesig) s += ` \xb7 ${esc(st.insertDesig)}`;
-            if (sc.insertsInCutter > 1) s += ` (${sc.insertsInCutter} inserts)`;
-          } else {
-            if (st.insertDesig) s += ` \xb7 ${esc(st.insertDesig)}`;
-            if (st.toolHolder) s += ` \xb7 ${esc(st.toolHolder)}`;
-          }
-          if (st.inventoryItemId) {
-            const invItem = (db.inventory || []).find(i => i.id === st.inventoryItemId);
-            if (invItem) {
-              const n = invItem.qtyInStock || 0;
-              s += ` \xb7 <span style="${n <= stationLoadNeed(st) ? 'color:var(--bad);font-weight:700' : 'color:var(--teal);font-weight:600'}">${n} in stock</span>`;
-            }
-          }
-          return s;
-        })()}</span>
-        ${isOwner() ? `<button class="btn btn-ghost" style="margin-left:auto;font-size:.6rem;min-height:26px;padding:.18rem .55rem" onclick="toggleEditStation()">${ui.editStationOpen ? 'Cancel' : 'Edit'}</button>` : ''}
+    <div class="job-grid">
+      <div class="job-main">
+        ${nowHtml}
+        ${ui.editStationOpen && owner ? `<div class="panel">${buildEditStationForm(job, st)}</div>` : ''}
+        ${histHtml}
       </div>
-      <div class="stat-strip">
-        ${isOwner() ? `<div class="s-stat">
-          <div class="lbl">Confirmed CPC</div>
-          <div>${cpcConfirmed}</div>
-          <div class="s-sub">Fully spent sets only</div>
-        </div>
-        <div class="s-stat">
-          <div class="lbl">Running CPC</div>
-          <div>${cpcProv}</div>
-          <div class="s-sub">${solid ? 'Cost per piece so far' : 'Proportional — excludes unused corners'}</div>
-        </div>` : ''}
-        <div class="s-stat">
-          <div class="lbl">Total Pcs</div>
-          <div><span class="s-val">${fmtN(sc.totalComponents)}</span></div>
-          <div class="s-sub">${solid ? 'Across all tools used' : 'Across all insert sets'}</div>
-        </div>
-        <div class="s-stat">
-          <div class="lbl">${solid ? 'Avg Tool Life' : 'Avg Corner Life'}</div>
-          <div><span class="s-val">${sc.avgCornerLife ? fmtN(sc.avgCornerLife,0) : '—'}</span></div>
-          <div class="s-sub">${solid ? 'Pcs per tool (historical)' : 'Pcs per corner (historical)'}</div>
-        </div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-hd">
-        <span class="lbl">${solid ? 'Tool Lifecycle' : 'Insert Lifecycle'}</span>
-        <div class="hr"></div>
-        <span class="small muted">${isOwner()
-          ? (solid ? `${fmtRs(sc.setCost,0)}/tool` : `${sc.insertsInCutter} insert${sc.insertsInCutter>1?'s':''} · ${sc.totalCorners} corner${sc.totalCorners>1?'s':''} per set · ${fmtRs(sc.setCost,0)}/set`)
-          : (solid ? '' : `${sc.insertsInCutter} insert${sc.insertsInCutter>1?'s':''} · ${sc.totalCorners} corner${sc.totalCorners>1?'s':''} per set`)}</span>
-        <div style="margin-left:auto">
-          ${sc.activeSet
-            ? `<button class="btn btn-ghost" style="font-size:.56rem;min-height:28px;padding:.2rem .6rem" onclick="loadNewSet('${job.id}','${st.id}')">${solid ? 'Replace Tool' : 'Replace Inserts'}</button>`
-            : `<button class="btn btn-pri" style="font-size:.56rem;min-height:28px;padding:.2rem .6rem" onclick="loadFirstSet('${job.id}','${st.id}')">${solid ? 'Load Tool' : 'Load Inserts'}</button>`}
-        </div>
-      </div>
-      <div style="padding:.85rem 1rem .75rem">${setsHtml}</div>
-    </div>
-    ${ui.editStationOpen && isOwner() ? `<div class="panel" style="margin:.8rem 0">${buildEditStationForm(job, st)}</div>` : ''}
-    ${isOwner() ? `<div style="display:flex;gap:.55rem;flex-wrap:wrap;margin-top:.5rem">
-      <button class="btn btn-bad" onclick="confirmDeleteStation('${job.id}','${st.id}')">Delete Station</button>
-    </div>` : ''}`;
+      ${railHtml}
+    </div>`;
 }
 
 function vReport() {
@@ -2997,7 +3034,7 @@ function vReport() {
         <td class="n">${sc.avgCornerLife != null ? fmtN(sc.avgCornerLife,0) : '—'}</td>
         <td class="n">${fmtN(sc.totalComponents)}</td>
         <td class="n">${cpcDisplay}</td>
-        <td>${sc.anomalies.length ? `<b style="color:#a00">&#9888; ${sc.anomalies.length}</b>` : 'OK'}</td>
+        <td>${sc.anomalies.length ? `<b style="color:#a00">${sc.anomalies.length}</b>` : 'OK'}</td>
         <td style="font-size:7pt">${esc(anomalyNote) || '—'}</td>
       </tr>`;
   }).join('');
@@ -3073,7 +3110,7 @@ function vReport() {
           const sc = calcStation(st);
           return sc.anomalies.map(a => `
             <div style="padding:1.5mm 2mm;background:#fff0ee;border:1px solid #c00;border-radius:1px;margin-bottom:1.5mm;font-size:7.5pt">
-              <b>&#9888; Early replacement — ${esc(st.name)}</b>: Set ${a.setNum}, Corner ${a.cornerNum} had only ${a.pcs} pcs before change (historical avg: ${a.avgLife} pcs). Possible insert break or premature replacement.
+              <b>Early replacement — ${esc(st.name)}</b>: Set ${a.setNum}, Corner ${a.cornerNum} had only ${a.pcs} pcs before change (historical avg: ${a.avgLife} pcs). Possible insert break or premature replacement.
             </div>`);
         }).join('')}
       </div>` : ''}
@@ -3133,7 +3170,7 @@ function vPaywall() {
   return `
     <div class="paywall-wrap">
       <div class="paywall-card">
-        <div class="paywall-logo">TOOLFLUX</div>
+        
         <div class="paywall-title">${esc(title)}</div>
         <p class="paywall-sub">${esc(subtext)}</p>
         <div class="tier-opts" role="group" aria-label="Choose a plan">${tierCards}</div>
@@ -3153,10 +3190,10 @@ function vPaywall() {
         <div class="paywall-activate">
           <div class="paywall-activate-label">Already paid? Unlock this device with the same email</div>
           <div style="margin-top:.5rem">
-            <button id="pw-activate-btn" class="btn btn-ghost" style="width:100%" onclick="activateLicense()">Activate My Subscription</button>
+            <button id="pw-activate-btn" class="btn btn-ghost" style="width:100%" onclick="activateLicense()">Activate my subscription</button>
           </div>
         </div>
-        ${!expired ? `<div style="margin-top:1.2rem;text-align:center"><button class="btn btn-ghost" style="font-size:.75rem" onclick="navigate('jobs')">&#8592; Back to App</button></div>` : ''}
+        ${!expired ? `<div style="margin-top:1.2rem;text-align:center"><button class="btn btn-ghost" onclick="navigate('jobs')">Back to the app</button></div>` : ''}
       </div>
     </div>`;
 }
@@ -3180,33 +3217,34 @@ function vSetup() {
   return `
     <div class="setup-split">
       <div class="setup-brand">
-        <div class="setup-wordmark">TOOLFLUX</div>
-        <div class="setup-product-tag">MACHINING LOG</div>
+        <div class="setup-wordmark"><svg width="44" height="44" viewBox="0 0 72 72" aria-hidden="true"><clipPath id="ml-a"><path d="M-4 -4H50L24 76H-4Z"/></clipPath><clipPath id="ml-b"><path d="M50 -4H76V76H24Z"/></clipPath><g clip-path="url(#ml-a)"><path d="M28.51 11.15L29.39 3.34L38.61 3.34L39.49 11.15A23.5 23.5 0 0 1 46.28 13.96L46.28 13.96L52.42 9.06L58.94 15.58L54.04 21.72A23.5 23.5 0 0 1 56.85 28.51L56.85 28.51L64.66 29.39L64.66 38.61L56.85 39.49A23.5 23.5 0 0 1 54.04 46.28L54.04 46.28L58.94 52.42L52.42 58.94L46.28 54.04A23.5 23.5 0 0 1 39.49 56.85L39.49 56.85L38.61 64.66L29.39 64.66L28.51 56.85A23.5 23.5 0 0 1 21.72 54.04L21.72 54.04L15.58 58.94L9.06 52.42L13.96 46.28A23.5 23.5 0 0 1 11.15 39.49L11.15 39.49L3.34 38.61L3.34 29.39L11.15 28.51A23.5 23.5 0 0 1 13.96 21.72L13.96 21.72L9.06 15.58L15.58 9.06L21.72 13.96A23.5 23.5 0 0 1 28.51 11.15Z" fill="#012B42"/></g><g clip-path="url(#ml-b)"><path d="M32.51 15.15L33.39 7.34L42.61 7.34L43.49 15.15A23.5 23.5 0 0 1 50.28 17.96L50.28 17.96L56.42 13.06L62.94 19.58L58.04 25.72A23.5 23.5 0 0 1 60.85 32.51L60.85 32.51L68.66 33.39L68.66 42.61L60.85 43.49A23.5 23.5 0 0 1 58.04 50.28L58.04 50.28L62.94 56.42L56.42 62.94L50.28 58.04A23.5 23.5 0 0 1 43.49 60.85L43.49 60.85L42.61 68.66L33.39 68.66L32.51 60.85A23.5 23.5 0 0 1 25.72 58.04L25.72 58.04L19.58 62.94L13.06 56.42L17.96 50.28A23.5 23.5 0 0 1 15.15 43.49L15.15 43.49L7.34 42.61L7.34 33.39L15.15 32.51A23.5 23.5 0 0 1 17.96 25.72L17.96 25.72L13.06 19.58L19.58 13.06L25.72 17.96A23.5 23.5 0 0 1 32.51 15.15Z" fill="#0097B2"/></g><circle cx="36" cy="36" r="17.5" fill="var(--mark-ground, #fff)"/><g transform="translate(36.6 36) skewX(-12)" fill="none" stroke-width="5.2" stroke-linejoin="miter" stroke-miterlimit="6"><path d="M-9 9.5V-9.5L0.4 4.5" stroke="#012B42"/><path d="M0.4 4.5L9 -9.5V9.5" stroke="#0097B2"/></g></svg><span>MACH<b>LOG</b></span></div>
+        <div class="setup-product-tag">The machining log by TOOLFLUX</div>
         <div class="setup-divider"></div>
         <ol class="setup-specs">
           <li class="setup-spec">
             <span class="setup-spec-n">01</span>
             <div>
-              <div class="setup-spec-lbl">INSERT TRACKING</div>
-              <div class="setup-spec-desc">Per-corner life logs. Every rotation and replacement timestamped, operator attributed.</div>
+              <div class="setup-spec-lbl">Every insert, corner by corner</div>
+              <div class="setup-spec-desc">Each index and each replacement is logged with the time and the operator.</div>
             </div>
           </li>
           <li class="setup-spec">
             <span class="setup-spec-n">02</span>
             <div>
-              <div class="setup-spec-lbl">COST PER COMPONENT</div>
-              <div class="setup-spec-desc">Tooling spend divided by confirmed good pieces. Station-level precision, not estimates.</div>
+              <div class="setup-spec-lbl">Tooling cost per piece</div>
+              <div class="setup-spec-desc">What the inserts cost you on every good piece, for each tool on each job.</div>
             </div>
           </li>
           <li class="setup-spec">
             <span class="setup-spec-n">03</span>
             <div>
-              <div class="setup-spec-lbl">ANOMALY DETECTION</div>
-              <div class="setup-spec-desc">Early insert failures flagged against your own historical corner life averages.</div>
+              <div class="setup-spec-lbl">Early failures caught</div>
+              <div class="setup-spec-desc">An insert that breaks well before its usual life is flagged the same day.</div>
             </div>
           </li>
         </ol>
         <div class="setup-trial-badge">14-day free trial &middot; No card required</div>
+        <div class="rood-line">A product of <span class="rood" role="img" aria-label="ROOD Dynamics"></span></div>
       </div>
       <div class="setup-form-side">
         <div class="setup-form-inner">
@@ -3543,10 +3581,9 @@ function vInventory() {
     </div>` : '';
 
   return `
-    <div style="max-width:900px;margin:0 auto">
+    <div>
       ${items.length ? `
       <div class="stat-strip panel" style="margin-bottom:.5rem">
-        <div class="s-stat"><div class="lbl">To buy</div><div><span class="s-val ${buy.length ? 'warn-c' : ''}">${buy.length}</span></div><div class="s-sub">${buy.length ? 'Items at or under reorder level' : 'Nothing running low'}</div></div>
         <div class="s-stat"><div class="lbl">Used in 30 days</div><div><span class="s-val">${fmtRs(spend30, 0)}</span></div><div class="s-sub">Loaded onto machines, at unit price</div></div>
         <div class="s-stat"><div class="lbl">Stock value</div><div><span class="s-val">${fmtRs(totalValue, 0)}</span></div><div class="s-sub">${items.length} item${items.length === 1 ? '' : 's'} at purchase price</div></div>
       </div>` : ''}
@@ -3648,7 +3685,7 @@ function buildInvAddForm() {
             <input id="inv-min" type="number" inputmode="numeric" min="0" placeholder="e.g. 10">
           </div>
         </div>
-        <button type="submit" class="btn btn-pri">Add to Inventory</button>
+        <button type="submit" class="btn btn-pri">Add to inventory</button>
       </form>
     </details>`;
 }
@@ -3782,7 +3819,7 @@ function vSettings() {
             </div>
           </div>
           <div style="margin-top:1rem">
-            <button type="submit" class="btn btn-pri">Save Settings</button>
+            <button type="submit" class="btn btn-pri">Save</button>
           </div>
         </form>
       </div>
@@ -3803,7 +3840,7 @@ function vSettings() {
         ${canAddOperator() ? `
         <form onsubmit="submitAddOperator(event)" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem">
           <input id="team-op-name" placeholder="Operator name (e.g. Ravi)" autocomplete="off" style="flex:1;min-width:160px">
-          <button type="submit" class="btn btn-pri">+ Add Operator</button>
+          <button type="submit" class="btn btn-pri">+ Add operator</button>
         </form>` : `
         <div class="tier-full">
           <span>Your <strong>${esc(TIERS[getTier()].name)}</strong> plan includes ${getDeviceLimit()} operator phone${getDeviceLimit() === 1 ? '' : 's'}.</span>
@@ -3814,12 +3851,12 @@ function vSettings() {
           ${db.settings.operators.map(o => `
             <div class="team-row">
               <div class="team-name">${esc(o.name)}</div>
-              <button class="btn btn-teal btn-sm" onclick="copyInvite('${o.id}')">&#128279; Copy Link</button>
+              <button class="btn btn-teal btn-sm" onclick="copyInvite('${o.id}')">Copy link</button>
               <button class="btn btn-ghost btn-sm" onclick="shareInvite('${o.id}')">Send</button>
-              <button class="btn-icon-sm" onclick="removeOperator('${o.id}')" title="Remove">&#10005;</button>
+              <button class="btn-icon-sm" onclick="removeOperator('${o.id}')" title="Remove">Remove</button>
             </div>`).join('')}
         </div>
-        <div style="font-size:.68rem;color:var(--mut);margin-top:.7rem;line-height:1.5">The operator app is a live window into this shop. Full two-way syncing is rolling out — your device stays the master.</div>
+        <div style="font-size:.75rem;color:var(--mut);margin-top:.7rem;line-height:1.5">The operator app is a live window into this shop. Full two-way syncing is rolling out — your device stays the master.</div>
         ` : ''}
       </div>
     </div>
@@ -3827,7 +3864,7 @@ function vSettings() {
       <div class="panel-hd"><span class="lbl">Help</span><div class="hr"></div></div>
       <div class="panel-bd">
         <div style="font-size:.75rem;color:var(--mut);margin-bottom:.65rem;line-height:1.55">A short walkthrough of jobs, insert tracking, CPC, the dashboard and shift proof.</div>
-        <button class="btn btn-ghost" onclick="replayTutorial()">&#9654; Replay Tutorial</button>
+        <button class="btn btn-ghost" onclick="replayTutorial()">Replay tutorial</button>
       </div>
     </div>
     <div class="panel">
@@ -3842,9 +3879,10 @@ function vSettings() {
       </div>
       <div class="panel-hd" style="margin-top:.5rem"><span class="lbl" style="color:var(--bad)">Danger Zone</span><div class="hr"></div></div>
       <div class="panel-bd">
-        <button class="btn btn-bad" onclick="confirmClearAll()">Clear All Data</button>
+        <button class="btn btn-bad" onclick="confirmClearAll()">Clear all data</button>
       </div>
-    </div>`;
+    </div>
+    <p class="made-by">Machlog is made by <span class="rood" role="img" aria-label="ROOD Dynamics"></span>, the technology branch of TOOLFLUX.</p>`;
 }
 
 // ── Phone navigation ──────────────────────────────────────────────
@@ -3859,7 +3897,7 @@ function bottomNavItems() {
   return [
     { key: 'jobs', label: 'Jobs', go: "navigate('jobs')" },
     { key: 'log', label: 'Log', go: 'openLogSheet()' },
-    { key: 'dash', label: 'Dashboard', go: "navigate('dash')" },
+    { key: 'dash', label: 'Overview', go: "navigate('dash')" },
     { key: 'team', label: 'Team', go: 'openTeam()' },
     { key: 'more', label: 'More', go: 'openMoreSheet()' },
   ];
@@ -3887,7 +3925,7 @@ function renderBottomNav() {
   if (hide) { el.innerHTML = ''; return; }
   const cur = bottomNavKey();
   el.innerHTML = bottomNavItems().map(i =>
-    `<button type="button" class="bnav-i" onclick="${i.go}"${i.key === cur ? ' aria-current="page"' : ''}>${esc(i.label)}</button>`
+    `<button type="button" class="bnav-i${i.key === 'log' ? ' log' : ''}" onclick="${i.go}"${i.key === cur ? ' aria-current="page"' : ''}>${navIcon(i.key)}<span>${esc(i.label)}</span></button>`
   ).join('');
 }
 
@@ -3968,6 +4006,76 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet()
 function needsPinForOperator() { return !isOperatorDevice() && !hasOwnerPin(); }
 
 // ── render ─────────────────────────────────────────────────────────
+// ── shell ──────────────────────────────────────────────────────────
+// The sidebar (wide screens) and the screen's title are drawn from one place,
+// so every view names itself the same way.
+const NAV_ICONS = {
+  dash: '<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"/>',
+  jobs: '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  inventory: '<path d="M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8"/>',
+  cpc: '<path d="M4 12V5h7l9 9-7 7z"/><circle cx="8.5" cy="8.5" r="1.2"/>',
+  shift: '<path d="M7 3h8l4 4v14H7zM10 12h6M10 16h6"/>',
+  team: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M16 5.2a3.2 3.2 0 010 5.6M21 20c0-2.6-1.4-4.7-3.6-5.6"/>',
+  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+  plan: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
+  log: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+  more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+};
+const navIcon = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${NAV_ICONS[k] || ''}</svg>`;
+const VIEW_TITLES = { dash: 'Overview', jobs: 'Jobs', newjob: 'New job', inventory: 'Inventory', settings: 'Settings', shift: 'Shift proof', report: 'Report', paywall: 'Plan & billing' };
+
+function navKey() {
+  const v = ui.view;
+  if (v === 'jobs' && ui.tab === 'cpc') return 'cpc';
+  if (v === 'jobs' || v === 'job' || v === 'station' || v === 'newjob' || v === 'report') return 'jobs';
+  if (v === 'settings') return ui.teamFocus ? 'team' : 'settings';
+  if (v === 'paywall') return 'plan';
+  return v;
+}
+
+function sideNavItems() {
+  if (isOperatorDevice()) return [
+    { key: 'jobs', label: 'Jobs', go: "navigate('jobs')" },
+    { key: 'shift', label: 'Shift proof', go: "navigate('shift')" },
+  ];
+  const toBuy = isOwner() ? invToBuy().length : 0;
+  return [
+    { key: 'dash', label: 'Overview', go: "navigate('dash')" },
+    { key: 'jobs', label: 'Jobs', go: "ui.tab='active';navigate('jobs')" },
+    { key: 'inventory', label: 'Inventory', go: "navigate('inventory')", badge: toBuy ? toBuy + ' to buy' : '' },
+    { key: 'cpc', label: 'Cost per piece', go: "setJobFilter('cpc');if(ui.tab==='cpc')navigate('jobs')" },
+    { key: 'shift', label: 'Shift proof', go: "navigate('shift')" },
+    { group: 'Workshop' },
+    { key: 'team', label: 'Team', go: 'openTeam()' },
+    { key: 'settings', label: 'Settings', go: "ui.teamFocus=false;navigate('settings')" },
+    { key: 'plan', label: 'Plan & billing', go: "navigate('paywall')" },
+  ];
+}
+
+function renderShell() {
+  document.body.dataset.view = ui.view;
+  const job = ui.jobId ? (db.jobs || []).find(j => j.id === ui.jobId) : null;
+  let title = VIEW_TITLES[ui.view] || 'Jobs';
+  if (ui.view === 'jobs' && ui.tab === 'cpc' && isOwner()) title = 'Cost per piece';
+  if (ui.view === 'job' && job) title = job.componentCode;
+  if (ui.view === 'station' && job) { const st = jobAllStations(job).find(s => s.id === ui.stationId); title = st ? st.name : job.componentCode; }
+  if (ui.view === 'report' && job) title = job.componentCode + ' report';
+  if (ui.view === 'settings' && ui.teamFocus) title = 'Team';
+  const h = $('#page-title'), sub = $('#page-sub'), shop = $('#brand-shop'), nav = $('#side-nav');
+  if (h) h.textContent = title;
+  if (sub) sub.textContent = ui._sub || '';
+  const acts = $('#page-acts');
+  if (acts) acts.innerHTML = ui._acts || '';
+  if (shop) shop.textContent = db.settings.company || 'by TOOLFLUX';
+  document.title = title + ' — Machlog';
+  if (!nav) return;
+  const cur = navKey();
+  nav.innerHTML = sideNavItems().map(i => i.group
+    ? `<div class="nav-grp">${esc(i.group)}</div>`
+    : `<button type="button" class="nav-i" onclick="${i.go}"${i.key === cur ? ' aria-current="page"' : ''}>${navIcon(i.key)}<span>${esc(i.label)}</span>${i.badge ? `<span class="nav-n">${esc(i.badge)}</span>` : ''}</button>`
+  ).join('');
+}
+
 function setTabs(html) {
   const el = $('#tabs');
   if (el) el.innerHTML = html;
@@ -4009,6 +4117,7 @@ function render() {
   if (trialBarEl) trialBarEl.innerHTML = trialBanner();
 
   let html = '';
+  ui._sub = ''; ui._acts = '';
   try {
     // A lapsed subscription no longer walls off the app — the shop keeps
     // reading its data and the paywall is only shown when explicitly opened.
@@ -4035,9 +4144,10 @@ function render() {
     else html = vJobs();
   } catch(e) {
     console.error('Render error', e);
-    html = `<div style="padding:2rem;color:var(--bad)">Render error: ${esc(e.message)}<br><pre style="font-size:.7rem;margin-top:.5rem">${esc(e.stack)}</pre></div>`;
+    html = `<div style="padding:2rem;color:var(--bad)">Render error: ${esc(e.message)}<br><pre style="font-size:.8rem;margin-top:.5rem">${esc(e.stack)}</pre></div>`;
   }
   view.innerHTML = html;
+  renderShell();
   renderBottomNav();
   syncModeChip();
   // One-time migration prompt: existing installs get asked to create their PIN
@@ -4110,8 +4220,8 @@ function submitNewJob(e) {
   if (!db.settings.defaultOperator && job.createdBy) db.settings.defaultOperator = job.createdBy;
   db.jobs.push(job);
   saveDB();
-  toast('Job created', 'ok');
-  navigate('job', { jobId: job.id });
+  toast('Job created — now plan its operations and tools', 'ok', 3600);
+  navigate('job', { jobId: job.id, plan: true });
 }
 
 function readStationFields(opType) {
@@ -4182,7 +4292,7 @@ function submitAddStation(e, jobId) {
   if (activeOp) activeOp.stations.push(st);
   saveDB();
   ui.addStationOpen = false;
-  toast(`Station "${name}" added`, 'ok');
+  toast(`${name} added to the plan`, 'ok');
   render();
 }
 
@@ -4272,6 +4382,18 @@ function applyProductionEntry(job, entry) {
   if (job.productionLog.some(e => e.id === entry.id)) return false; // already applied
   const qty = Number(entry.qty) || 0;
   const opStations = jobOpStations(job, entry.operationId);
+  // A planned tool loaded for the first time, or after a used-up set.
+  (entry.events || []).forEach(ev => {
+    if (ev.eventType !== 'insert_load') return;
+    const st = opStations.find(s => s.id === ev.stationId);
+    if (!st) return;
+    st.insertSets = st.insertSets || [];
+    if (st.insertSets.some(s => s.status === 'active')) return;
+    const ts = ev.timestamp || entry.timestamp || isoNow();
+    consumeInventory(st, stationLoadNeed(st), false);
+    st.insertSets.push({ id: uid(), loadedAt: ts, loadedBy: entry.operator || '', status: 'active',
+      corners: [{ num: 1, startedAt: ts, endedAt: null, componentsMade: 0, status: 'active' }] });
+  });
   opStations.forEach(st => {
     const activeSet = (st.insertSets || []).find(s => s.status === 'active');
     if (activeSet) {
@@ -4304,7 +4426,7 @@ function openLogEdit(jobId, entryId) {
     <div style="background:var(--srf);border-radius:12px;padding:1.5rem;width:100%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.3)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem">
         <strong style="font-size:1rem">Edit Log Entry</strong>
-        <button onclick="document.getElementById('log-edit-modal').remove()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--txt)">&#10005;</button>
+        <button onclick="document.getElementById('log-edit-modal').remove()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--mut)">Close</button>
       </div>
       <form onsubmit="saveLogEdit(event,'${jobId}','${entryId}')">
         <div class="form-row">
@@ -4440,7 +4562,7 @@ function processStationEvent(st, ev) {
 
 function loadFirstSet(jobId, stationId) {
   if (!requireActive()) return;
-  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -4459,7 +4581,7 @@ function loadFirstSet(jobId, stationId) {
 
 function loadNewSet(jobId, stationId) {
   if (!requireActive()) return;
-  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -4486,7 +4608,7 @@ function loadNewSet(jobId, stationId) {
 // processing the log-production tooling section uses.
 function quickIndexCorner(jobId, stationId) {
   if (!requireActive()) return;
-  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log Production"', 'warn'); return; }
+  if (isOperatorDevice()) { toast('Record insert changes inside "+ Log production"', 'warn'); return; }
   const job = db.jobs.find(j => j.id === jobId);
   const st = job && jobAllStations(job).find(s => s.id === stationId);
   if (!st) return;
@@ -4508,8 +4630,8 @@ function confirmDeleteStation(jobId, stationId) {
   (job.operations || []).forEach(op => { op.stations = (op.stations || []).filter(s => s.id !== stationId); });
   saveDB();
   syncNow(); // audit: deletion reaches the sheet immediately
-  toast('Station deleted');
-  navigate('job', { jobId });
+  toast('Tool removed from the plan');
+  navigate('job', { jobId, plan: true });
 }
 
 // Finish first-run setup. The owner PIN is no longer asked for here: it is
@@ -4753,7 +4875,7 @@ function updateClock() {
   const now = new Date();
   const ct = $('#clock-t'), cd = $('#clock-d');
   if (ct) ct.textContent = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
-  if (cd) cd.textContent = now.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase();
+  if (cd) cd.textContent = now.toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'short' });
 }
 
 // ── keyboard shortcuts ────────────────────────────────────────────
@@ -4911,7 +5033,7 @@ Object.assign(window, {
   setJobStatus, submitNewJob, submitAddStation, submitLogProduction,
   loadFirstSet, loadNewSet, confirmDeleteStation,
   submitSetup, submitSettings, printReport, exportData, exportToExcel, importData, confirmClearAll,
-  pickSeg, rejQtyChanged, setBatchQty, openInvEdit, saveInvEdit, sendPurchaseList, copyPurchaseList, quickLog, updateStationForm, updateSetCostHint,
+  pickSeg, rejQtyChanged, setBatchQty, planAddTool, renameOperation, removeOperation, openInvEdit, saveInvEdit, sendPurchaseList, copyPurchaseList, quickLog, updateStationForm, updateSetCostHint,
   submitEditStation, toggleEditStation, activateLicense,
   setActiveOp, addOperation,
   submitAddInventory, deleteInventoryItem, importInvPaste,
@@ -4989,12 +5111,12 @@ function showInstallNudge(kind) {
   card.innerHTML = kind === 'android'
     ? `<div class="in-txt"><b>Put TOOLFLUX on your phone</b><span>One tap — opens like an app, works without internet</span></div>
        <button class="btn btn-pri" onclick="installApp()">Install</button>
-       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">&#10005;</button>`
+       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">Close</button>`
     : kind === 'ios'
     ? `<div class="in-txt"><b>Put TOOLFLUX on your phone</b><span>Tap the Share button <span style="font-size:1rem">&#8963;</span> then &ldquo;Add to Home Screen&rdquo;</span></div>
-       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">&#10005;</button>`
+       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">Close</button>`
     : `<div class="in-txt"><b>Open in Chrome for safe storage</b><span>This chat browser may not keep your data. Tap &#8942; and choose &ldquo;Open in Chrome / browser&rdquo;.</span></div>
-       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">&#10005;</button>`;
+       <button class="in-x" onclick="dismissNudge()" aria-label="Dismiss">Close</button>`;
   document.body.appendChild(card);
 }
 
@@ -5044,6 +5166,6 @@ window.addEventListener('offline', patchSyncStatus);
   if (!img) return;
   img.onerror = () => {
     const link = img.closest('a');
-    if (link) link.innerHTML = '<span style="font-family:var(--mono);font-size:.82rem;font-weight:800;color:var(--navy);letter-spacing:.07em">TOOLFLUX</span>';
+    if (link) link.innerHTML = '<span style="font-family:var(--mono);font-size:.82rem;font-weight:800;color:var(--navy);">TOOLFLUX</span>';
   };
 })();

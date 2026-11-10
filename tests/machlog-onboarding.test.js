@@ -114,10 +114,10 @@ test('the "PIN not set" warning only appears once operators exist', () => {
 });
 
 // ── 3. phone navigation ────────────────────────────────────────────
-test('owner bottom bar has Jobs, Log, Dashboard, Team, More', () => {
+test('owner bottom bar has Jobs, Log, Overview, Team, More', () => {
   const c = loadClient();
   c.run(`db.settings.deviceRole = 'owner'`);
-  assert.equal(c.run(`bottomNavItems().map(i => i.label).join(',')`), 'Jobs,Log,Dashboard,Team,More');
+  assert.equal(c.run(`bottomNavItems().map(i => i.label).join(',')`), 'Jobs,Log,Overview,Team,More');
 });
 
 test('operator bottom bar has Jobs, Log, Shift proof', () => {

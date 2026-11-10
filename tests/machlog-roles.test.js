@@ -109,3 +109,31 @@ test('the dashboard warns when stock reaches the reorder level', () => {
   const alerts = JSON.parse(c.run('JSON.stringify(computeDashData().invAlerts)'));
   assert.ok(alerts.some(a => a.label === 'At reorder level' && a.item === 'CNMG 120408'));
 });
+
+// ── planning first, loading later ──────────────────────────────────
+test('a planned tool is loaded from the log, and that entry counts on it', () => {
+  const c = shop();
+  c.run('ST.insertSets = [];');
+  c.run("logQty(40, 0, { events: [{ stationId: ST.id, eventType: 'insert_load' }] })");
+  assert.equal(c.run('ST.insertSets.length'), 1);
+  assert.equal(c.run('ST.insertSets[0].corners[0].componentsMade'), 40);
+  assert.equal(c.run('ST.insertSets[0].loadedBy'), 'Raj');
+  assert.equal(c.run('db.inventory[0].qtyInStock'), 11, 'the load comes out of stock');
+});
+
+test('a load is ignored when inserts are already in the machine', () => {
+  const c = shop();
+  c.run("logQty(40, 0, { events: [{ stationId: ST.id, eventType: 'insert_load' }] })");
+  assert.equal(c.run('ST.insertSets.length'), 1);
+  assert.equal(c.run('db.inventory[0].qtyInStock'), 12);
+});
+
+test('an operation can be removed only while it is empty', () => {
+  const c = shop();
+  c.run('db.settings.trialStartedAt = isoNow();'); // owner edits need a live trial or plan
+  c.run('addOperation(J.id); var OP2 = J.operations[1].id;');
+  c.run('removeOperation(J.id, OP)');
+  assert.equal(c.run('J.operations.length'), 2, 'the operation with a tool stays');
+  c.run('removeOperation(J.id, OP2)');
+  assert.equal(c.run('J.operations.length'), 1);
+});
