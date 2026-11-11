@@ -2,149 +2,172 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="favicon.svg"><script src="favicon-spin.js" defer></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOOLFLUX Machining Log — Instruction Manual</title>
-<meta name="description" content="Complete guide to the TOOLFLUX Machining Log: insert tracking, CPC, production logging, dashboard, shift proof and more.">
+<meta name="theme-color" content="#f5f9fa">
+<title>Machlog setup guide — TOOLFLUX Machining Log</title>
+<meta name="description" content="How to set up and run Machlog: plan a job, log at the machine, track every insert corner, read cost per piece, buy before you run out, and keep a backup.">
+<link rel="icon" type="image/svg+xml" href="assets/machlog-mark.svg">
+<script>document.documentElement.classList.add("js")</script>
 <style>
+/* Machlog setup guide: same ground, ink, accent and type as the Machlog page.
+   A reading page: one 720px text column beside a sticky contents list. */
 :root {
-  --teal: #0097B2; --teal-d: #00748a; --navy: #012B42; --ink: #08141a;
-  --T: #0d1e26; --mut: #5a7282; --W: #FEFFFE; --off: #f2f5f7; --off2: #e4eaed;
-  --rule: #ccd4d8; --rule2: #a8b6bc; --teal-tint: #e5f4f7; --warn: #b06000; --bad: #a62d1e;
-  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
-  --r: 2px;
+  --frame: max(var(--m), calc((100% - 1052px) / 2));
+  --bg: #f5f9fa; --tint: #e3f3f7; --tint2: #f0f8fa;
+  --ink: #012B42; --text: #0d1e26; --muted: #4b5d68;
+  --accent: #0097B2; --accent-d: #00748a; --accent-dd: #0b4a59;
+  --line: #e3eaed; --line2: #cdd7dc;
+  --bad: #a62d1e; --bad-bg: #fdefec; --warn: #8a4b00; --warn-bg: #fff4e0; --ok: #1a6e50;
+  --font: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --s1: clamp(36px, 4.4vw, 64px); --s3: clamp(24px, 2.2vw, 32px); --s4: 18px; --s5: 14px;
+  --m: 32px; --r: 14px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); --t-press: 140ms; --t-hover: 180ms;
 }
-* { margin: 0; padding: 0; box-sizing: border-box }
-body { background: var(--off); color: var(--T); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 16px; line-height: 1.6 }
-.lbl { font-size: .6rem; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--mut) }
-.mono { font-family: var(--mono) }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; scroll-padding-top: 24px }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: var(--s4); line-height: 1.6; font-variant-numeric: tabular-nums; overflow-x: clip }
+img, svg { display: block; max-width: 100% }
+a { color: inherit }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 4px } /* taste-skill-ignore */
+::selection { background: var(--accent); color: #fff }
+.skip { position: absolute; left: var(--m); top: -60px; background: var(--ink); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 10 } /* taste-skill-ignore */
+.skip:focus { top: 10px }
+b, strong { color: var(--ink); font-weight: 650 }
 
-/* header */
-.hero {
-  background: #0e2531; color: #e8eef1;
-  padding: 3.5rem 1.5rem 3rem;
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; border-radius: 10px; background: var(--accent-d); color: #fff; font-size: 16px; font-weight: 650; text-decoration: none; transition: transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease } /* taste-skill-ignore */
+.btn:active { transform: scale(0.97) }
+.link { text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 0.22em; text-decoration-thickness: 0.07em; transition: text-decoration-color var(--t-hover) ease, color var(--t-hover) ease }
+.link-strong { font-weight: 650; color: var(--ink); text-decoration-color: currentColor }
+@media (hover: hover) and (pointer: fine) { .btn:hover { background: var(--accent-dd) } .link:hover { text-decoration-color: currentColor } .link-strong:hover { color: var(--accent-d) } }
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--frame) }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; --mark-ground: var(--bg) }
+.brand-name { font-size: 18px; font-weight: 800; font-style: italic; color: var(--ink); letter-spacing: -.01em }
+.brand-name b { font-weight: 800; color: var(--accent-d) }
+.top-links { display: flex; align-items: center; gap: 28px; font-size: 16px; font-weight: 500 }
+
+.g-hero { padding: 64px var(--frame) 72px; background: var(--tint) }
+.g-hero h1 { font-size: var(--s1); font-weight: 750; line-height: 1.02; letter-spacing: -0.03em; color: var(--ink); max-width: 14em }
+.g-hero p { margin-top: 24px; max-width: 40em; font-size: 19px }
+
+.g-wrap { display: grid; grid-template-columns: 260px minmax(0, 720px); gap: 72px; padding: 72px var(--frame) 0 }
+.g-toc details { position: sticky; top: 24px }
+.g-toc summary { list-style: none; font-size: var(--s4); font-weight: 700; color: var(--ink); margin-bottom: 12px; cursor: default }
+.g-toc summary::-webkit-details-marker { display: none }
+.g-toc ol { list-style: none; display: grid; gap: 2px }
+.g-toc a { display: block; padding: 6px 12px; border-radius: 8px; text-decoration: none; font-size: 16px; color: var(--muted); transition: background-color var(--t-hover) ease, color var(--t-hover) ease } /* taste-skill-ignore */
+.g-toc a:hover { color: var(--ink); background: var(--tint2) }
+.g-toc a.on { color: var(--accent-dd); background: var(--tint); font-weight: 600 }
+
+.g-main section { padding-bottom: 96px }
+.g-main h2 { font-size: var(--s3); font-weight: 700; line-height: 1.15; letter-spacing: -0.015em; color: var(--ink); margin-bottom: 20px }
+.g-main p { margin-bottom: 16px; max-width: 40em }
+.steps { padding-left: 1.3em; margin-bottom: 24px; display: grid; gap: 12px }
+.steps li { padding-left: 6px }
+.steps li::marker { color: var(--accent-d); font-weight: 700 }
+.plain { list-style: none; display: grid; gap: 14px; margin-bottom: 20px }
+.plain li { padding-left: 22px; position: relative }
+.plain li::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 8px; height: 8px; border-radius: 2px; background: var(--accent) } /* taste-skill-ignore */
+.note { background: var(--tint); border-radius: 12px; padding: 16px 20px; max-width: 40em } /* taste-skill-ignore */
+.note.warn { background: var(--warn-bg) }
+.note.warn b { color: var(--warn) }
+
+.shot { margin: 28px 0 28px; padding: 32px; background: var(--ink); border-radius: var(--r) }
+.photo { margin: 24px 0 28px; max-width: 40em }
+.photo img { width: 100%; height: auto; aspect-ratio: 16 / 7; object-fit: cover; object-position: 72% 46%; border-radius: var(--r) }
+.photo figcaption { font-size: var(--s5); color: var(--muted); margin-top: 10px }
+.shot figcaption { color: #cfe3ea; font-size: var(--s5); margin-top: 16px }
+
+/* fragments of the app, at its true size (data-ui). taste-skill-ignore */
+.frag { background: #fff; color: #0d1e26; border-radius: 12px; font-size: 14px; line-height: 1.4; max-width: 440px } /* taste-skill-ignore */
+.dial { flex: none; transform: rotate(-90deg) }
+.dial circle { fill: none }
+.ui-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line2); background: #fff; font-size: 14px; font-weight: 600 } /* taste-skill-ignore */
+.ui-pri { background: var(--accent-d); border-color: var(--accent-d); color: #fff }
+.ui-wide { display: flex; margin: 16px 18px 0 }
+.ui-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line) } /* taste-skill-ignore */
+.ui-hd b { font-size: 15px } .ui-hd span { font-size: 13px; color: var(--muted) }
+.ui-hd.tint { background: var(--tint); border-bottom: 0; border-radius: 12px 12px 0 0 } .ui-hd.tint b { color: var(--accent-dd) } /* taste-skill-ignore */
+.ui-segs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 18px }
+.ui-segs span { padding: 7px 11px; border: 1px solid var(--line2); border-radius: 9px; font-size: 13px; font-weight: 600 } /* taste-skill-ignore */
+.ui-segs .on { background: var(--tint); border-color: var(--accent); color: var(--accent-dd) }
+.ui-foot { display: flex; justify-content: space-between; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted) } /* taste-skill-ignore */
+.f-setup { padding: 22px 22px 22px } .f-setup .ui-wide { margin: 18px 0 0 }
+.fs-h { font-size: 20px; font-weight: 700; color: var(--ink) } .fs-s { font-size: 13px; color: var(--muted); margin: 2px 0 12px }
+.fs-l { font-size: 13px; font-weight: 600; margin: 10px 0 5px } .fs-i { border: 1px solid var(--line2); border-radius: 10px; padding: 9px 12px; font-size: 15px } /* taste-skill-ignore */
+.f-plan, .f-log, .f-att { padding-bottom: 16px }
+.pl-op { padding: 12px 18px 4px } .pl-op + .pl-op { border-top: 1px solid var(--line) } /* taste-skill-ignore */
+.pl-opn { display: block; font-size: 13px; font-weight: 700; color: var(--accent-dd); margin-bottom: 6px }
+.pl-tool { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; padding: 8px 0 }
+.pl-tool b { font-size: 14px } .pl-tool span { grid-column: 1; font-size: 12.5px; color: var(--muted) }
+.pl-tool em { grid-column: 2; grid-row: 1 / 3; align-self: center; font-style: normal; font-size: 13px; text-align: right }
+.f-plan .ui-foot { margin-bottom: -16px }
+.lg-who { padding: 14px 18px 4px }
+.lg-qty { margin: 6px 18px 12px; border: 1.5px solid var(--line2); border-radius: 12px; text-align: center; font-size: 40px; font-weight: 750; color: var(--ink) } /* taste-skill-ignore */
+.lg-l { font-size: 13px; font-weight: 700; margin: 10px 18px 6px }
+.lg-rej { margin: 0 18px 8px; width: 90px; border: 1px solid var(--line2); border-radius: 10px; text-align: center; font-size: 22px; font-weight: 700; color: var(--bad) } /* taste-skill-ignore */
+.cs-stack { display: grid; gap: 12px; max-width: 520px }
+.cs-frag { display: flex; align-items: center; gap: 16px; padding: 16px 18px; max-width: none }
+.cs-frag.is-hot { box-shadow: inset 0 0 0 1px #e0a79f } /* taste-skill-ignore */
+.cs-txt b { display: block; font-size: 16px } .cs-txt span { font-size: 14px; color: var(--muted) } .cs-txt span.bad { color: var(--bad); font-weight: 600 }
+.att { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-top: 1px solid var(--line); font-size: 14px } /* taste-skill-ignore */
+.att i { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--warn) } .att.bad i { background: var(--bad) } /* taste-skill-ignore */
+.att span { margin-left: auto; color: var(--muted) }
+.f-att .ui-hd { border-bottom: 0 } /* taste-skill-ignore */
+
+table.calc, table.who { width: 100%; max-width: 40em; border-collapse: collapse; margin: 8px 0 24px; background: #fff; border-radius: 12px; overflow: hidden; font-size: 16px } /* taste-skill-ignore */
+table caption { text-align: left; font-weight: 650; color: var(--ink); padding: 0 0 10px }
+.calc th, .calc td { padding: 12px 18px; border-bottom: 1px solid var(--line); text-align: left; font-weight: 400 } /* taste-skill-ignore */
+.calc td { text-align: right; white-space: nowrap }
+.calc tr.tot th, .calc tr.tot td { font-weight: 700; color: var(--ink); border-bottom: 0 } /* taste-skill-ignore */
+.who th, .who td { padding: 11px 18px; border-bottom: 1px solid var(--line); text-align: left } /* taste-skill-ignore */
+.who thead th { font-size: 14px; font-weight: 600; color: var(--muted) }
+.who td + td, .who th + th { text-align: center; width: 92px }
+.who tbody tr:last-child td { border-bottom: 0 } /* taste-skill-ignore */
+
+.qa { background: #fff; border-radius: 12px; margin-bottom: 10px } /* taste-skill-ignore */
+.qa summary { cursor: pointer; padding: 16px 20px; font-weight: 650; color: var(--ink); list-style: none; display: flex; justify-content: space-between; gap: 16px }
+.qa summary::-webkit-details-marker { display: none }
+.qa summary::after { content: "+"; font-weight: 400; font-size: 22px; line-height: 1; color: var(--accent-d) }
+.qa[open] summary::after { content: "–" }
+.qa p { padding: 0 20px 18px; margin: 0 }
+
+.foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 120px var(--frame) 30px; font-size: 16px; color: var(--muted) }
+.foot-links { display: flex; gap: 24px } .foot-links a { color: var(--ink) }
+.foot-r { justify-self: end; display: inline-flex; align-items: center; gap: 8px }
+.rood { width: 84px; height: auto; opacity: .75 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-reveal] { opacity: 0; transform: translateY(18px); transition: opacity 600ms var(--ease-out), transform 700ms var(--ease-out) }
+  .js [data-reveal].is-in { opacity: 1; transform: none }
+  .js .shot[data-reveal] { transition-delay: 80ms }
 }
-.hero-in { max-width: 880px; margin: 0 auto }
-.hero .wordmark { font-family: var(--mono); font-size: 1.6rem; font-weight: 800; letter-spacing: .18em; color: #fff }
-.hero .tag { font-size: .62rem; font-weight: 700; letter-spacing: .3em; color: var(--teal); text-transform: uppercase; margin-top: .2rem }
-.hero h1 { font-size: clamp(1.6rem, 4vw, 2.3rem); font-weight: 800; margin: 1.4rem 0 .6rem; letter-spacing: -.01em; color: #fff }
-.hero p { color: #9fb4bf; max-width: 60ch; font-size: 1.02rem }
-.hero .cta { display: inline-block; margin-top: 1.5rem; background: var(--teal); color: #fff; text-decoration: none; font-size: .72rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; padding: .85rem 1.5rem; border-radius: var(--r) }
-.hero .cta:hover { background: #00b5d4 }
 
-/* toc */
-.toc { max-width: 880px; margin: -1.6rem auto 0; padding: 0 1.5rem }
-.toc-card { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); padding: 1.2rem 1.4rem; box-shadow: 0 2px 24px rgba(0,0,0,.06) }
-.toc-card .lbl { display: block; margin-bottom: .6rem }
-.toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .15rem 1.4rem }
-.toc-grid a { color: var(--T); text-decoration: none; font-size: .85rem; padding: .28rem 0; display: flex; gap: .5rem; align-items: baseline; border-bottom: 1px solid transparent }
-.toc-grid a:hover { color: var(--teal) }
-.toc-grid .n { font-family: var(--mono); font-size: .68rem; color: var(--teal); font-weight: 700; min-width: 1.4rem }
-
-/* sections */
-main { max-width: 880px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem }
-section { margin-bottom: 3.2rem }
-.sec-hd { display: flex; align-items: baseline; gap: .8rem; border-bottom: 2px solid var(--navy); padding-bottom: .5rem; margin-bottom: 1.1rem }
-.sec-hd .num { font-family: var(--mono); font-size: 1rem; font-weight: 800; color: var(--teal) }
-.sec-hd h2 { font-size: 1.3rem; font-weight: 800; color: var(--navy); letter-spacing: -.01em }
-section p { max-width: 72ch; margin-bottom: .85rem; font-size: .95rem }
-section li { max-width: 70ch; margin-bottom: .4rem; font-size: .93rem }
-section ul, section ol { padding-left: 1.4rem; margin-bottom: 1rem }
-strong { color: var(--navy) }
-.step { display: flex; gap: .9rem; margin-bottom: .9rem; align-items: flex-start }
-.step .sn { font-family: var(--mono); font-size: .78rem; font-weight: 800; color: var(--W); background: var(--navy); min-width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-top: .1rem }
-.step div { flex: 1; font-size: .95rem }
-.callout { background: var(--teal-tint); border: 1px solid var(--teal); border-radius: var(--r); padding: .8rem 1rem; font-size: .88rem; margin: 1rem 0; max-width: 72ch }
-.callout b { color: var(--teal-d) }
-.callout.warn { background: #faf3e6; border-color: var(--warn) }
-.callout.warn b { color: var(--warn) }
-
-/* screen mockups */
-.shot { background: var(--off2); border: 1px solid var(--rule); border-radius: 6px; padding: 1.2rem; margin: 1.2rem 0 }
-.shot-cap { font-size: .72rem; color: var(--mut); text-align: center; margin-top: .8rem; font-style: italic }
-.scr { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); max-width: 460px; margin: 0 auto; overflow: hidden; box-shadow: 0 3px 18px rgba(1,43,66,.1); font-size: .82rem }
-.scr-bar { background: var(--W); border-bottom: 2px solid var(--navy); padding: .5rem .8rem; display: flex; align-items: center; gap: .6rem }
-.scr-bar .lg { font-family: var(--mono); font-size: .68rem; font-weight: 800; letter-spacing: .1em; color: var(--navy) }
-.scr-bar .chip { margin-left: auto; font-size: .5rem; font-weight: 800; letter-spacing: .12em; padding: .25rem .5rem; border: 1px solid var(--rule2); border-radius: 2px; color: var(--mut) }
-.scr-bar .chip.owner { border-color: var(--teal); color: var(--teal); background: var(--teal-tint) }
-.scr-bd { padding: .8rem }
-.f-lbl { font-size: .55rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--mut); margin: .6rem 0 .2rem }
-.f-inp { border: 1px solid var(--rule2); border-radius: 2px; padding: .45rem .55rem; font-size: .8rem; color: var(--T); background: var(--W) }
-.f-inp.ghost { color: var(--rule2) }
-.btn-m { display: inline-block; border-radius: 2px; padding: .55rem 1rem; font-size: .6rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; border: 1px solid transparent }
-.btn-m.pri { background: var(--navy); color: #fff }
-.btn-m.teal { background: var(--teal); color: #fff }
-.btn-m.ghost { border-color: var(--rule2); color: var(--mut); background: none }
-.qty-big { font-family: var(--mono); font-size: 1.9rem; font-weight: 800; color: var(--navy); border: 2px solid var(--navy); border-radius: 2px; text-align: center; padding: .3rem; width: 110px }
-.qadj { border: 1px solid var(--rule2); border-radius: 2px; font-size: .62rem; font-weight: 700; color: var(--navy); padding: .3rem .5rem; background: var(--W) }
-
-/* pipeline mockup */
-.pipe { display: flex; align-items: center; background: var(--off); border: 1px solid var(--rule); border-radius: 2px; padding: .5rem .6rem; gap: .3rem }
-.pipe .stp { text-align: center; padding: .35rem .6rem; border: 2px solid transparent; border-radius: 6px }
-.pipe .stp.on { background: var(--W); border-color: var(--teal) }
-.pipe .stp .nm { font-size: .72rem; font-weight: 700; color: var(--navy) }
-.pipe .stp .st { font-size: .62rem; color: var(--mut) }
-.pipe .arr { color: var(--mut) }
-.pipe .wip { font-size: .58rem; color: var(--warn); font-weight: 700 }
-
-/* proof mockup */
-.pr { border: 2px solid var(--navy); border-radius: 2px; background: var(--W); padding: .9rem; max-width: 400px; margin: 0 auto; font-size: .78rem }
-.pr-hd { display: flex; justify-content: space-between; border-bottom: 2px solid var(--navy); padding-bottom: .5rem; margin-bottom: .5rem; gap: .5rem }
-.pr-co { font-size: .6rem; font-weight: 800; letter-spacing: .1em; color: var(--navy); text-transform: uppercase }
-.pr-t { font-family: var(--mono); font-size: .9rem; font-weight: 800; color: var(--navy) }
-.pr-sync { font-size: .52rem; font-weight: 800; letter-spacing: .1em; padding: .2rem .45rem; border-radius: 2px; background: #e3f2e9; color: #1d6b40; border: 1px solid #1d6b40; white-space: nowrap; height: fit-content }
-.pr-job { border-bottom: 1px solid var(--rule); padding: .45rem 0 }
-.pr-code { font-family: var(--mono); font-weight: 800; color: var(--navy) }
-.pr-good { font-family: var(--mono); font-size: 1.2rem; font-weight: 800; color: var(--navy) }
-.pr-rej { font-family: var(--mono); font-weight: 800; color: var(--bad) }
-.pr-tot { display: flex; text-align: center; margin-top: .2rem; border-bottom: 1px solid var(--rule) }
-.pr-tot div { flex: 1; padding: .45rem .1rem; border-right: 1px solid var(--rule) }
-.pr-tot div:last-child { border-right: 0 }
-.pr-tn { font-family: var(--mono); font-size: 1.05rem; font-weight: 800; color: var(--navy) }
-.pr-tl { font-size: .45rem; font-weight: 700; letter-spacing: .1em; color: var(--mut) }
-
-/* dashboard rows mockup */
-.att { display: flex; gap: .5rem; align-items: center; padding: .45rem .7rem; border-bottom: 1px solid var(--off2); font-size: .75rem }
-.att .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0 }
-.att.bad .dot { background: var(--bad) } .att.warn .dot { background: var(--warn) } .att.info .dot { background: var(--teal) }
-.att .go { margin-left: auto; color: var(--mut) }
-
-/* tables */
-table.man { width: 100%; border-collapse: collapse; font-size: .84rem; margin: 1rem 0; background: var(--W); border: 1px solid var(--rule) }
-table.man th { text-align: left; font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--W); background: var(--navy); padding: .5rem .7rem }
-table.man td { padding: .5rem .7rem; border-bottom: 1px solid var(--off2); vertical-align: top }
-table.man tr:last-child td { border-bottom: 0 }
-.yes { color: #1d6b40; font-weight: 700 } .no { color: var(--bad); font-weight: 700 }
-
-/* cpc example */
-.cpc-box { background: var(--W); border: 1px solid var(--rule); border-radius: var(--r); padding: 1rem 1.2rem; margin: 1rem 0; max-width: 520px }
-.cpc-line { display: flex; justify-content: space-between; font-size: .85rem; padding: .3rem 0; border-bottom: 1px dashed var(--off2) }
-.cpc-line:last-child { border: 0; font-weight: 800; color: var(--navy) }
-.cpc-line .mono { font-variant-numeric: tabular-nums }
-
-footer { background: var(--ink); color: #8aa2ae; padding: 2.5rem 1.5rem; text-align: center; font-size: .85rem }
-footer a { color: var(--teal); text-decoration: none }
-footer .wm { font-family: var(--mono); font-weight: 800; letter-spacing: .16em; color: #fff; margin-bottom: .4rem }
-
-@media (max-width: 640px) {
-  .hero { padding: 2.5rem 1rem 2.4rem }
-  main { padding: 2rem 1rem 3rem }
-  .toc { padding: 0 1rem }
+@media (max-width: 1000px) {
+  .g-wrap { grid-template-columns: minmax(0, 720px); gap: 0; padding-top: 40px }
+  .g-toc details { position: static; background: #fff; border-radius: 12px; padding: 4px 16px; margin-bottom: 56px } /* taste-skill-ignore */
+  .g-toc summary { cursor: pointer; display: flex; justify-content: space-between; align-items: center; min-height: 52px; margin: 0 }
+  .g-toc summary::after { content: "+"; font-weight: 400; font-size: 24px; color: var(--accent-d) }
+  .g-toc details[open] summary::after { content: "–" }
+  .g-toc ol { padding-bottom: 12px }
+  .foot { grid-template-columns: 1fr; gap: 10px }
+  .foot-links { flex-wrap: wrap; gap: 6px 20px } .foot-r { justify-self: start }
 }
-
-/* ═══ MOBILE VARIANT (≤600px) ═══ */
-@media (max-width: 600px) {
-  .toc:not(.open) .toc-grid{display:none}
-  .toc .lbl{display:flex!important;justify-content:space-between;align-items:center;min-height:48px;cursor:pointer;margin:0!important}
-  .toc .lbl::after{content:'+';font-size:1.3rem;font-weight:400;letter-spacing:0}
-  .toc.open .lbl::after{content:'\2013'}
-  main p,main li,article p,article li,section > p,section li{font-size:1rem}
+@media (max-width: 700px) {
+  :root { --m: 16px; --s4: 17px }
+  .top { padding: 16px var(--m) } .top-links .link { display: none }
+  .g-hero { padding: 40px var(--m) 44px } .g-hero p { font-size: 17px }
+  .g-main section { padding-bottom: 72px }
+  .shot { padding: 14px; margin-left: calc(var(--m) * -1); margin-right: calc(var(--m) * -1); border-radius: 0 } /* taste-skill-ignore */
+  .shot figcaption { padding: 0 4px }
+  .who th, .who td { padding: 10px 12px } .who td + td, .who th + th { width: 72px }
+  .calc th, .calc td { padding: 11px 12px } .calc td { white-space: normal }
 }
 </style>
 <link rel="canonical" href="https://www.toolflux.co.in/machlog-guide.html">
 <meta property="og:type" content="website">
-<meta property="og:title" content="TOOLFLUX Machining Log — Instruction Manual">
-<meta property="og:description" content="Complete guide to the TOOLFLUX Machining Log: insert tracking, CPC, production logging, dashboard, shift proof and more.">
+<meta property="og:title" content="Machlog setup guide — TOOLFLUX Machining Log">
+<meta property="og:description" content="How to set up and run Machlog: plan a job, log at the machine, track every insert corner, read cost per piece, buy before you run out.">
 <meta property="og:url" content="https://www.toolflux.co.in/machlog-guide.html">
 <meta property="og:site_name" content="TOOLFLUX">
 <meta property="og:locale" content="en_IN">
@@ -157,305 +180,304 @@ footer .wm { font-family: var(--mono); font-weight: 800; letter-spacing: .16em; 
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://www.toolflux.co.in/"},{"@type":"ListItem","position":2,"name":"Machlog App","item":"https://www.toolflux.co.in/machining-log.html"},{"@type":"ListItem","position":3,"name":"Machlog Guide","item":"https://www.toolflux.co.in/machlog-guide.html"}]}</script>
 </head>
 <body>
+<a class="skip" href="#start">Skip to the guide</a>
+<header class="top">
+  <a class="brand" href="machining-log.html" aria-label="Machlog">
+    <svg class="brand-mark" width="34" height="34" viewBox="0 0 72 72" aria-hidden="true"><clipPath id="ml-a"><path d="M-4 -4H50L24 76H-4Z"/></clipPath><clipPath id="ml-b"><path d="M50 -4H76V76H24Z"/></clipPath><g clip-path="url(#ml-a)"><path d="M28.51 11.15L29.39 3.34L38.61 3.34L39.49 11.15A23.5 23.5 0 0 1 46.28 13.96L46.28 13.96L52.42 9.06L58.94 15.58L54.04 21.72A23.5 23.5 0 0 1 56.85 28.51L56.85 28.51L64.66 29.39L64.66 38.61L56.85 39.49A23.5 23.5 0 0 1 54.04 46.28L54.04 46.28L58.94 52.42L52.42 58.94L46.28 54.04A23.5 23.5 0 0 1 39.49 56.85L39.49 56.85L38.61 64.66L29.39 64.66L28.51 56.85A23.5 23.5 0 0 1 21.72 54.04L21.72 54.04L15.58 58.94L9.06 52.42L13.96 46.28A23.5 23.5 0 0 1 11.15 39.49L11.15 39.49L3.34 38.61L3.34 29.39L11.15 28.51A23.5 23.5 0 0 1 13.96 21.72L13.96 21.72L9.06 15.58L15.58 9.06L21.72 13.96A23.5 23.5 0 0 1 28.51 11.15Z" fill="#012B42"/></g><g clip-path="url(#ml-b)"><path d="M32.51 15.15L33.39 7.34L42.61 7.34L43.49 15.15A23.5 23.5 0 0 1 50.28 17.96L50.28 17.96L56.42 13.06L62.94 19.58L58.04 25.72A23.5 23.5 0 0 1 60.85 32.51L60.85 32.51L68.66 33.39L68.66 42.61L60.85 43.49A23.5 23.5 0 0 1 58.04 50.28L58.04 50.28L62.94 56.42L56.42 62.94L50.28 58.04A23.5 23.5 0 0 1 43.49 60.85L43.49 60.85L42.61 68.66L33.39 68.66L32.51 60.85A23.5 23.5 0 0 1 25.72 58.04L25.72 58.04L19.58 62.94L13.06 56.42L17.96 50.28A23.5 23.5 0 0 1 15.15 43.49L15.15 43.49L7.34 42.61L7.34 33.39L15.15 32.51A23.5 23.5 0 0 1 17.96 25.72L17.96 25.72L13.06 19.58L19.58 13.06L25.72 17.96A23.5 23.5 0 0 1 32.51 15.15Z" fill="#0097B2"/></g><circle cx="36" cy="36" r="17.5" fill="var(--mark-ground, #fff)"/><g transform="translate(36.6 36) skewX(-12)" fill="none" stroke-width="5.2" stroke-linejoin="miter" stroke-miterlimit="6"><path d="M-9 9.5V-9.5L0.4 4.5" stroke="#012B42"/><path d="M0.4 4.5L9 -9.5V9.5" stroke="#0097B2"/></g></svg>
+    <span class="brand-name">MACH<b>LOG</b></span>
+  </a>
+  <nav class="top-links" aria-label="Page">
+    <a class="link" href="machining-log.html">About Machlog</a>
+    <a class="btn btn-sm" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">Open the app</a>
+  </nav>
+</header>
 
-<div class="hero">
-  <div class="hero-in">
-    <div class="wordmark">TOOLFLUX</div>
-    <div class="tag">Machining Log — Instruction Manual</div>
-    <h1>Know your real tooling cost. Every insert. Every corner. Every piece.</h1>
-    <p>The Machining Log replaces the handwritten sheet taped to your machine. It tracks carbide insert life edge by edge, logs every shift's production, and tells you exactly what tooling costs per component — even when the internet doesn't work.</p>
-    <a class="cta" href="https://toolflux-dev.github.io/machlog-app/" target="_blank">Open the App &#8594;</a>
-  </div>
+<div class="g-hero">
+  <h1>The Machlog setup guide</h1>
+  <p>Everything the owner and the operators need: setting up, planning a job, logging at the machine, insert life, cost per piece, buying and backups. It matches the app as it is today.</p>
 </div>
 
-<div class="toc">
-  <div class="toc-card">
-    <span class="lbl" role="button" tabindex="0" aria-expanded="false" onclick="this.setAttribute('aria-expanded',this.closest('.toc').classList.toggle('open'))" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}">Contents</span>
-    <div class="toc-grid">
-      <a href="#s1"><span class="n">01</span> Getting started</a>
-      <a href="#s2"><span class="n">02</span> Owner &amp; Operator modes</a>
-      <a href="#s3"><span class="n">03</span> Creating a job</a>
-      <a href="#s4"><span class="n">04</span> Tooling stations</a>
-      <a href="#s5"><span class="n">05</span> Logging production</a>
-      <a href="#s6"><span class="n">06</span> Insert life &amp; corners</a>
-      <a href="#s7"><span class="n">07</span> Multi-operation jobs</a>
-      <a href="#s8"><span class="n">08</span> CPC — cost per component</a>
-      <a href="#s9"><span class="n">09</span> Owner dashboard</a>
-      <a href="#s10"><span class="n">10</span> Shift proof</a>
-      <a href="#s11"><span class="n">11</span> Inventory</a>
-      <a href="#s12"><span class="n">12</span> Reports &amp; export</a>
-      <a href="#s13"><span class="n">13</span> Sync &amp; offline</a>
-      <a href="#s14"><span class="n">14</span> Subscription</a>
-      <a href="#s15"><span class="n">15</span> FAQ</a>
-    </div>
-  </div>
+<div class="g-wrap">
+  <nav class="g-toc" aria-labelledby="toc-h">
+    <details open>
+      <summary id="toc-h">Contents</summary>
+      <ol>
+        <li><a href="#start">Getting started</a></li>
+        <li><a href="#plan">Plan a job</a></li>
+        <li><a href="#log">Log production</a></li>
+        <li><a href="#corners">Insert life and corners</a></li>
+        <li><a href="#ops">Jobs with several operations</a></li>
+        <li><a href="#cost">Cost per piece</a></li>
+        <li><a href="#overview">The Overview</a></li>
+        <li><a href="#stock">Inventory and buying</a></li>
+        <li><a href="#team">Team and the owner PIN</a></li>
+        <li><a href="#proof">Shift proof</a></li>
+        <li><a href="#reports">Reports and export</a></li>
+        <li><a href="#backup">Backup and working offline</a></li>
+        <li><a href="#plans">Plans and billing</a></li>
+        <li><a href="#faq">Questions</a></li>
+      </ol>
+    </details>
+  </nav>
+
+  <main class="g-main" id="main">
+
+  <section id="start" aria-labelledby="start-h">
+    <h2 data-reveal id="start-h">Getting started</h2>
+    <ol class="steps">
+      <li><b>Open the app.</b> Go to <a class="link link-strong" href="https://toolflux-dev.github.io/machlog-app/" target="_blank" rel="noopener">toolflux-dev.github.io/machlog-app</a> in Chrome on your phone or PC. Add it to the home screen, or bookmark it. On a shop PC without good internet you can <a class="link link-strong" href="toolflux-machining-log.html" download="TOOLFLUX-Machining-Log.html">download it as one file</a> instead.</li>
+      <li><b>Answer two questions.</b> Your workshop's name and your name. Your 14-day free trial starts with every feature on. No card is needed.</li>
+      <li><b>Set up your first job.</b> The part number and the tool cutting it: its insert, what one insert costs and how many corners it has. If you have already made some pieces with it today, type them in. You can also skip this and look around first.</li>
+    </ol>
+    <figure class="shot" data-reveal>
+      <div class="frag f-setup" data-ui>
+        <div class="fs-h">Set up your workshop</div>
+        <div class="fs-s">Two questions. Free for 14 days, no card needed.</div>
+        <div class="fs-l">Workshop name</div><div class="fs-i">Sharma Engineering Works</div>
+        <div class="fs-l">Your name</div><div class="fs-i">Raj</div>
+        <div class="ui-btn ui-pri ui-wide">Continue</div>
+      </div>
+      <figcaption>The first screen. There is no PIN to set yet; you set one when you add your first operator.</figcaption>
+    </figure>
+    <p class="note"><b>It works without internet.</b> Once the page has opened, everything runs on your device. When there is internet, your entries are copied to the cloud by themselves.</p>
+  </section>
+
+  <section id="plan" aria-labelledby="plan-h">
+    <h2 data-reveal id="plan-h">Plan a job</h2>
+    <p>A job is one part you are making for a customer, for example FLG-2210, a flange for Kirloskar, 500 pieces. You plan it once, when you take the order; the shop floor then logs against that plan.</p>
+    <ol class="steps">
+      <li><b>Jobs → + New job.</b> Enter the part number, a description, the customer or PO, and the order quantity. The order quantity gives you progress and the likely finish date.</li>
+      <li><b>The job opens on its Process plan.</b> Add the operations in the order the part is machined: Op-1 turning, Op-2 on the VMC, and so on. Tap Rename to give each one a name the shop uses.</li>
+      <li><b>Add the tools to each operation.</b> For each tool: a name (OD turning, Ø12 drilling), its kind, the machine, the insert or tool (pick it from Inventory to fill the price), the cost of one insert, the corners per insert, and for a milling cutter how many inserts it holds.</li>
+      <li><b>Tap "Plan done — go to production".</b> Operators now see the job and its tools on the Production tab.</li>
+    </ol>
+    <figure class="shot" data-reveal>
+      <div class="frag f-plan" data-ui>
+        <div class="ui-hd"><b>FLG-2210</b><span>Process plan</span></div>
+        <div class="pl-op"><span class="pl-opn">Op-1 · Turning</span>
+          <div class="pl-tool"><b>OD Turning</b><span>CNMG 120408 TFX-P25 · LT-01</span><em>₹420 a set · 4 corners</em></div>
+          <div class="pl-tool"><b>Grooving</b><span>MGMN 300 TFX-P25 · LT-01</span><em>₹300 a set · 2 corners</em></div>
+        </div>
+        <div class="pl-op"><span class="pl-opn">Op-2 · VMC</span>
+          <div class="pl-tool"><b>Ø12 Drilling</b><span>Ø12 solid carbide drill · VMC-01</span><em>₹2,800 a tool</em></div>
+        </div>
+        <div class="ui-foot"><span>One full load</span><b>₹3,520</b></div>
+      </div>
+      <figcaption>A process plan with two operations. Only the owner can open or change it.</figcaption>
+    </figure>
+    <p class="note"><b>Planned is not loaded.</b> A tool on the plan has nothing in the machine until someone records the first load. Tick "Already loaded in the machine" only if the inserts are in right now. Otherwise the operator records it in the log form the first time, as below.</p>
+  </section>
+
+  <section id="log" aria-labelledby="log-h">
+    <h2 data-reveal id="log-h">Log production</h2>
+    <p>This is the screen the operator uses every shift. On a phone, tap <b>Log</b> in the bottom bar and pick the job; on a PC, open the job and tap <b>+ Log production</b>.</p>
+    <ol class="steps">
+      <li><b>Type the pieces made</b>, or tap +5, +10, +25, +100. On an operator's own phone the name is already filled in; the machine is remembered from last time.</li>
+      <li><b>Rejected pieces, if any.</b> Type how many and tap the reason. A reason is required, so every rejected piece is explained.</li>
+      <li><b>Tool changes, if any.</b> For each tool you touched, tap Indexed, Replaced — worn or Replaced — broke. The first time a planned tool goes in, tap <b>Loaded new inserts</b>.</li>
+      <li><b>Tap Save entry.</b> The entry is saved at once and sent to the cloud.</li>
+    </ol>
+    <figure class="shot" data-reveal>
+      <div class="frag f-log" data-ui>
+        <div class="ui-hd tint"><b>FLG-2210 — pieces made</b><span>Today so far <b>45</b></span></div>
+        <div class="lg-who">Logging as <b>Ravi</b></div>
+        <div class="lg-qty">48</div>
+        <div class="lg-l">Rejected</div>
+        <div class="lg-rej">2</div>
+        <div class="ui-segs"><span>Dimensional</span><span class="on">Tool mark</span><span>Burr</span><span>Setup error</span></div>
+        <div class="lg-l">OD Turning</div>
+        <div class="ui-segs"><span>No change</span><span class="on">Indexed</span><span>Replaced — worn</span><span>Replaced — broke</span></div>
+        <div class="ui-btn ui-pri ui-wide">Save entry</div>
+      </div>
+      <figcaption>The log form: one count, then a tap for rejections and a tap for each tool change.</figcaption>
+    </figure>
+    <p class="note"><b>A slipped digit is caught.</b> If the count is far above that job's usual entry (500 typed for 50), the app asks before saving. Operators cannot edit an entry afterwards; the owner can.</p>
+    <p>Your shop's own rejection reasons go in <b>Settings → Rejection reasons</b>, one per line.</p>
+  </section>
+
+  <section id="corners" aria-labelledby="corners-h">
+    <h2 data-reveal id="corners-h">Insert life and corners</h2>
+    <p>Tap any tool on a job to open it. The ring shows the insert corner by corner: used corners in dark, the corner in the cut filling up as it wears, and the corners still to come in pale teal. Below it, every set and every corner is listed with the pieces it made, against a mark for the usual life.</p>
+    <figure class="photo" data-reveal>
+      <img src="assets/img/turning-inserts.jpg" alt="Carbide turning inserts: square, rhombic and triangular, each with several cutting corners" width="900" height="1200" loading="lazy">
+      <figcaption>Each tip of a turning insert is a cutting corner. When one wears, the insert is turned to the next.</figcaption>
+    </figure>
+    <figure class="shot" data-reveal>
+      <div class="cs-stack">
+        <div class="frag cs-frag" data-ui><svg class="dial" width="44" height="44" viewBox="0 0 76 76" data-dial="2,0.59" aria-hidden="true"></svg><div class="cs-txt"><b>OD Turning</b><span>Corner 2 of 4 · 52 pieces · about 36 left</span></div></div>
+        <div class="frag cs-frag is-hot" data-ui><svg class="dial" width="44" height="44" viewBox="0 0 76 76" data-dial="2,1,due" aria-hidden="true"></svg><div class="cs-txt"><b>OD Turning</b><span class="bad">Corner 2 of 4 · 91 pieces · past the usual 88</span></div></div>
+      </div>
+      <figcaption>The same tool while cutting, and when its corner is due.</figcaption>
+    </figure>
+    <ul class="plain">
+      <li><b>The usual life is learned from your shop:</b> the average pieces per corner of the corners already used. The tool shows "about N left" and turns amber, then red when the corner is due.</li>
+      <li><b>An early failure is flagged the same day:</b> a corner that broke at under 55% of the usual life. That usually means a wrong grade, a bad speed or feed, or a bad batch of inserts.</li>
+      <li><b>The owner can index or replace from the tool's page</b> with "Index to the next corner" or "Replace the inserts". Operators record changes in the log form, so each change is tied to a count.</li>
+    </ul>
+  </section>
+
+  <section id="ops" aria-labelledby="ops-h">
+    <h2 data-reveal id="ops-h">Jobs with several operations</h2>
+    <p>Many parts need more than one setup. Each operation has its own tools, so a drill used in Op-2 never mixes its cost into Op-1. When a job has more than one operation, the job page shows them in a row with the good pieces and rejection rate of each, and the pieces waiting between them.</p>
+    <ul class="plain">
+      <li><b>The log form names the operation</b> being logged, and "Today so far" counts that operation.</li>
+      <li><b>A part is counted once:</b> when it comes off the last operation. "Made today" and the job's total do not add Op-1 and Op-2 together.</li>
+      <li><b>Rejections from every operation are counted</b>, because scrap on Op-1 is real scrap too.</li>
+    </ul>
+  </section>
+
+  <section id="cost" aria-labelledby="cost-h">
+    <h2 data-reveal id="cost-h">Cost per piece</h2>
+    <p>Cost per piece is the money spent on inserts divided by the pieces made with them. It comes from the sets you actually loaded and the pieces you actually logged. Only the owner sees it.</p>
+    <table class="calc" data-ui>
+      <caption>Worked example: OD Turning</caption>
+      <tbody>
+        <tr><th scope="row">Insert: CNMG 120408, 4 corners</th><td>₹420 an insert</td></tr>
+        <tr><th scope="row">Set fully used, all 4 corners</th><td>₹420 spent</td></tr>
+        <tr><th scope="row">Pieces made on that set</th><td>352 pcs</td></tr>
+        <tr class="tot"><th scope="row">Cost per piece</th><td>₹420 ÷ 352 = ₹1.19</td></tr>
+      </tbody>
+    </table>
+    <ul class="plain">
+      <li><b>"So far"</b> counts the corners started on the set in the machine: two corners started on a ₹420 insert counts ₹210.</li>
+      <li><b>"Finished sets"</b> counts only sets that are used up. It is the figure to rely on.</li>
+      <li><b>For a whole job</b>, the tooling of every operation is divided by the good pieces that came off the last operation.</li>
+      <li><b>Cost per piece</b> in the sidebar ranks every insert you have run, cheapest per piece first. It is the fair way to compare a ₹280 insert with a ₹420 one.</li>
+    </ul>
+  </section>
+
+  <section id="overview" aria-labelledby="overview-h">
+    <h2 data-reveal id="overview-h">The Overview</h2>
+    <p>The owner's home screen. The line under the title says what happened today. Then:</p>
+    <ul class="plain">
+      <li><b>The figures:</b> made today against yesterday, made this week, rejected this week with the main reason, tooling spend for 7 and 30 days, and tooling per good piece.</li>
+      <li><b>Pieces made, last 7 days</b>, with today in full teal and rejections in red.</li>
+      <li><b>On the machines:</b> each running job with its order progress, the days left at the current pace, and its tools.</li>
+      <li><b>Operators this week</b>, ranked by good pieces, with their percentage good.</li>
+      <li><b>Needs you:</b> what to act on first, each one a tap from its fix. To buy and Tool watch sit beside it.</li>
+    </ul>
+    <figure class="shot" data-reveal>
+      <div class="frag f-att" data-ui>
+        <div class="ui-hd"><b>Needs you</b><span>4</span></div>
+        <div class="att bad"><i></i>Out of stock: Ø12 solid carbide drill<span>→</span></div>
+        <div class="att bad"><i></i>FLG-2210 · Grooving — abnormal insert failure<span>→</span></div>
+        <div class="att warn"><i></i>HSG-0817 · Face Milling — pieces are logged but nothing is recorded as loaded<span>→</span></div>
+        <div class="att warn"><i></i>BRK-3301 — no production logged today<span>→</span></div>
+      </div>
+      <figcaption>"Needs you" on the Overview.</figcaption>
+    </figure>
+  </section>
+
+  <section id="stock" aria-labelledby="stock-h">
+    <h2 data-reveal id="stock-h">Inventory and buying</h2>
+    <ul class="plain">
+      <li><b>Add the inserts and tools you keep:</b> designation, brand, grade, unit price, stock, and a reorder level. Or paste a table from Excel; columns named Product, Brand, Price and Qty are recognised.</li>
+      <li><b>Link a tool on the plan to an inventory item.</b> Its price fills itself, and stock comes down every time inserts are loaded on it.</li>
+      <li><b>Tap Update on an item</b> when stock arrives, the price changes, or a count was wrong.</li>
+      <li><b>To buy</b> lists what is out, at its reorder level, or about to run out at the rate you use it. The suggested order covers about 30 days and rounds inserts up to boxes of 10. <b>Send list on WhatsApp</b> sends items and quantities to your supplier, without prices.</li>
+    </ul>
+  </section>
+
+  <section id="team" aria-labelledby="team-h">
+    <h2 data-reveal id="team-h">Team and the owner PIN</h2>
+    <ol class="steps">
+      <li><b>Team → + Add operator.</b> The first time, the app asks you to set an owner PIN of 4 to 8 digits. From then on costs, reports, the plan and edits stay behind it.</li>
+      <li><b>Send the operator their link</b> with Send or Copy link. They open it on their phone and it starts straight on the shop-floor screen, locked to operator use, with their name filled in.</li>
+      <li><b>Their entries reach your device</b> within about a minute when both phones have internet.</li>
+    </ol>
+    <table class="who">
+      <caption>Who can do what</caption>
+      <thead><tr><th scope="col">Action</th><th scope="col">Operator</th><th scope="col">Owner</th></tr></thead>
+      <tbody>
+        <tr><td>Log pieces, rejections and tool changes</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>See jobs, tools and corner life</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Send shift proof</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Plan jobs, operations and tools</td><td>No</td><td>Yes</td></tr>
+        <tr><td>See prices, spend and cost per piece</td><td>No</td><td>Yes</td></tr>
+        <tr><td>Edit or delete past entries</td><td>No</td><td>Yes</td></tr>
+        <tr><td>Overview, inventory, reports, settings</td><td>No</td><td>Yes</td></tr>
+      </tbody>
+    </table>
+    <p>On your own device, the chip at the top right reads <b>Owner mode · Lock</b>. Tap it to hand the device to an operator. It locks itself after 15 minutes without use, and your PIN unlocks it again.</p>
+  </section>
+
+  <section id="proof" aria-labelledby="proof-h">
+    <h2 data-reveal id="proof-h">Shift proof</h2>
+    <p>At the end of the shift the operator opens <b>Shift proof</b> and taps <b>Send on WhatsApp</b>. The owner sees who worked, what was made on which machine, the rejections and tool changes, and whether the entries already reached the cloud. "Copy" puts the same message on the clipboard; "Print / PDF" prints it.</p>
+  </section>
+
+  <section id="reports" aria-labelledby="reports-h">
+    <h2 data-reveal id="reports-h">Reports and export</h2>
+    <ul class="plain">
+      <li><b>Report:</b> a black-and-white A4 report for any job, from the job's Report tab. Each tool's sets, usual life, pieces and cost per piece, with early failures marked and a line to sign.</li>
+      <li><b>Export to Excel:</b> a workbook with four sheets: jobs, the production log, cost per piece by tool, and early failures.</li>
+      <li><b>Backup file:</b> Settings → Backup JSON saves everything to one file for a pen drive; Restore JSON brings it back.</li>
+    </ul>
+  </section>
+
+  <section id="backup" aria-labelledby="backup-h">
+    <h2 data-reveal id="backup-h">Backup and working offline</h2>
+    <ul class="plain">
+      <li>Every entry is saved on the device first, so the app works with no signal at all.</li>
+      <li>When there is internet, every entry, insert change, edit and delete is copied to your cloud sheet within seconds. Without it, changes wait and send themselves later, even after the browser restarts.</li>
+      <li>The line at the foot of the Overview says where you stand: Backed up, Backing up, or Offline.</li>
+    </ul>
+    <p class="note warn"><b>Clearing the browser's site data deletes the copy on that device.</b> The cloud sheet keeps everything that was sent. Take an Excel export or a backup file now and then.</p>
+  </section>
+
+  <section id="plans" aria-labelledby="plans-h">
+    <h2 data-reveal id="plans-h">Plans and billing</h2>
+    <p>The first 14 days are free with every feature. After that, choose a plan by how many operator phones need to log: <b>Solo ₹299</b> a month for one, <b>Shop ₹799</b> for up to five, <b>Works ₹2,499</b> for any number. Every plan has every feature.</p>
+    <p>Subscribe from <b>Plan &amp; billing</b> and pay through Razorpay. On another device, tap <b>Activate my subscription</b> with the email you paid with. If a subscription ends, nothing is deleted: the app becomes read-only, so you can still see and export everything until you subscribe again.</p>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-h">
+    <h2 data-reveal id="faq-h">Questions</h2>
+    <details class="qa"><summary>I forgot my owner PIN.</summary><p>Message TOOLFLUX on WhatsApp at 86602 34766 and we will walk you through a reset. Your data is safe.</p></details>
+    <details class="qa"><summary>An operator logged the wrong count.</summary><p>Unlock with your PIN, open the job, find the entry in the production log and tap Edit.</p></details>
+    <details class="qa"><summary>Can two PCs or phones share one shop?</summary><p>Yes. Your device is the shop; add each operator in Team and send them their link, and their entries come into your shop. A second device opened without a link starts a separate shop of its own.</p></details>
+    <details class="qa"><summary>A tool shows "nothing recorded as loaded".</summary><p>Pieces are being logged on its operation, but nobody recorded putting inserts in. In the next entry, tap "Loaded new inserts" for that tool. Until then its corner life and cost are not counted.</p></details>
+    <details class="qa"><summary>How do I get updates?</summary><p>They arrive by themselves. Close and reopen the app, or refresh the page, and you are on the latest version.</p></details>
+  </section>
+
+  </main>
 </div>
 
-<main>
-
-<!-- 01 -->
-<section id="s1">
-  <div class="sec-hd"><span class="num">01</span><h2>Getting started</h2></div>
-  <div class="step"><span class="sn">1</span><div>Open <a href="https://toolflux-dev.github.io/machlog-app/">toolflux-dev.github.io/machlog-app</a> on your computer or phone. Chrome works best. Bookmark it — this is your app.</div></div>
-  <div class="step"><span class="sn">2</span><div>Enter your <strong>workshop name</strong> (e.g. <em>Sharma Engineering Works</em>), your name, your main machine, and your email.</div></div>
-  <div class="step"><span class="sn">3</span><div>Create your <strong>Owner PIN</strong> (4–8 digits). Remember it — this PIN separates what you see from what your operators see.</div></div>
-  <div class="step"><span class="sn">4</span><div>Tap <strong>START TRACKING</strong>. Your 14-day free trial begins. No card required.</div></div>
-
-  <div class="shot">
-    <div class="scr">
-      <div class="scr-bd" style="padding:1rem">
-        <div style="font-weight:800;color:var(--navy);font-size:.95rem;margin-bottom:.1rem">Set up your workshop</div>
-        <div style="font-size:.7rem;color:var(--mut)">Takes 30 seconds. Works offline from day one.</div>
-        <div class="f-lbl">Workshop / Company Name *</div>
-        <div class="f-inp">Sharma Engineering Works</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
-          <div><div class="f-lbl">Owner PIN *</div><div class="f-inp">&#9679;&#9679;&#9679;&#9679;</div></div>
-          <div><div class="f-lbl">Confirm PIN *</div><div class="f-inp">&#9679;&#9679;&#9679;&#9679;</div></div>
-        </div>
-        <div style="margin-top:.8rem"><span class="btn-m pri" style="display:block;text-align:center">Start Tracking &#8594;</span></div>
-      </div>
-    </div>
-    <div class="shot-cap">The first-run setup. The PIN you create here unlocks Owner Mode.</div>
-  </div>
-
-  <div class="callout"><b>Works offline.</b> Once the page has loaded, the app runs entirely on your device. Machine hall has no signal? Doesn't matter. Data syncs to the cloud automatically whenever internet returns.</div>
-</section>
-
-<!-- 02 -->
-<section id="s2">
-  <div class="sec-hd"><span class="num">02</span><h2>Owner &amp; Operator modes</h2></div>
-  <p>The app opens in <strong>Operator Mode</strong> — safe to leave open on the shop-floor PC or a shared phone. Your operators can log production and manage inserts, but they can never see your costs or change past records.</p>
-  <p>Tap the <strong>OPERATOR</strong> chip in the top bar and enter your PIN to unlock <strong>Owner Mode</strong>. It locks itself again after 15 minutes of inactivity, or when the browser closes, or when you tap the chip.</p>
-
-  <div class="shot">
-    <div class="scr" style="max-width:380px">
-      <div class="scr-bar"><span class="lg">TOOLFLUX</span><span class="chip">&#128274; OPERATOR</span></div>
-      <div style="border-top:1px solid var(--off2)"></div>
-      <div class="scr-bar"><span class="lg">TOOLFLUX</span><span class="chip owner">OWNER MODE</span></div>
-    </div>
-    <div class="shot-cap">The mode chip — tap to unlock with your PIN, tap again to lock.</div>
-  </div>
-
-  <table class="man">
-    <tr><th>Action</th><th>Operator</th><th>Owner</th></tr>
-    <tr><td>Log production, record rejections</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-    <tr><td>Index corners, replace inserts</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-    <tr><td>View tool life &amp; stock counts</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-    <tr><td>Shift proof screenshot</td><td class="yes">Yes</td><td class="yes">Yes</td></tr>
-    <tr><td>See prices, CPC, spend (any &#8377;)</td><td class="no">No</td><td class="yes">Yes</td></tr>
-    <tr><td>Edit or delete past entries</td><td class="no">No</td><td class="yes">Yes</td></tr>
-    <tr><td>Create jobs, add stations</td><td class="no">No</td><td class="yes">Yes</td></tr>
-    <tr><td>Dashboard, reports, inventory, settings</td><td class="no">No</td><td class="yes">Yes</td></tr>
-  </table>
-
-  <div class="callout"><b>Why this matters.</b> Production numbers reach your cloud audit sheet within seconds of being logged. Even if someone later edits the device, your sheet holds the original.</div>
-</section>
-
-<!-- 03 -->
-<section id="s3">
-  <div class="sec-hd"><span class="num">03</span><h2>Creating a job</h2></div>
-  <p>A <strong>job</strong> is one component you manufacture. Example: <span class="mono">HSG-4020</span>, a pump housing for Acme Auto, batch of 500 pieces.</p>
-  <div class="step"><span class="sn">1</span><div>Unlock Owner Mode &#8594; <strong>Jobs</strong> &#8594; <strong>+ New Job</strong>.</div></div>
-  <div class="step"><span class="sn">2</span><div>Enter the component code, description, customer, and batch quantity.</div></div>
-  <div class="step"><span class="sn">3</span><div>Save. The job card now tracks everything: pieces made, tooling health, cost per piece.</div></div>
-</section>
-
-<!-- 04 -->
-<section id="s4">
-  <div class="sec-hd"><span class="num">04</span><h2>Tooling stations</h2></div>
-  <p>Each cutting tool on the job gets a <strong>station</strong>. A typical turned part might have three: <em>OD Turning</em> (CNMG insert), <em>Grooving</em> (MGMN insert), <em>Drilling</em> (solid carbide drill).</p>
-  <p>For each station you tell the app once:</p>
-  <ul>
-    <li><strong>Insert designation</strong> — e.g. <span class="mono">CNMG 12 04 08</span>, or pick it straight from your Inventory</li>
-    <li><strong>Corners per insert</strong> — e.g. 4 cutting edges on a CNMG</li>
-    <li><strong>Cost per insert</strong> — e.g. &#8377;400 (auto-filled if picked from Inventory)</li>
-    <li>For milling: <strong>inserts in the cutter</strong> — e.g. 5 inserts in a face mill</li>
-  </ul>
-  <div class="callout"><b>Tip:</b> if the item is linked to Inventory, every insert change automatically reduces your stock count — and warns you before you run out.</div>
-</section>
-
-<!-- 05 -->
-<section id="s5">
-  <div class="sec-hd"><span class="num">05</span><h2>Logging production — the daily ritual</h2></div>
-  <p>This is the screen your operator uses every shift. Three taps, done:</p>
-  <div class="step"><span class="sn">1</span><div>Tap <strong>LOG SHIFT</strong> on the job. The quantity pad opens with the keyboard ready.</div></div>
-  <div class="step"><span class="sn">2</span><div>Type the pieces made. Operator and machine are already filled from last time.</div></div>
-  <div class="step"><span class="sn">3</span><div>Tap <strong>LOG PRODUCTION</strong>. The entry is saved and synced.</div></div>
-
-  <div class="shot">
-    <div class="scr">
-      <div style="background:var(--navy);color:#fff;padding:.55rem .8rem"><span style="font-size:.55rem;letter-spacing:.2em;opacity:.65">LOG PRODUCTION</span><div style="font-size:.8rem;font-weight:700">End of shift — record pieces made</div></div>
-      <div class="scr-bd">
-        <div class="f-lbl">Qty Produced *</div>
-        <div style="display:flex;gap:.4rem;align-items:flex-start">
-          <div class="qty-big">120</div>
-          <div style="display:flex;flex-direction:column;gap:.25rem"><span class="qadj">+5</span><span class="qadj">+10</span></div>
-          <div style="display:flex;flex-direction:column;gap:.25rem"><span class="qadj">+25</span><span class="qadj">+100</span></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
-          <div><div class="f-lbl">Operator</div><div class="f-inp">Ravi</div></div>
-          <div><div class="f-lbl">Machine</div><div class="f-inp">CNC-01</div></div>
-        </div>
-        <div style="background:var(--off);border:1px solid var(--rule);border-radius:2px;padding:.5rem .6rem;margin-top:.7rem;font-size:.72rem;font-weight:600;color:var(--navy)">&#9745; Any rejections / scrap? &nbsp;<span style="color:var(--mut);font-weight:400">2 pcs — Burr</span></div>
-        <div style="background:var(--off);border:1px solid var(--rule);border-radius:2px;padding:.5rem .6rem;margin-top:.4rem;font-size:.72rem;font-weight:600;color:var(--navy)">&#9744; Any tooling change this shift?</div>
-        <div style="margin-top:.8rem"><span class="btn-m teal">Log Production</span> <span class="btn-m ghost">Cancel</span></div>
-      </div>
-    </div>
-    <div class="shot-cap">The log form. Rejections and tooling changes stay folded away until needed.</div>
-  </div>
-
-  <p><strong>Rejections:</strong> tick the box, enter how many and pick a reason (Dimensional, Burr, Surface finish, Tool mark…). You can add your own reasons in Settings. The app tracks your rejection rate per operation automatically.</p>
-  <p><strong>Tooling changes:</strong> if an insert was indexed or replaced during the shift, tick the tooling box and mark it per station — this is how corner life gets measured.</p>
-</section>
-
-<!-- 06 -->
-<section id="s6">
-  <div class="sec-hd"><span class="num">06</span><h2>Insert life &amp; corners</h2></div>
-  <p>Open any station to see its full insert history: every set loaded, every corner used, how many pieces each corner made, and who loaded what, when.</p>
-  <p>On the phone, the station screen gives you three big buttons:</p>
-  <ul>
-    <li><strong>&#8635; INDEX CORNER</strong> — rotated the insert to a fresh edge? One tap records it.</li>
-    <li><strong>REPLACE INSERTS</strong> — old set finished. Stock is deducted if linked to Inventory.</li>
-    <li><strong>+ LOG PRODUCTION</strong> — jumps straight to the log form.</li>
-  </ul>
-  <p>The app learns your average corner life and warns when the current edge is past due — and it flags <strong>anomalies</strong>: a corner that died at 35 pieces when your average is 105 usually means a material problem, a speed/feed problem, or a bad insert batch. You'll see it flagged the same day, not at month end.</p>
-  <div class="callout warn"><b>Anomaly example:</b> "HSG-4020 · OD Turning — corner broke at 35 pcs (avg 105)". That's the app catching &#8377;400 worth of insert dying at one-third of its life — and telling you before it happens ten more times.</div>
-</section>
-
-<!-- 07 -->
-<section id="s7">
-  <div class="sec-hd"><span class="num">07</span><h2>Multi-operation jobs</h2></div>
-  <p>Many components need several setups: Op-1 turning, Op-2 second side, Op-3 milling. The pipeline bar on the job page shows the flow, the good pieces cleared through each op, the rejection rate, and the <strong>WIP</strong> — pieces waiting between operations.</p>
-  <div class="shot">
-    <div class="pipe" style="max-width:430px;margin:0 auto">
-      <div class="stp on"><div class="nm">Op-1</div><div class="st">18 good &middot; 10% rej</div><div class="wip">3 WIP &#8594;</div></div>
-      <span class="arr">&#8594;</span>
-      <div class="stp"><div class="nm">Op-2</div><div class="st">15 good</div></div>
-      <span class="arr">&#8594;</span>
-      <div class="stp"><div class="nm">Op-3</div><div class="st">No log</div></div>
-    </div>
-    <div class="shot-cap">The operations pipeline. Tap an op to see and manage its stations.</div>
-  </div>
-  <p>Each operation has its own tooling stations, so a drill used in Op-2 never mixes its cost into Op-1. Production is logged against the operation the operator actually ran.</p>
-</section>
-
-<!-- 08 -->
-<section id="s8">
-  <div class="sec-hd"><span class="num">08</span><h2>CPC — your real cost per component</h2></div>
-  <p><strong>CPC = insert money spent &divide; pieces produced.</strong> Not an estimate — calculated from the actual sets you loaded and the actual pieces logged. Owner-only; operators never see it.</p>
-  <div class="cpc-box">
-    <div class="lbl" style="margin-bottom:.5rem">Worked example — OD Turning station</div>
-    <div class="cpc-line"><span>Insert: CNMG 12 04 08, 4 corners</span><span class="mono">&#8377;400 / insert</span></div>
-    <div class="cpc-line"><span>Set fully used (all 4 corners)</span><span class="mono">&#8377;400 spent</span></div>
-    <div class="cpc-line"><span>Pieces made on that set</span><span class="mono">420 pcs</span></div>
-    <div class="cpc-line"><span>Confirmed CPC</span><span class="mono">&#8377;400 &divide; 420 = &#8377;0.95 / pc</span></div>
-  </div>
-  <p>Two figures are shown: <strong>Confirmed CPC</strong> (only fully-spent sets — your bankable number) and <strong>Running CPC</strong> (includes the live set, proportional to corners used). For multi-op jobs, the total CPC divides all operations' tooling cost by the good pieces that cleared the <em>final</em> operation.</p>
-  <p>The <strong>CPC Compare</strong> tab ranks every insert you've ever run, cheapest per piece first — the honest way to compare a &#8377;280 insert against a &#8377;400 one.</p>
-</section>
-
-<!-- 09 -->
-<section id="s9">
-  <div class="sec-hd"><span class="num">09</span><h2>The owner dashboard</h2></div>
-  <p>Unlock Owner Mode and you land on the dashboard — the whole business in ten seconds. <strong>Attention Required</strong> sits on top and is generated automatically:</p>
-  <div class="shot">
-    <div class="scr" style="max-width:430px">
-      <div style="padding:.45rem .7rem;border-bottom:1px solid var(--off2)"><span class="lbl">Attention Required</span></div>
-      <div class="att bad"><span class="dot"></span>HSG-4020 &middot; OD Turning — abnormal insert failure<span class="go">&#8594;</span></div>
-      <div class="att bad"><span class="dot"></span>Out of stock: CNMG120408-PM<span class="go">&#8594;</span></div>
-      <div class="att warn"><span class="dot"></span>FLG-210 is paused<span class="go">&#8594;</span></div>
-      <div class="att warn"><span class="dot"></span>PIN-88 — no production logged today<span class="go">&#8594;</span></div>
-    </div>
-    <div class="shot-cap">Every alert is one tap from its fix.</div>
-  </div>
-  <p>Below it: business totals (good pieces, rejection %, today and this week), every active job sorted by priority with progress bars, insert health, inventory alerts, cloud-backup status, and a 7-day production chart with rejects marked in red.</p>
-</section>
-
-<!-- 10 -->
-<section id="s10">
-  <div class="sec-hd"><span class="num">10</span><h2>Shift proof — one screenshot on WhatsApp</h2></div>
-  <p>End of shift, the operator opens <strong>Shift Proof</strong>, takes one screenshot, and sends it. You immediately see who worked, what was produced, on which machine, and whether the data already reached your cloud sheet.</p>
-  <div class="shot">
-    <div class="pr">
-      <div class="pr-hd">
-        <div><div class="pr-co">TOOLFLUX — Sharma Engineering</div><div class="pr-t">PROOF OF PRODUCTION</div></div>
-        <div style="text-align:right"><div class="mono" style="font-size:.68rem;font-weight:700;color:var(--navy)">Sat, 04 Jul 2026</div><span class="pr-sync">&#10003; SYNCED</span></div>
-      </div>
-      <div style="font-size:.68rem;color:var(--mut);padding-bottom:.4rem;border-bottom:1px solid var(--rule)"><b style="color:var(--navy)">Shift</b> 06:12–14:30 &nbsp; <b style="color:var(--navy)">Operator</b> Ravi &nbsp; <b style="color:var(--navy)">Machine</b> CNC-01</div>
-      <div class="pr-job">
-        <div style="display:flex;justify-content:space-between"><span class="pr-code">HSG-4020</span><span style="font-size:.6rem;color:var(--mut)">Op-1</span></div>
-        <div><span class="pr-good">113</span> <small style="color:var(--mut)">good</small> &nbsp; <span class="pr-rej">2</span> <small style="color:var(--mut)">rejected</small></div>
-        <div style="font-size:.62rem;color:var(--bad)">Rejection: Burr &times;2</div>
-        <div class="mono" style="font-size:.62rem;color:var(--T)">OD Turning — C2/4 &middot; 25 pcs on edge</div>
-      </div>
-      <div class="pr-tot">
-        <div><div class="pr-tn">113</div><div class="pr-tl">GOOD PCS</div></div>
-        <div><div class="pr-tn" style="color:var(--bad)">2</div><div class="pr-tl">REJECTED</div></div>
-        <div><div class="pr-tn">2</div><div class="pr-tl">ENTRIES</div></div>
-        <div><div class="pr-tn">1</div><div class="pr-tl">INDEXES</div></div>
-      </div>
-      <div style="font-size:.55rem;color:var(--mut);padding-top:.4rem">Generated 14:32 &middot; 1 station</div>
-    </div>
-    <div class="shot-cap">The proof card — sized to fit one phone screenshot, readable in a WhatsApp preview.</div>
-  </div>
-  <p>Prefer text? <strong>Copy Summary</strong> puts a WhatsApp-formatted message on the clipboard. <strong>Print / PDF</strong> uses the browser's print dialog.</p>
-</section>
-
-<!-- 11 -->
-<section id="s11">
-  <div class="sec-hd"><span class="num">11</span><h2>Inventory</h2></div>
-  <p>Track every insert, drill, end mill, holder and adaptor you own — designation, brand, grade, purchase price, quantity in stock.</p>
-  <ul>
-    <li><strong>Add items</strong> one by one, or <strong>paste a whole table from Excel</strong> — the app recognises columns like Product, Brand, Price, Qty automatically.</li>
-    <li><strong>Link stations to inventory</strong> — picking an insert from stock auto-fills its designation and price, and every insert change deducts stock.</li>
-    <li><strong>Low-stock warnings</strong> appear before a load would empty the drawer, and on the owner dashboard.</li>
-  </ul>
-</section>
-
-<!-- 12 -->
-<section id="s12">
-  <div class="sec-hd"><span class="num">12</span><h2>Reports &amp; export</h2></div>
-  <ul>
-    <li><strong>Owner Report</strong> — a printable A4 machining-efficiency report per job: stations, sets used, corner life, CPC, anomalies, recent log. Print it, sign it, file it.</li>
-    <li><strong>Excel export</strong> — one click downloads your entire data as a spreadsheet that opens in Excel or LibreOffice.</li>
-    <li><strong>JSON backup / restore</strong> — full data backup you can keep on a pen drive.</li>
-  </ul>
-</section>
-
-<!-- 13 -->
-<section id="s13">
-  <div class="sec-hd"><span class="num">13</span><h2>Sync &amp; offline behaviour</h2></div>
-  <p>All data lives on your device first — the app never needs internet to work. When a connection exists:</p>
-  <ul>
-    <li>Every production entry, insert change, edit and delete is pushed to your cloud sheet <strong>within seconds</strong>.</li>
-    <li>If offline, changes queue and retry automatically — including after the browser restarts.</li>
-    <li>The dashboard's <strong>Cloud Backup</strong> panel and the Shift Proof chip always show the current state: <em>Backed up / Waiting / Offline — queued</em>.</li>
-  </ul>
-</section>
-
-<!-- 14 -->
-<section id="s14">
-  <div class="sec-hd"><span class="num">14</span><h2>Trial &amp; subscription</h2></div>
-  <p>The first <strong>14 days are free</strong> with every feature enabled. After that pick a plan — <strong>Solo &#8377;299</strong>, <strong>Shop &#8377;799</strong> or <strong>Works &#8377;2,499</strong> per month, depending on how many operator phones need to sync. Every plan has every feature. Pay by UPI through Razorpay, then activate with the email you used to pay. Your data never leaves your device during activation, and nothing is lost if the trial ends before you subscribe: subscribing unlocks everything exactly as you left it.</p>
-</section>
-
-<!-- 15 -->
-<section id="s15">
-  <div class="sec-hd"><span class="num">15</span><h2>FAQ</h2></div>
-  <p><strong>I forgot my Owner PIN.</strong> Contact TOOLFLUX on WhatsApp — we'll walk you through a reset. Your data is safe.</p>
-  <p><strong>Can two machines share one app?</strong> Yes — log entries record which machine ran the parts. For fully separate data per PC, just open the link on each PC; each keeps its own records.</p>
-  <p><strong>My operator logged a wrong quantity.</strong> Unlock Owner Mode, open the job's production log, tap the pencil on the entry, correct it.</p>
-  <p><strong>Does clearing browser history delete my data?</strong> Clearing <em>site data</em> does. Take an Excel export or JSON backup periodically — and remember the cloud sheet holds everything that synced.</p>
-  <p><strong>Will I get updates?</strong> Yes, automatically — refresh the page and you're on the latest version.</p>
-</section>
-
-</main>
-
-<footer>
-  <div class="wm">TOOLFLUX</div>
-  <div>Engineering Precision. Every Cut.</div>
-  <div style="margin-top:.7rem">Questions? WhatsApp <a href="https://wa.me/918660234766">86602 34766</a> &middot; <a href="https://toolflux-dev.github.io/machlog-app/">Open the app</a></div>
+<footer class="foot">
+  <span>Machlog, the machining log by TOOLFLUX</span>
+  <nav class="foot-links" aria-label="Footer">
+    <a class="link" href="machining-log.html">About Machlog</a>
+    <a class="link" href="index.html">toolflux.co.in</a>
+    <a class="link" href="https://wa.me/918660234766" target="_blank" rel="noopener">WhatsApp 86602 34766</a>
+  </nav>
+  <span class="foot-r">A product of <img class="rood" src="assets/rood-dynamics.png" alt="ROOD Dynamics" width="84" height="14"> · 2026</span>
 </footer>
-
+<script>
+(function () {
+  function dial(svg, corners, n, curFrac, due) {
+    var c = 38, sw = 9, r = c - sw / 2 - 1, circ = 2 * Math.PI * r, gap = Math.max(3, sw * 0.7), slot = circ / n, seg = slot - gap, out = '';
+    for (var i = 0; i < n; i++) {
+      var off = -(i * slot + gap / 2);
+      out += '<circle cx="38" cy="38" r="' + r + '" stroke="#e3f3f7" stroke-width="9" stroke-dasharray="' + seg.toFixed(2) + ' ' + (circ - seg).toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>';
+      var col = null, len = 0;
+      if (i < corners - 1) { col = '#012B42'; len = seg; } else if (i === corners - 1) { col = due ? '#a62d1e' : '#0097B2'; len = seg * Math.max(0.12, Math.min(1, curFrac)); }
+      if (col) out += '<circle cx="38" cy="38" r="' + r + '" stroke="' + col + '" stroke-width="9" stroke-dasharray="' + len.toFixed(2) + ' ' + (circ - len).toFixed(2) + '" stroke-dashoffset="' + off.toFixed(2) + '"/>';
+    }
+    svg.innerHTML = out;
+  }
+  document.querySelectorAll('svg[data-dial]').forEach(function (s) { var p = s.getAttribute('data-dial').split(','); dial(s, +p[0], 4, +p[1], p[2] === 'due'); });
+  // contents: open on wide screens, folded on small ones; the section in view is marked
+  var det = document.querySelector('.g-toc details');
+  if (det && window.matchMedia('(max-width: 1000px)').matches) det.removeAttribute('open');
+  var links = {}; document.querySelectorAll('.g-toc a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var seen = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); seen.unobserve(e.target); } }); }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+    var spy = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting && links[e.target.id]) { Object.keys(links).forEach(function (k) { links[k].classList.remove('on'); }); links[e.target.id].classList.add('on'); } }); }, { rootMargin: '-30% 0px -60% 0px' });
+    document.querySelectorAll('[data-reveal]').forEach(function (s) { seen.observe(s); });
+    document.querySelectorAll('.g-main section').forEach(function (s) { spy.observe(s); });
+  } else document.querySelectorAll('[data-reveal]').forEach(function (s) { s.classList.add('is-in'); });
+})();
+</script>
 </body>
+
 </html>

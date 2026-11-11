@@ -137,3 +137,52 @@ test('an operation can be removed only while it is empty', () => {
   c.run('removeOperation(J.id, OP2)');
   assert.equal(c.run('J.operations.length'), 1);
 });
+
+// ── a part is counted once on a multi-operation job ────────────────
+function twoOps() {
+  const c = shop();
+  c.run(`db.settings.trialStartedAt = isoNow();
+         addOperation(J.id); var OP2 = J.operations[1].id;
+         logQty(50, 0);                                             // Op-1 turned 50
+         logQty(48, 0, { operationId: OP2, qtyGood: 46,             // Op-2 finished 48, 2 scrapped
+           rejections: [{ qty: 2, reason: 'Dimensional' }] });`);
+  return c;
+}
+
+test('today and this week count the parts that left the last operation', () => {
+  const c = twoOps();
+  const d = JSON.parse(c.run('JSON.stringify(computeDashData())'));
+  assert.equal(d.prodToday, 48, 'not 98: the same parts went through both operations');
+  assert.equal(d.prodWeek, 48);
+  assert.equal(d.days[6].qty, 48);
+  assert.equal(c.run('jobTodayQty(J)'), 48);
+  assert.equal(c.run('jobTodayQty(J, OP)'), 50, 'the log form for Op-1 shows Op-1');
+});
+
+test('rejections still add up across every operation', () => {
+  const c = twoOps();
+  c.run(`logQty(10, 0, { qtyGood: 9, rejections: [{ qty: 1, reason: 'Burr' }] })`); // Op-1 scrap
+  const d = JSON.parse(c.run('JSON.stringify(computeDashData())'));
+  assert.equal(d.rejWeek, 3);
+  assert.equal(d.prodWeekAll, 108);
+  const jc = JSON.parse(c.run('JSON.stringify(calcJob(J))'));
+  assert.equal(jc.finalProduced, 48);
+  assert.equal(jc.totalRejected, 3);
+});
+
+test('a tool being produced against with nothing loaded needs the owner', () => {
+  const c = shop();
+  c.run('db.settings.trialStartedAt = isoNow(); ST.insertSets = []; logQty(30, 0);');
+  const att = JSON.parse(c.run('JSON.stringify(computeDashData().attention)'));
+  assert.ok(att.some(a => /nothing is recorded as loaded/.test(a.msg)));
+  c.run("logQty(5, 0, { events: [{ stationId: ST.id, eventType: 'insert_load' }] })");
+  const after = JSON.parse(c.run('JSON.stringify(computeDashData().attention)'));
+  assert.ok(!after.some(a => /nothing is recorded as loaded/.test(a.msg)), 'gone once a load is logged');
+});
+
+test('rejection reasons from Settings: one per line, blanks and repeats dropped', () => {
+  const c = shop();
+  c.ctx.__text = 'Dimensional\n\n  Chatter \ndimensional\nOversize bore';
+  const r = JSON.parse(c.run('JSON.stringify(parseReasons(__text))'));
+  assert.deepEqual(r, ['Dimensional', 'Chatter', 'Oversize bore']);
+});

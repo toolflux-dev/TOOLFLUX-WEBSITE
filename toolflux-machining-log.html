@@ -1977,6 +1977,14 @@ const blankDB = () => ({
 });
 
 // ── data helpers ──────────────────────────────────────────────────
+// A part goes through every operation, so it is counted where it leaves the
+// job: on the last operation. Entries without an operation (old data) and
+// single-operation jobs always count.
+function isFinalOpEntry(job, e) {
+  const ops = (job && job.operations) || [];
+  if (ops.length <= 1 || !e.operationId) return true;
+  return e.operationId === ops[ops.length - 1].id;
+}
 // Returns ALL stations across all operations (for backward compat reads)
 function jobAllStations(job) {
   if (job.operations && job.operations.length) return job.operations.flatMap(op => op.stations || []);
@@ -2820,7 +2828,8 @@ function computeDashData() {
     costliest: null, invAlerts: [], attention: [],
     lifeRecent: null, lifePrior: null,
     operatorBoard: [], topToday: null,
-    spend7: 0, spend30: 0, good30: 0, rejWeek: 0, prodYesterday: 0, topRejReason: null,
+    spend7: 0, spend30: 0, good30: 0, rejWeek: 0, prodWeekAll: 0, prodYesterday: 0, topRejReason: null,
+    unloaded: [],
   };
   const d30 = Date.now() - 30 * 86400000;
   const rejReasons = {};
@@ -2850,14 +2859,16 @@ function computeDashData() {
       }
       const ts = new Date(e.timestamp);
       if (!lastTs || ts > lastTs) { lastTs = ts; lastOpId = e.operationId; }
+      const fin = isFinalOpEntry(job, e);
       const b = dayMap[dayKey(ts)];
-      if (b) { b.qty += q; b.rej += (q - g); }
-      if (ts >= todayStart) { out.prodToday += q; todayQty += q; }
+      if (b && fin) { b.qty += q; b.rej += (q - g); }
+      if (ts >= todayStart && fin) { out.prodToday += q; todayQty += q; }
       if (ts >= weekStart) {
-        out.prodWeek += q; out.rejWeek += (q - g);
+        if (fin) out.prodWeek += q;
+        out.prodWeekAll += q; out.rejWeek += (q - g);
         (e.rejections || []).forEach(r => { if (r && r.reason) rejReasons[r.reason] = (rejReasons[r.reason] || 0) + (Number(r.qty) || 0); });
       }
-      if (ts.getTime() >= d30) out.good30 += g;
+      if (ts.getTime() >= d30 && fin) out.good30 += g;
 
       // Per-operator performance: this week vs the prior week, for the leaderboard
       const opName = (e.operator || '').trim();
@@ -2909,6 +2920,14 @@ function computeDashData() {
           else if (t >= d14) { lifePs += c.componentsMade; lifePn++; }
         }
       }));
+    });
+
+    if (status === 'active') ops.forEach(op => {
+      const running = (job.productionLog || []).some(e => (e.operationId === op.id || (!e.operationId && ops.length === 1)) && new Date(e.timestamp).getTime() >= d7);
+      if (!running) return;
+      (op.stations || []).forEach(st => {
+        if (!(st.insertSets || []).some(s => s.status === 'active')) out.unloaded.push({ jobId: job.id, stationId: st.id, code: job.componentCode, name: st.name });
+      });
     });
 
     if (status === 'active' || status === 'paused') {
@@ -2986,6 +3005,7 @@ function computeDashData() {
   out.anomalyStations.slice(0, 3).forEach(s => att.push({ sev: 'bad', msg: `${s.code} · ${s.name} — abnormal insert failure${s.n > 1 ? 's (' + s.n + ')' : ''}`, go: `navigate('station',{jobId:'${s.jobId}',stationId:'${s.stationId}'})` }));
   out.jobRows.filter(r => r.status === 'paused').slice(0, 2).forEach(r => att.push({ sev: 'warn', msg: `${r.code} is paused`, go: `navigate('job',{jobId:'${r.jobId}'})` }));
   noLogToday.slice(0, 3).forEach(j => att.push({ sev: 'warn', msg: `${j.code} — no production logged today`, go: `navigate('job',{jobId:'${j.jobId}'})` }));
+  out.unloaded.slice(0, 3).forEach(s => att.push({ sev: 'warn', msg: `${s.code} · ${s.name} — pieces are logged but nothing is recorded as loaded, so its life and cost are not counted`, go: `navigate('station',{jobId:'${s.jobId}',stationId:'${s.stationId}'})` }));
   out.invAlerts.filter(a => a.kind === 'warn').slice(0, 2).forEach(a => att.push({ sev: 'warn', msg: `${a.label}: ${a.item} (${a.qty} left)`, go: `navigate('inventory')` }));
   if (!hasOwnerPin() && (db.settings.operators || []).length) att.push({ sev: 'info', msg: 'Owner PIN not set — operators have full access', go: `openPinSetup()` });
   if (!(db.jobs || []).length) att.push({ sev: 'info', msg: 'No jobs yet — create your first component job', go: `navigate('newjob')` });
@@ -3103,7 +3123,7 @@ function vDashboard() {
     buy.length ? `${buy.length} item${buy.length === 1 ? '' : 's'} to buy.` : '',
   ].filter(Boolean).join(' ');
 
-  const rejWeekPct = d.prodWeek > 0 ? (d.rejWeek / d.prodWeek * 100) : 0;
+  const rejWeekPct = d.prodWeekAll > 0 ? (d.rejWeek / d.prodWeekAll * 100) : 0;
   const perGood30 = d.good30 > 0 && d.spend30 > 0 ? d.spend30 / d.good30 : null;
   const deltaHtml = dayDelta == null ? '' : ` <span class="delta ${dayDelta >= 0 ? 'up' : 'down'}">${dayDelta >= 0 ? '+' : '−'}${Math.abs(dayDelta)}%</span>`;
 
@@ -3112,7 +3132,7 @@ function vDashboard() {
       <div class="kpis">
         <div class="s-stat lead"><div class="lbl">Made today</div><div><span class="s-val">${fmtN(d.prodToday)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Yesterday ${fmtN(d.prodYesterday)}${deltaHtml}</div></div>
         <div class="s-stat"><div class="lbl">Made this week</div><div><span class="s-val">${fmtN(d.prodWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">Last 7 days, ${fmtN(d.activeJobs)} active job${d.activeJobs === 1 ? '' : 's'}</div></div>
-        <div class="s-stat"><div class="lbl">Rejected this week</div><div><span class="s-val ${d.rejWeek > 0 ? 'bad-c' : ''}">${fmtN(d.rejWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">${rejWeekPct.toFixed(1)}% of output${d.topRejReason ? `, mostly ${esc(d.topRejReason.reason.toLowerCase())}` : ''}</div></div>
+        <div class="s-stat"><div class="lbl">Rejected this week</div><div><span class="s-val ${d.rejWeek > 0 ? 'bad-c' : ''}">${fmtN(d.rejWeek)}</span><span class="s-unit"> pcs</span></div><div class="s-sub">${rejWeekPct.toFixed(1)}% of pieces machined${d.topRejReason ? `, mostly ${esc(d.topRejReason.reason.toLowerCase())}` : ''}</div></div>
         <div class="s-stat"><div class="lbl">Tooling spend, 7 days</div><div><span class="s-val">${fmtRs(d.spend7, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
         <div class="s-stat"><div class="lbl">Tooling spend, 30 days</div><div><span class="s-val">${fmtRs(d.spend30, 0)}</span></div><div class="s-sub">Inserts and tools loaded</div></div>
         <div class="s-stat"><div class="lbl">Tooling per good piece</div><div><span class="s-val">${perGood30 != null ? fmtRs(perGood30, 2) : '—'}</span></div><div class="s-sub">30-day spend ÷ good pieces</div></div>
@@ -3381,7 +3401,7 @@ function vShiftProof() {
           <div class="pt"><div class="pt-n">${d.insertChangesToday}</div><div class="pt-l">INSERTS</div></div>
         </div>
         <div class="proof-ft">
-          Generated ${esc(timeStr)} &middot; ${d.stationsUsed} station${d.stationsUsed === 1 ? '' : 's'}
+          Generated ${esc(timeStr)} &middot; ${d.stationsUsed} tool${d.stationsUsed === 1 ? '' : 's'}
           <span class="proof-install">${esc((db.settings.installId || '').slice(0, 10))}</span>
         </div>
       </div>
@@ -3452,17 +3472,17 @@ function printShiftProof() {
 // operators viewing an un-unlocked device; Settings replay always shows
 // the full track since only owners reach Settings.
 const TUT_STEPS = [
-  { icon: '\u{1F527}', title: 'Welcome to TOOLFLUX', body: 'This app replaces the paper sheet taped to your machine. It takes one minute to see what it does — tap anywhere to continue, or use the arrow.' },
-  { icon: '➕', title: 'Log every shift in seconds', body: 'Open a job, tap "Log Shift", type how many pieces you made, tap Log Production. Operator and machine are remembered for next time.' },
-  { icon: '\u{1F504}', title: 'Track every insert corner', body: 'When you rotate or replace an insert, tap Index Corner or Replace Inserts on the station screen. The app remembers exactly how long each edge lasted.' },
-  { icon: '⚠', title: 'Record rejections honestly', body: 'Tick "Any rejections?" in the log form and pick a reason. This protects you and shows real quality trends over time.' },
-  { icon: '\u{1F4F2}', title: 'Prove your shift on WhatsApp', body: 'At the end of the day, open Shift Proof and tap "Send on WhatsApp". The owner sees exactly what was made — instantly, with proof it reached the cloud.' },
-  { icon: '\u{1F512}', title: 'Owner Mode keeps costs private', owner: true, body: 'Tap the lock chip in the top bar and enter your PIN anytime to see costs, reports and settings. Operators on the shop floor never see this.' },
-  { icon: '₹', title: 'Know your real tooling cost', owner: true, body: 'CPC = insert cost ÷ pieces made. No more guessing — see exactly what each component costs you, insert by insert.' },
-  { icon: '\u{1F4CA}', title: 'One screen, whole business', owner: true, body: 'Unlock Owner Mode and you land on the Dashboard. "Attention Required" always shows first — paused jobs, low stock, insert problems — the moment you open the app.' },
-  { icon: '\u{1F4E6}', title: 'Stock that updates itself', owner: true, body: 'Add your inserts once in Inventory. Every load deducts stock automatically and warns you before you run out.' },
-  { icon: '☁', title: 'Your data is always safe', body: 'Everything syncs to the cloud the moment you have internet. Offline? It queues and sends automatically the second you are back online.' },
-  { icon: '✅', title: "You're ready", body: 'Replay this tour anytime from Settings. Now go make some good parts.' },
+  { title: 'Welcome to Machlog', body: 'It replaces the sheet taped to your machine: pieces made, rejections and every insert change, kept per job. One minute to see how it works.' },
+  { title: 'Plan the job once', owner: true, body: 'A new job opens on its Process plan. Add the operations in order and the tool each one uses: insert, corners and price. Operators never edit the plan.' },
+  { title: 'Log at the machine', body: 'Tap "+ Log production", type the pieces made and tap Save entry. Your name and machine are remembered for next time.' },
+  { title: 'Tap any tool change', body: 'In the same form, tap Indexed or Replaced for the tool you changed, or "Loaded new inserts" the first time a tool goes in. That is how Machlog learns how long each corner lasts.' },
+  { title: 'Record rejections honestly', body: 'Type how many pieces were rejected and tap the reason. It protects you and shows the owner where the scrap comes from.' },
+  { title: 'Prove your shift on WhatsApp', body: 'At the end of the shift open Shift proof and tap "Send on WhatsApp". The owner sees what was made, and whether it reached the cloud.' },
+  { title: 'Costs stay with the owner', owner: true, body: 'Once you add an operator, you set an owner PIN. Costs, reports, the plan and edits to past entries stay behind it.' },
+  { title: 'Production in rupees', owner: true, body: 'The Overview shows today against yesterday, rejections with their main reason, tooling spend and tooling cost per good piece. "Needs you" lists what to act on first.' },
+  { title: 'Buy before it runs out', owner: true, body: 'Add your inserts in Inventory with a reorder level. Stock comes down each time inserts are loaded, and the buying list goes to your supplier on WhatsApp.' },
+  { title: 'Your data is backed up', body: 'Every entry is saved on this device first and copied to the cloud when there is internet. Offline? It waits and sends by itself.' },
+  { title: "You're ready", body: 'Replay this tour any time from Settings. Now go make some good parts.' },
 ];
 
 let tutStepList = [];
@@ -3493,7 +3513,6 @@ function renderTutorialStep() {
         <button class="tut-skip" onclick="event.stopPropagation();skipTutorial()">Skip</button>
       </div>
       <div class="tut-tap" onclick="tutNext()">
-        <div class="tut-icon">${step.icon}</div>
         <div class="tut-title">${esc(step.title)}</div>
         <div class="tut-body">${esc(step.body)}</div>
       </div>
@@ -3651,7 +3670,11 @@ function calcJob(job) {
     ? Math.round(allIndexedCorners.reduce((s, c) => s + c.componentsMade, 0) / allIndexedCorners.length)
     : null;
 
-  return { totalProduced, totalGood, totalInsertCost, totalCpc, totalAnomalies, lastEntry, avgCornerLife, opStats };
+  // pieces that came off the last operation; the total above counts each operation's run
+  const finalProduced = opStats.length ? opStats[opStats.length - 1].produced : log.reduce((s, e) => s + (Number(e.qty) || 0), 0);
+  const totalRejected = opStats.length ? opStats.reduce((s, o) => s + o.rejected, 0)
+    : log.reduce((s, e) => s + ((Number(e.qty) || 0) - (Number(e.qtyGood ?? e.qty) || 0)), 0);
+  return { totalProduced, finalProduced, totalGood, totalRejected, totalInsertCost, totalCpc, totalAnomalies, lastEntry, avgCornerLife, opStats };
 }
 
 // ── router / ui state ─────────────────────────────────────────────
@@ -3708,7 +3731,7 @@ function stationTile(st, jobId) {
 
   const cpcVal = sc.confirmedCpc != null ? sc.confirmedCpc : sc.provisionalCpc;
   const cpcHtml = isOwner() && cpcVal != null
-    ? `<div class="st-cpc">${fmtRs(cpcVal, 2)}<span class="st-cpc-unit">/pc</span>${sc.confirmedCpc == null ? '<span class="st-cpc-prov"> est.</span>' : ''}</div>`
+    ? `<div class="st-cpc">${fmtRs(cpcVal, 2)}<span class="st-cpc-unit">/pc</span>${sc.confirmedCpc == null ? '<span class="st-cpc-prov"> so far</span>' : ''}</div>`
     : '';
 
   const cat = toolCategory(st.opType);
@@ -3846,7 +3869,7 @@ function vJobs() {
                 <div class="jc-stat-l">today</div>
               </div>
               <div>
-                <div class="jc-stat-n">${fmtN(jc.totalProduced)}</div>
+                <div class="jc-stat-n">${fmtN(jc.finalProduced)}</div>
                 <div class="jc-stat-l">made in all</div>
               </div>
               ${owner && jc.totalCpc != null ? `<div>
@@ -3877,7 +3900,7 @@ function vJobs() {
             <div class="job-health" style="margin-top:.35rem">${healthDots}</div>
           </div>
           <div>
-            <div class="job-count">${fmtN(jc.totalProduced)}</div>
+            <div class="job-count">${fmtN(jc.finalProduced)}</div>
             <div class="job-count-lbl">pcs made</div>
             ${owner && jc.totalCpc ? `<div style="font-family:var(--mono);font-size:.8rem;color:var(--teal);text-align:right;margin-top:.2rem;font-weight:700">${fmtRs(jc.totalCpc,2)}/pc</div>` : ''}
           </div>
@@ -3924,7 +3947,7 @@ function vCPCContent() {
 
   const tableRows = rows.map(r => {
     const cpc = r.cpc != null
-      ? `<span class="cpc-val">${fmtRs(r.cpc, 2)}</span>${!r.confirmed ? '<span style="color:var(--mut);font-size:.75rem"> est.</span>' : ''}`
+      ? `<span class="cpc-val">${fmtRs(r.cpc, 2)}</span>${!r.confirmed ? '<span style="color:var(--mut);font-size:.75rem"> so far</span>' : ''}`
       : '<span style="color:var(--mut)">—</span>';
     return `<tr>
       <td class="insert-name">${esc(r.insert)}</td>
@@ -3938,17 +3961,17 @@ function vCPCContent() {
   }).join('');
 
   return `<div class="panel">
-    <div class="panel-hd"><span class="lbl">Insert CPC Comparison</span><div class="hr"></div><span class="lbl muted">${rows.length} station${rows.length===1?'':'s'}</span></div>
+    <div class="panel-hd"><span class="lbl">Cost per piece, by insert</span><div class="hr"></div><span class="lbl muted">${rows.length} tool${rows.length===1?'':'s'}, cheapest first</span></div>
     <div style="overflow-x:auto">
       <table class="cpc-tbl">
         <thead><tr>
-          <th>Insert</th><th>Component</th><th>Station</th><th>Operation</th>
-          <th style="text-align:right">Sets Used</th><th style="text-align:right">Total Pcs</th><th style="text-align:right">CPC</th>
+          <th>Insert</th><th>Job</th><th>Tool</th><th>Kind</th>
+          <th style="text-align:right">Sets used</th><th style="text-align:right">Pieces</th><th style="text-align:right">Per piece</th>
         </tr></thead>
         <tbody>${tableRows}</tbody>
       </table>
     </div>
-    <div style="padding:.5rem 1rem;font-size:.75rem;color:var(--mut)">est. = provisional, insert set not yet fully spent. CPC = insert cost ÷ total pieces made with that insert.</div>
+    <div style="padding:.5rem 1rem;font-size:.75rem;color:var(--mut)">"so far" means the set in the machine is not used up yet. Per piece = insert cost ÷ pieces made with that insert.</div>
   </div>`;
 }
 
@@ -4251,7 +4274,7 @@ function vJobDetail() {
           </div>
         </div>
         <div class="hero-count-wrap">
-          <div class="hero-num">${fmtN(jc.totalProduced)}</div>
+          <div class="hero-num">${fmtN(jc.finalProduced)}</div>
           <div class="hero-num-lbl">pieces made in all · ${fmtN(jobTodayQty(job))} today</div>
         </div>
       </div>
@@ -4309,16 +4332,17 @@ function vJobDetail() {
         ${owner ? `<div class="kv-row"><span>Tooling per piece<small>Insert cost ÷ good pieces</small></span><b>${jc.totalCpc != null ? fmtRs(jc.totalCpc, 2) : 'Not yet'}</b></div>` : ''}
         ${owner ? `<div class="kv-row"><span>Tooling spend<small>Inserts and tools loaded so far</small></span><b>${fmtRs(jc.totalInsertCost, 0)}</b></div>` : ''}
         <div class="kv-row"><span>Corner life<small>Average pieces per insert corner</small></span><b>${jc.avgCornerLife != null ? fmtN(jc.avgCornerLife) + ' pcs' : 'Not yet'}</b></div>
-        <div class="kv-row"><span>Rejected<small>${jc.totalProduced > 0 ? ((jc.totalProduced - jc.totalGood) / jc.totalProduced * 100).toFixed(1) + '% of pieces made' : 'Nothing made yet'}</small></span><b class="${jc.totalProduced - jc.totalGood > 0 ? 'bad-c' : ''}">${fmtN(Math.max(0, jc.totalProduced - jc.totalGood))}</b></div>
+        <div class="kv-row"><span>Rejected<small>${jc.totalProduced > 0 ? (jc.totalRejected / jc.totalProduced * 100).toFixed(1) + '% of pieces machined, every operation' : 'Nothing made yet'}</small></span><b class="${jc.totalRejected > 0 ? 'bad-c' : ''}">${fmtN(jc.totalRejected)}</b></div>
         <div class="kv-row"><span>Early insert failures<small>Broke well before the usual life</small></span><b class="${jc.totalAnomalies ? 'bad-c' : ''}">${fmtN(jc.totalAnomalies)}</b></div>
       </div>
     </aside></div>`;
 }
 
 // Pieces logged against a job since midnight (every operation).
-function jobTodayQty(job) {
+function jobTodayQty(job, opId) {
   const t0 = new Date(); t0.setHours(0, 0, 0, 0);
-  return (job.productionLog || []).reduce((s, e) => s + (new Date(e.timestamp) >= t0 ? (Number(e.qty) || 0) : 0), 0);
+  const counts = e => opId ? (e.operationId === opId || (!e.operationId && (job.operations || []).length <= 1)) : isFinalOpEntry(job, e);
+  return (job.productionLog || []).reduce((s, e) => s + (new Date(e.timestamp) >= t0 && counts(e) ? (Number(e.qty) || 0) : 0), 0);
 }
 
 // The usual size of one entry on this job. Used to catch a slipped digit
@@ -4453,12 +4477,12 @@ function buildLogForm(job) {
         <input id="lp-op" list="dl-ops-lp" autocomplete="off" placeholder="Name" value="${esc(who)}">
         <datalist id="dl-ops-lp"></datalist>
       </div>`;
-  const today = jobTodayQty(job);
+  const today = jobTodayQty(job, activeOp && ops.length > 1 ? activeOp.id : null);
 
   return `
     <div class="log-form-wrap" id="log-form-wrap">
       <div class="log-form-hd">
-        <span class="title">${esc(job.componentCode)} — pieces made</span>
+        <span class="title">${esc(job.componentCode)}${ops.length > 1 && activeOp ? ' · ' + esc(activeOp.name) : ''} — pieces made</span>
         <span class="lf-today">Today so far <b>${fmtN(today)}</b></span>
       </div>
       <div class="log-form-bd">
@@ -4577,7 +4601,7 @@ function buildStationFields(opType, ex) {
         <label for="sf-insert">Insert (Brand \xb7 Grade \xb7 Type)</label>
         <input id="sf-insert" list="dl-desigs" autocomplete="off" placeholder="e.g. TOOLFLUX TF425P SDMT09T308" ${inp('insertDesig','')}>
         <datalist id="dl-desigs"></datalist>
-        <div class="hint">Brand, grade, geometry — used for CPC brand comparison.</div>
+        <div class="hint">Brand, grade, geometry — used to compare cost per piece across brands.</div>
       </div>
       <div class="field">
         <label for="sf-qty">Inserts in Cutter</label>
@@ -4603,7 +4627,7 @@ function buildStationFields(opType, ex) {
       <label for="sf-insert">Insert (Brand \xb7 Grade \xb7 Geometry)</label>
       <input id="sf-insert" list="dl-desigs" autocomplete="off" placeholder="e.g. TOOLFLUX TF425P CNMG120408" ${inp('insertDesig','')}>
       <datalist id="dl-desigs"></datalist>
-      <div class="hint">Brand, grade, geometry — used for CPC brand comparison.</div>
+      <div class="hint">Brand, grade, geometry — used to compare cost per piece across brands.</div>
     </div>
     <div class="field">
       <label for="sf-holder">Tool Holder</label>
@@ -4682,7 +4706,7 @@ function buildAddStationForm(job) {
 function buildEditStationForm(job, st) {
   return `
     <div class="panel-hd">
-      <span class="lbl">Edit Station</span>
+      <span class="lbl">Edit this tool</span>
       <div class="hr"></div>
       <span class="muted small">${esc(st.name)}</span>
     </div>
@@ -4844,7 +4868,7 @@ function vStationDetail() {
     <aside class="job-rail">
       <div class="panel kv">
         <div class="panel-hd"><span class="lbl">This tool in numbers</span><div class="hr"></div></div>
-        ${owner ? kv('Cost per piece so far', solid ? 'Tool cost ÷ pieces made' : 'Counts only the corners already used', sc.provisionalCpc != null ? fmtRs(sc.provisionalCpc, 2) : 'Not yet') : ''}
+        ${owner ? kv('Cost per piece so far', solid ? 'Tool cost ÷ pieces made' : 'Counts the corners started so far', sc.provisionalCpc != null ? fmtRs(sc.provisionalCpc, 2) : 'Not yet') : ''}
         ${owner ? kv('Cost per piece, finished', solid ? 'From tools fully worn out' : 'From sets fully used up', sc.confirmedCpc != null ? fmtRs(sc.confirmedCpc, 2) : 'Not yet') : ''}
         ${kv('Pieces made', solid ? 'On every tool used here' : 'On every set used here', fmtN(sc.totalComponents))}
         ${kv(solid ? 'Usual tool life' : 'Usual corner life', 'Average of those already used', usual ? fmtN(usual) + ' pcs' : 'Not yet')}
@@ -4876,7 +4900,7 @@ function vReport() {
   const jc = calcJob(job);
   const tabHtml = `
     <button class="tab" onclick="navigate('job',{jobId:'${job.id}'})">&#8592; ${esc(job.componentCode)}</button>
-    <button class="tab" aria-selected="true">Owner Report</button>
+    <button class="tab" aria-selected="true">Report</button>
   `;
   setTabs(tabHtml);
   setBarCrumb(`Report: ${job.componentCode}`, true);
@@ -4942,18 +4966,18 @@ function vReport() {
       <div class="rpt-band" style="border-top:1px solid #333;margin-top:0">
         <div><div class="k">Component</div><div class="v">${esc(job.componentCode)}</div></div>
         <div><div class="k">Description</div><div class="v">${esc(job.componentDesc||'—')}</div></div>
-        <div><div class="k">Total Pcs Made</div><div class="v">${fmtN(jc.totalProduced)}</div></div>
+        <div><div class="k">Pieces made</div><div class="v">${fmtN(jc.finalProduced)}</div></div>
         <div><div class="k">Date Range</div><div class="v">${esc(dateRange)}</div></div>
       </div>
       <div class="rpt-band" style="border-top:0;margin-bottom:3.5mm">
         <div><div class="k">Operator(s)</div><div class="v">${esc(operators)}</div></div>
         <div><div class="k">Machine(s)</div><div class="v">${esc(machines)}</div></div>
         <div><div class="k">Total Insert Cost</div><div class="v">${fmtRs(jc.totalInsertCost,0)}</div></div>
-        <div><div class="k">Insert CPC</div><div class="v">${jc.totalCpc != null ? fmtRs(jc.totalCpc,2) : '—'}</div></div>
+        <div><div class="k">Tooling per piece</div><div class="v">${jc.totalCpc != null ? fmtRs(jc.totalCpc,2) : '—'}</div></div>
       </div>
 
       <div class="rpt-sec">
-        <div class="rpt-sec-hd"><span class="s">Insert Consumption by Station</span><div class="r"></div></div>
+        <div class="rpt-sec-hd"><span class="s">Inserts used, tool by tool</span><div class="r"></div></div>
         <table class="rt">
           <thead><tr>
             <th>Station</th><th>Sets Used</th><th>Set Cost</th><th>Avg Corner Life</th>
@@ -4965,12 +4989,12 @@ function vReport() {
             <td></td>
             <td class="n"><b>${fmtRs(jc.totalInsertCost,0)}</b></td>
             <td></td>
-            <td class="n"><b>${fmtN(jc.totalProduced)}</b></td>
+            <td class="n"><b>${fmtN(jc.finalProduced)}</b></td>
             <td class="n"><b>${jc.totalCpc != null ? fmtRs(jc.totalCpc,2) : '—'}</b></td>
             <td colspan="2"></td>
           </tr></tfoot>
         </table>
-        <div style="font-size:6pt;color:#666;margin-top:1mm">* Provisional — insert set not yet fully spent. CPC will be confirmed when set is replaced.</div>
+        <div style="font-size:6pt;color:#666;margin-top:1mm">* So far — the set in the machine is not used up yet; the figure is confirmed when it is replaced.</div>
       </div>
 
       ${jc.totalAnomalies ? `
@@ -5023,7 +5047,7 @@ function vPaywall() {
     : hadLicense
     ? 'Your license needs a quick re-verification. Enter your subscription email below — your data is untouched.'
     : expired
-    ? 'Activate a subscription to keep tracking your tooling costs and CPC.'
+    ? 'Activate a subscription to keep tracking production and tooling cost per piece.'
     : 'Unlock unlimited access. Your data stays on your device, always offline.';
   const cur = licensed ? getTier() : null;
   if (!TIERS[ui.pwTier]) ui.pwTier = cur || nextTierFor((db.settings.operators || []).length);
@@ -5687,6 +5711,10 @@ function vSettings() {
               <input id="st-mach" value="${esc(s.defaultMachine||'')}" list="dl-machs-st" autocomplete="off">
               <datalist id="dl-machs-st"></datalist>
             </div>
+            <div class="field" style="grid-column:1/-1">
+              <label for="st-rej">Rejection reasons <span class="opt">— one per line, shown as buttons in the log form</span></label>
+              <textarea id="st-rej" rows="5">${esc((s.rejectionReasons || REJECTION_REASONS).join(String.fromCharCode(10)))}</textarea>
+            </div>
           </div>
           <div style="margin-top:1rem">
             <button type="submit" class="btn btn-pri">Save</button>
@@ -5733,7 +5761,7 @@ function vSettings() {
     <div class="panel">
       <div class="panel-hd"><span class="lbl">Help</span><div class="hr"></div></div>
       <div class="panel-bd">
-        <div style="font-size:.75rem;color:var(--mut);margin-bottom:.65rem;line-height:1.55">A short walkthrough of jobs, insert tracking, CPC, the dashboard and shift proof.</div>
+        <div style="font-size:.75rem;color:var(--mut);margin-bottom:.65rem;line-height:1.55">A one-minute walkthrough: planning a job, logging, tool changes, the Overview, buying and shift proof.</div>
         <button class="btn btn-ghost" onclick="replayTutorial()">Replay tutorial</button>
       </div>
     </div>
@@ -5745,7 +5773,7 @@ function vSettings() {
           <button class="btn btn-ghost" onclick="exportData()">&#8595; Backup JSON</button>
           <button class="btn btn-ghost" onclick="importData()">&#8593; Restore JSON</button>
         </div>
-        <div class="hint">Export to Excel: 4-sheet workbook — Jobs Summary, Production Log, Insert CPC by Station, Anomalies. Open in Excel or LibreOffice. Works offline.</div>
+        <div class="hint">Export to Excel: a 4-sheet workbook — jobs, production log, cost per piece by tool, early failures. Opens in Excel or LibreOffice. Works offline.</div>
       </div>
       <div class="panel-hd" style="margin-top:.5rem"><span class="lbl" style="color:var(--bad)">Danger Zone</span><div class="hr"></div></div>
       <div class="panel-bd">
@@ -6135,7 +6163,7 @@ function submitAddStation(e, jobId) {
   const job = db.jobs.find(j => j.id === jobId);
   if (!job) return;
   const name = (g => g ? g.value.trim() : '')($('#sf-name'));
-  if (!name) { toast('Station name required', 'bad'); return; }
+  if (!name) { toast('Give the tool a name', 'bad'); return; }
   const opType = ($('#sf-op') || {}).value || 'turning';
   const fields = readStationFields(opType);
   const st = {
@@ -6182,7 +6210,7 @@ function submitEditStation(e, jobId, stationId) {
   addHistory('toolHolders', st.toolHolder || '');
   saveDB();
   ui.editStationOpen = false;
-  toast('Station updated', 'ok');
+  toast('Tool updated', 'ok');
   render();
 }
 
@@ -6239,7 +6267,7 @@ function submitLogProduction(e, jobId) {
   if (isOperatorDevice()) { operatorEnqueue(jobId, entry); operatorSyncSoon(); }
   else syncNow(); // owner: audit sync — original numbers reach the sheet immediately
   ui.logOpen = false;
-  toast(`${qty} pcs saved${rejQty > 0 ? ` (${rejQty} rejected)` : ''} · ${fmtN(jobTodayQty(job))} today on ${job.componentCode}`, rejQty > 0 ? 'warn' : 'ok', 3600);
+  toast(`${qty} pcs saved${rejQty > 0 ? ` (${rejQty} rejected)` : ''} · ${fmtN(jobTodayQty(job, (job.operations || []).length > 1 ? opId : null))} today on ${job.componentCode}${(job.operations || []).length > 1 ? ' ' + esc(((job.operations || []).find(o => o.id === opId) || {}).name || '') : ''}`, rejQty > 0 ? 'warn' : 'ok', 3600);
   render();
 }
 
@@ -6494,7 +6522,7 @@ function quickIndexCorner(jobId, stationId) {
 
 function confirmDeleteStation(jobId, stationId) {
   if (!requireOwner() || !requireActive()) return;
-  if (!confirm('Delete this tooling station and all its insert history? This cannot be undone.')) return;
+  if (!confirm('Remove this tool from the plan, with all its insert history? This cannot be undone.')) return;
   const job = db.jobs.find(j => j.id === jobId);
   if (!job) return;
   (job.operations || []).forEach(op => { op.stations = (op.stations || []).filter(s => s.id !== stationId); });
@@ -6527,12 +6555,21 @@ function submitSetup(e) {
   navigate(ownerHome());
 }
 
+// One reason per line; blanks and repeats dropped, at most 16, 40 characters each.
+function parseReasons(text) {
+  const seen = new Set();
+  return String(text).split(/\r?\n/).map(r => r.trim().slice(0, 40))
+    .filter(r => r && !seen.has(r.toLowerCase()) && seen.add(r.toLowerCase())).slice(0, 16);
+}
+
 function submitSettings(e) {
   e.preventDefault();
   if (!requireOwner() || !requireActive()) return;
   db.settings.company = $('#st-co').value.trim();
   db.settings.defaultOperator = $('#st-op').value.trim();
   db.settings.defaultMachine = $('#st-mach').value.trim();
+  const reasons = parseReasons((($('#st-rej') || {}).value) || '');
+  if (reasons.length) db.settings.rejectionReasons = reasons;
   addHistory('operators', db.settings.defaultOperator);
   addHistory('machines', db.settings.defaultMachine);
   saveDB();
@@ -6595,13 +6632,13 @@ function exportToExcel() {
 
   // ── Sheet 1: Jobs Summary ──────────────────────────────────────
   let s1 = `<Worksheet ss:Name="Jobs Summary"><Table>`;
-  s1 += hr('Component Code','Description','Customer','Status','Started','Total Pcs Made','Total Insert Cost (Rs)','Insert CPC (Rs/pc)','Stations','Anomalies');
+  s1 += hr('Component Code','Description','Customer','Status','Started','Pieces Made','Tooling Spend (Rs)','Tooling per Piece (Rs)','Tools','Early Failures');
   (db.jobs || []).forEach(j => {
     const jc = calcJob(j);
     s1 += row(
       sc(j.componentCode), sc(j.componentDesc||''), sc(j.customer||''),
       sc(j.status||'active'), sc(fmtDate(j.createdAt)),
-      nc(jc.totalProduced), nc(jc.totalInsertCost), nc(jc.totalCpc),
+      nc(jc.finalProduced), nc(jc.totalInsertCost), nc(jc.totalCpc),
       nc((j.stations||[]).length), nc(jc.totalAnomalies)
     );
   });
@@ -6629,12 +6666,12 @@ function exportToExcel() {
   s2 += '</Table></Worksheet>';
 
   // ── Sheet 3: Insert CPC by Station ────────────────────────────
-  let s3 = `<Worksheet ss:Name="Insert CPC by Station"><Table>`;
-  s3 += hr('Component Code','Station Name','Operation Type','Machine',
+  let s3 = `<Worksheet ss:Name="Cost per Piece by Tool"><Table>`;
+  s3 += hr('Component Code','Tool','Kind','Machine',
     'Insert Designation','Insert Grade','Insert Brand',
     'Inserts in Cutter','Corners per Insert','Cost per Insert (Rs)',
     'Set Cost (Rs)','Sets Used','Total Pcs','Avg Corner Life (pcs)',
-    'Confirmed CPC (Rs/pc)','Provisional CPC (Rs/pc)','Anomalies');
+    'Per Piece, Finished Sets (Rs)','Per Piece So Far (Rs)','Early Failures');
   (db.jobs || []).forEach(j => {
     (j.stations || []).forEach(st => {
       const sc2 = calcStation(st);
@@ -6654,7 +6691,7 @@ function exportToExcel() {
 
   // ── Sheet 4: Anomaly Log ───────────────────────────────────────
   let s4 = `<Worksheet ss:Name="Anomalies"><Table>`;
-  s4 += hr('Component Code','Station','Operation','Set #','Corner #','Pcs on Corner','Avg Corner Life (pcs)','% of Avg','Severity');
+  s4 += hr('Component Code','Tool','Kind','Set #','Corner #','Pcs on Corner','Usual Corner Life (pcs)','% of Usual','Severity');
   (db.jobs || []).forEach(j => {
     (j.stations || []).forEach(st => {
       const sc2 = calcStation(st);
