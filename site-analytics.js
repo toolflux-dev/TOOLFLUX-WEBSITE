@@ -3,7 +3,7 @@
 // browser (?notrack=0 turns counting back on). Never runs on localhost.
 (function () {
   var GA_ID = 'G-Q65NVMNG67';
-  var CLARITY_ID = ''; // Microsoft Clarity project ID; empty = Clarity off
+  var CLARITY_ID = 'ivgcgvcnr1'; // Microsoft Clarity project ID; empty = Clarity off
 
   var host = location.hostname;
   if (!/(^|\.)toolflux\.co\.in$/.test(host)) return;
