@@ -121,6 +121,7 @@ BLOGS.forEach((b, i) => {
 <link rel="stylesheet" href="shared.css">
 <style>${CSS}</style>
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
+<script src="site-analytics.js" defer></script>
 </head>
 <body>
 ${nav}
